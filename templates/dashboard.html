@@ -1,0 +1,493 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Central de Obras{% endblock %}
+
+{% block content %}
+<div class="hdr hdr-hero">
+    <div>
+        <div class="page-kicker">Central de Obras</div>
+        <h1>Dashboard Executivo</h1>
+        <p>
+            Visão geral • {{ obras|length }} obras filtradas • {{ total_medicoes }} medições • margem {{
+            '%.1f'|format(margem_percentual) }}%
+        </p>
+    </div>
+    <div class="hdr-right">
+        <a class="btn btn-success"
+            href="{{ url_for('dashboard_exportar', obra=filtro_obra, categoria=filtro_categoria, status=filtro_status, data_inicio=data_inicio, data_fim=data_fim) }}">
+            Exportar Excel
+        </a>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:12px;">
+    <form method="GET" action="{{ url_for('dashboard') }}">
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Filtrar por Obra</label>
+                <select name="obra">
+                    <option value="">Todas</option>
+                    {% for obra_item in todas_obras %}
+                    <option value="{{ obra_item.codigo }}" {% if filtro_obra==obra_item.codigo %}selected{% endif %}>
+                        {{ obra_item.codigo }} - {{ obra_item.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Filtrar por Categoria</label>
+                <select name="categoria">
+                    <option value="">Todas</option>
+                    {% for categoria_item in todas_categorias %}
+                    <option value="{{ categoria_item }}" {% if filtro_categoria==categoria_item %}selected{% endif %}>
+                        {{ categoria_item }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Filtrar por Status</label>
+                <select name="status">
+                    <option value="">Todos</option>
+                    <option value="planejamento" {% if filtro_status=='planejamento' %}selected{% endif %}>planejamento
+                    </option>
+                    <option value="andamento" {% if filtro_status=='andamento' %}selected{% endif %}>andamento</option>
+                    <option value="atrasada" {% if filtro_status=='atrasada' %}selected{% endif %}>atrasada</option>
+                    <option value="concluida" {% if filtro_status=='concluida' %}selected{% endif %}>concluida</option>
+                    <option value="vendida" {% if filtro_status=='vendida' %}selected{% endif %}>vendida</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Data Inicial</label>
+                <input type="date" name="data_inicio" value="{{ data_inicio }}">
+            </div>
+
+            <div class="form-group">
+                <label>Data Final</label>
+                <input type="date" name="data_fim" value="{{ data_fim }}">
+            </div>
+        </div>
+
+        <div class="modal-footer" style="border-top:none; padding-top:12px;">
+            <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
+            <a href="{{ url_for('dashboard') }}" class="btn">Limpar</a>
+        </div>
+    </form>
+</div>
+
+<div class="quick-strip">
+    <div class="quick-item">
+        <div class="quick-label">Obras filtradas</div>
+        <div class="quick-value">{{ obras|length }}</div>
+    </div>
+
+    <div class="quick-item">
+        <div class="quick-label">Execução média</div>
+        <div class="quick-value">{{ '%.1f'|format(execucao_media) }}%</div>
+    </div>
+
+    <div class="quick-item">
+        <div class="quick-label">Custo / Receita</div>
+        <div class="quick-value">{{ '%.1f'|format(custo_percentual_receita) }}%</div>
+    </div>
+
+    <div class="quick-item">
+        <div class="quick-label">Alertas ativos</div>
+        <div class="quick-value">{{ alertas|length }}</div>
+    </div>
+</div>
+
+<div class="kpi-grid">
+    <div class="kpi or">
+        <div class="kpi-lbl">Receita Total</div>
+        <div class="kpi-val">{{ formatar_moeda(total_receita) }}</div>
+        <div class="kpi-sub">
+            <span class="tag up">{{ obras|length }} obras</span>
+            <span class="tag wn">{{ total_medicoes }} medições</span>
+        </div>
+    </div>
+
+    <div class="kpi gr">
+        <div class="kpi-lbl">Margem Líquida</div>
+        <div class="kpi-val">{{ formatar_moeda(margem) }}</div>
+        <div class="kpi-sub">
+            <span class="tag up">{{ '%.1f'|format(margem_percentual) }}% da receita</span>
+        </div>
+    </div>
+
+    <div class="kpi bl">
+        <div class="kpi-lbl">Custo Total Realizado</div>
+        <div class="kpi-val">{{ formatar_moeda(total_custo) }}</div>
+        <div class="kpi-sub">
+            <span class="tag wn">{{ custos|length }} lançamentos</span>
+            <span class="tag dn">{{ '%.1f'|format(custo_percentual_receita) }}% da receita</span>
+        </div>
+    </div>
+
+    <div class="kpi rd">
+        <div class="kpi-lbl">Obras em Atenção</div>
+        <div class="kpi-val">{{ alertas|length }}</div>
+        <div class="kpi-sub">
+            <span class="tag dn">{{ obras_atrasadas }} atrasadas</span>
+            <span class="tag up">{{ obras_ativas }} ativas</span>
+        </div>
+    </div>
+</div>
+
+{% if alertas and alertas|length > 0 %}
+<div class="card" style="margin-bottom:12px;">
+    <div class="card-hdr">
+        <div class="card-title">Alertas Prioritários</div>
+    </div>
+
+    {% for alerta in alertas[:3] %}
+    <div class="alert-inline {{ alerta.tipo }}">
+        <strong>{{ alerta.codigo }}</strong> — {{ alerta.mensagem }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="g2" style="margin-bottom:12px;">
+    <div class="card">
+        <div class="card-hdr">
+            <div class="card-title">Total importado da planilha</div>
+        </div>
+        <div class="kpi-val">{{ formatar_moeda(total_importado) }}</div>
+        <div class="kpi-sub">Soma das categorias importadas</div>
+    </div>
+
+    <div class="card">
+        <div class="card-hdr">
+            <div class="card-title">Medições registradas</div>
+        </div>
+        <div class="kpi-val">{{ total_medicoes }}</div>
+        <div class="kpi-sub">Medições cadastradas/importadas</div>
+    </div>
+</div>
+
+<div class="g2">
+    <div class="card chart-card">
+        <div class="card-hdr">
+            <div class="card-title">Comparativo por Categoria</div>
+        </div>
+        <div class="chart-box">
+            <canvas id="graficoComparativo"></canvas>
+        </div>
+    </div>
+
+    <div class="card chart-card">
+        <div class="card-hdr">
+            <div class="card-title">Progresso das Obras</div>
+        </div>
+        <div class="chart-box">
+            <canvas id="graficoProgresso"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="card chart-card" style="margin-bottom:12px;">
+    <div class="card-hdr">
+        <div class="card-title">Distribuição de Custos</div>
+    </div>
+    <div class="chart-box">
+        <canvas id="graficoPizza"></canvas>
+    </div>
+</div>
+
+<div class="g2">
+    <div class="card">
+        <div class="card-hdr">
+            <div class="card-title">Custo por categoria (lançamentos)</div>
+        </div>
+
+        {% if custos_por_categoria %}
+        {% for categoria, valor in custos_por_categoria.items() %}
+        <div class="rank-item">
+            <div class="rank-info">
+                <div class="rank-name">{{ categoria }}</div>
+                <div class="rank-cat">Lançado manualmente no sistema</div>
+            </div>
+            <div class="rank-score">{{ formatar_moeda(valor) }}</div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="muted">Sem custos lançados ainda.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="card-hdr">
+            <div class="card-title">Ranking fornecedores</div>
+        </div>
+
+        {% if ranking_fornecedores %}
+        {% for f in ranking_fornecedores %}
+        <div class="rank-item">
+            <div class="rank-n {% if loop.index <= 2 %}top{% endif %}">
+                {{ loop.index }}
+            </div>
+            <div class="rank-info">
+                <div class="rank-name">{{ f.nome }}</div>
+                <div class="rank-cat">{{ f.categoria }}</div>
+            </div>
+            <div class="rank-score">{{ f.media }}</div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="muted">Sem fornecedores cadastrados.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:12px;">
+    <div class="card-hdr">
+        <div class="card-title">Comparativo por categoria</div>
+    </div>
+
+    <div class="tbl-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Categoria</th>
+                    <th>Importado</th>
+                    <th>Lançado</th>
+                    <th>Diferença</th>
+                    <th>Desvio %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in comparativo_categorias %}
+                <tr>
+                    <td class="td-name">{{ item.categoria }}</td>
+                    <td>{{ formatar_moeda(item.importado) }}</td>
+                    <td>{{ formatar_moeda(item.lancado) }}</td>
+                    <td
+                        class="{% if item.diferenca > 0 %}valor-negativo{% elif item.diferenca < 0 %}valor-positivo{% endif %}">
+                        {{ formatar_moeda(item.diferenca) }}
+                    </td>
+                    <td
+                        class="{% if item.desvio_percentual > 0 %}valor-negativo{% elif item.desvio_percentual < 0 %}valor-positivo{% endif %}">
+                        {{ '%.1f'|format(item.desvio_percentual) }}%
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="muted">Sem comparativos disponíveis ainda.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-hdr">
+        <div class="card-title">Resumo de obras</div>
+    </div>
+
+    <div class="tbl-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Tipologia</th>
+                    <th>Status</th>
+                    <th>Execução</th>
+                    <th>Margem</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for obra in margem_por_obra %}
+                <tr>
+                    <td class="td-mono">{{ obra.codigo }}</td>
+                    <td class="td-name">{{ obra.nome }}</td>
+                    <td>{{ obra.tipologia or "-" }}</td>
+                    <td>
+                        <span class="badge {{ obra.status }}">{{ obra.status }}</span>
+                    </td>
+                    <td>
+                        <div class="progress-wrap">
+                            <div class="progress-text">{{ obra.execucao or 0 }}%</div>
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill progress-dinamica" data-width="{{ obra.execucao or 0 }}">
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ formatar_moeda(obra.margem_valor) }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="muted">Nenhuma obra cadastrada.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="dashboard-data" data-comparativo-labels='{{ chart_comparativo_labels | default([], true) | tojson | safe }}'
+    data-comparativo-importado='{{ chart_comparativo_importado | default([], true) | tojson | safe }}'
+    data-comparativo-lancado='{{ chart_comparativo_lancado | default([], true) | tojson | safe }}'
+    data-progresso-labels='{{ chart_progresso_labels | default([], true) | tojson | safe }}'
+    data-progresso-valores='{{ chart_progresso_valores | default([], true) | tojson | safe }}'
+    data-pizza-labels='{{ chart_pizza_labels | default([], true) | tojson | safe }}'
+    data-pizza-valores='{{ chart_pizza_valores | default([], true) | tojson | safe }}' style="display:none;">
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const dashboardData = document.getElementById("dashboard-data");
+        if (!dashboardData) return;
+
+        const labelsComparativo = JSON.parse(dashboardData.dataset.comparativoLabels || "[]");
+        const valoresImportado = JSON.parse(dashboardData.dataset.comparativoImportado || "[]");
+        const valoresLancado = JSON.parse(dashboardData.dataset.comparativoLancado || "[]");
+
+        const labelsProgresso = JSON.parse(dashboardData.dataset.progressoLabels || "[]");
+        const valoresProgresso = JSON.parse(dashboardData.dataset.progressoValores || "[]");
+
+        const labelsPizza = JSON.parse(dashboardData.dataset.pizzaLabels || "[]");
+        const valoresPizza = JSON.parse(dashboardData.dataset.pizzaValores || "[]");
+
+        const textoClaro = "#f0f0f0";
+        const textoCinza = "#8a8a95";
+
+        const canvasComparativo = document.getElementById("graficoComparativo");
+        if (canvasComparativo && labelsComparativo.length > 0) {
+            new Chart(canvasComparativo, {
+                type: "bar",
+                data: {
+                    labels: labelsComparativo,
+                    datasets: [
+                        {
+                            label: "Importado",
+                            data: valoresImportado,
+                            backgroundColor: "rgba(64,128,240,0.75)",
+                            borderColor: "rgba(64,128,240,1)",
+                            borderWidth: 1,
+                            borderRadius: 6
+                        },
+                        {
+                            label: "Lançado",
+                            data: valoresLancado,
+                            backgroundColor: "rgba(240,112,48,0.75)",
+                            borderColor: "rgba(240,112,48,1)",
+                            borderWidth: 1,
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: textoClaro }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: textoCinza },
+                            grid: { color: "rgba(255,255,255,0.05)" }
+                        },
+                        y: {
+                            ticks: { color: textoCinza },
+                            grid: { color: "rgba(255,255,255,0.05)" }
+                        }
+                    }
+                }
+            });
+        }
+
+        const canvasProgresso = document.getElementById("graficoProgresso");
+        if (canvasProgresso && labelsProgresso.length > 0) {
+            new Chart(canvasProgresso, {
+                type: "bar",
+                data: {
+                    labels: labelsProgresso,
+                    datasets: [
+                        {
+                            label: "% Execução",
+                            data: valoresProgresso,
+                            backgroundColor: "rgba(52,199,123,0.75)",
+                            borderColor: "rgba(52,199,123,1)",
+                            borderWidth: 1,
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: textoClaro }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: textoCinza },
+                            grid: { color: "rgba(255,255,255,0.05)" }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: { color: textoCinza },
+                            grid: { color: "rgba(255,255,255,0.05)" }
+                        }
+                    }
+                }
+            });
+        }
+
+        const canvasPizza = document.getElementById("graficoPizza");
+        if (canvasPizza && labelsPizza.length > 0) {
+            new Chart(canvasPizza, {
+                type: "doughnut",
+                data: {
+                    labels: labelsPizza,
+                    datasets: [
+                        {
+                            data: valoresPizza,
+                            backgroundColor: [
+                                "#f07030",
+                                "#4080f0",
+                                "#34c77b",
+                                "#f0b030",
+                                "#8060e0",
+                                "#f05060",
+                                "#ff8c4b",
+                                "#4f46e5",
+                                "#16a34a",
+                                "#eab308"
+                            ],
+                            borderWidth: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: textoClaro }
+                        }
+                    }
+                }
+            });
+        }
+
+        const barras = document.querySelectorAll(".progress-dinamica");
+        barras.forEach(function (barra) {
+            const valor = barra.dataset.width || 0;
+            barra.style.width = valor + "%";
+        });
+    });
+</script>
+{% endblock %}

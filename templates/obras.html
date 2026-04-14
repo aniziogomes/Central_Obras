@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}Obras - Central de Obras{% endblock %}
+
+{% block content %}
+<div class="hdr">
+    <div>
+        <h1>Obras</h1>
+        <p>Cadastro completo com gestão de dados</p>
+    </div>
+    <div class="hdr-right" style="display:flex; gap:8px;">
+        <a href="{{ url_for('obras_exportar') }}" class="btn btn-success">Exportar Excel</a>
+        <button class="btn btn-primary" onclick="abrirModalObra()">Nova Obra</button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="tbl-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Tipologia</th>
+                    <th>Área</th>
+                    <th>Orçamento</th>
+                    <th>Receita</th>
+                    <th>Execução</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for obra in obras %}
+                <tr>
+                    <td class="td-mono">{{ obra.codigo }}</td>
+                    <td class="td-name">
+                        <a href="{{ url_for('obra_detalhe', codigo=obra.codigo) }}" class="link-obra">
+                            {{ obra.nome }}
+                        </a>
+                    </td>
+                    <td>{{ obra.tipologia or "-" }}</td>
+                    <td>{{ obra.area_m2 or 0 }} m²</td>
+                    <td>{{ formatar_moeda(obra.orcamento) }}</td>
+                    <td>{{ formatar_moeda(obra.receita_total) }}</td>
+                    <td>
+                        <div class="progress-wrap">
+                            <div class="progress-text">{{ obra.progresso_percentual or 0 }}%</div>
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill progress-dinamica"
+                                    data-width="{{ obra.progresso_percentual or 0 }}"></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge {{ obra.status }}">{{ obra.status }}</span>
+                    </td>
+                    <td>
+                        <div style="display:flex; gap:6px;">
+                            <button class="btn btn-small" type="button" onclick="abrirModalEditarObra('{{ obra.id }}')">
+                                Editar
+                            </button>
+
+                            <form method="POST" action="{{ url_for('excluir_obra', obra_id=obra.id) }}"
+                                onsubmit="return confirm('Deseja realmente excluir esta obra?');">
+                                <button type="submit" class="btn btn-small btn-danger">Excluir</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+
+                {% else %}
+                <tr>
+                    <td colspan="9" class="muted">Nenhuma obra cadastrada ainda.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<!-- MODAIS DE EDIÇÃO FORA DA TABELA -->
+{% for obra in obras %}
+<div id="modalEditarObra{{ obra.id }}" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Editar Obra</h3>
+            <button type="button" class="modal-close" onclick="fecharModalEditarObra('{{ obra.id }}')">×</button>
+        </div>
+
+        <form method="POST" action="{{ url_for('editar_obra', obra_id=obra.id) }}">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Nome da Obra</label>
+                    <input type="text" name="nome" value="{{ obra.nome }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Endereço</label>
+                    <input type="text" name="endereco" value="{{ obra.endereco or '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Tipologia</label>
+                    <input type="text" name="tipologia" value="{{ obra.tipologia or '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Área m²</label>
+                    <input type="number" step="0.01" name="area_m2" value="{{ obra.area_m2 or 0 }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Data Início</label>
+                    <input type="date" name="data_inicio" value="{{ obra.data_inicio or '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Data Fim Prevista</label>
+                    <input type="date" name="data_fim_prevista" value="{{ obra.data_fim_prevista or '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Orçamento</label>
+                    <input type="number" step="0.01" name="orcamento" value="{{ obra.orcamento or 0 }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Receita Total</label>
+                    <input type="number" step="0.01" name="receita_total" value="{{ obra.receita_total or 0 }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Execução (%)</label>
+                    <input type="number" step="0.01" name="progresso_percentual"
+                        value="{{ obra.progresso_percentual or 0 }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Status</label>
+                    <select name="status">
+                        <option value="planejamento" {% if obra.status=='planejamento' %}selected{% endif %}>
+                            planejamento</option>
+                        <option value="andamento" {% if obra.status=='andamento' %}selected{% endif %}>
+                            andamento</option>
+                        <option value="atrasada" {% if obra.status=='atrasada' %}selected{% endif %}>
+                            atrasada</option>
+                        <option value="concluida" {% if obra.status=='concluida' %}selected{% endif %}>
+                            concluida</option>
+                        <option value="vendida" {% if obra.status=='vendida' %}selected{% endif %}>
+                            vendida</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="fecharModalEditarObra('{{ obra.id }}')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+<div id="modalObra" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Nova Obra</h3>
+            <button type="button" class="modal-close" onclick="fecharModalObra()">×</button>
+        </div>
+
+        <form method="POST" action="{{ url_for('nova_obra') }}">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>ID da Obra *</label>
+                    <input type="text" name="codigo" placeholder="OBR-001" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Nome da Obra *</label>
+                    <input type="text" name="nome" placeholder="Residência Silva" required>
+                </div>
+
+                <div class="form-group full">
+                    <label>Endereço</label>
+                    <input type="text" name="endereco" placeholder="Rua das Flores, 123">
+                </div>
+
+                <div class="form-group">
+                    <label>Tipologia *</label>
+                    <select name="tipologia" required>
+                        <option value="">Selecione...</option>
+                        <option value="Casa Térrea">Casa Térrea</option>
+                        <option value="Sobrado">Sobrado</option>
+                        <option value="Geminado">Geminado</option>
+                        <option value="Condomínio">Condomínio</option>
+                        <option value="Comercial">Comercial</option>
+                        <option value="Reforma">Reforma</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Área (m²)</label>
+                    <input type="number" step="0.01" name="area_m2" placeholder="120">
+                </div>
+
+                <div class="form-group">
+                    <label>Data Início</label>
+                    <input type="date" name="data_inicio">
+                </div>
+
+                <div class="form-group">
+                    <label>Data Fim Prevista</label>
+                    <input type="date" name="data_fim_prevista">
+                </div>
+
+                <div class="form-group">
+                    <label>Orçamento (R$)</label>
+                    <input type="number" step="0.01" name="orcamento" placeholder="280000">
+                </div>
+
+                <div class="form-group">
+                    <label>Receita de Venda (R$)</label>
+                    <input type="number" step="0.01" name="receita_total" placeholder="320000">
+                </div>
+
+                <div class="form-group">
+                    <label>% Execução Física</label>
+                    <input type="number" step="0.01" name="progresso_percentual" placeholder="0">
+                </div>
+
+                <div class="form-group">
+                    <label>Status *</label>
+                    <select name="status" required>
+                        <option value="">Selecione...</option>
+                        <option value="planejamento">planejamento</option>
+                        <option value="andamento">andamento</option>
+                        <option value="atrasada">atrasada</option>
+                        <option value="concluida">concluida</option>
+                        <option value="vendida">vendida</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="fecharModalObra()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Obra</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function abrirModalObra() {
+        document.getElementById("modalObra").style.display = "flex";
+    }
+
+    function fecharModalObra() {
+        document.getElementById("modalObra").style.display = "none";
+    }
+
+    function abrirModalEditarObra(id) {
+        document.getElementById("modalEditarObra" + id).style.display = "flex";
+    }
+
+    function fecharModalEditarObra(id) {
+        document.getElementById("modalEditarObra" + id).style.display = "none";
+    }
+
+    window.addEventListener("click", function (event) {
+        const modalNova = document.getElementById("modalObra");
+        if (event.target === modalNova) {
+            modalNova.style.display = "none";
+        }
+
+        const modais = document.querySelectorAll("[id^='modalEditarObra']");
+        modais.forEach(function (modal) {
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        });
+    });
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const barras = document.querySelectorAll(".progress-dinamica");
+
+        barras.forEach(function (barra) {
+            const valor = barra.dataset.width || 0;
+            barra.style.width = valor + "%";
+        });
+    });
+</script>
+{% endblock %}

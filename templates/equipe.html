@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}Equipe - Central de Obras{% endblock %}
+
+{% block content %}
+<div class="hdr">
+    <div>
+        <h1>Equipe</h1>
+        <p>Mão de obra por obra</p>
+    </div>
+    <div class="hdr-right" style="display:flex; gap:8px;">
+        <a href="{{ url_for('equipe_exportar') }}" class="btn btn-success">Exportar Excel</a>
+        <button class="btn btn-primary" onclick="abrirModalEquipe()">Novo Profissional</button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="tbl-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID Obra</th>
+                    <th>Obra</th>
+                    <th>Profissional</th>
+                    <th>Função</th>
+                    <th>Contrato</th>
+                    <th>Dt Início</th>
+                    <th>Vlr Contrat.</th>
+                    <th>Vlr Pago</th>
+                    <th>Pagamento</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in equipe %}
+                <tr>
+                    <td class="td-mono">{{ item.codigo_obra }}</td>
+                    <td class="td-name">{{ item.nome_obra }}</td>
+                    <td>{{ item.nome }}</td>
+                    <td>{{ item.funcao or "-" }}</td>
+                    <td>{{ item.contrato or "-" }}</td>
+                    <td>{{ item.data_inicio or "-" }}</td>
+                    <td>{{ formatar_moeda(item.valor_contratado) }}</td>
+                    <td>{{ formatar_moeda(item.valor_pago) }}</td>
+                    <td>{{ item.status_pagamento or "-" }}</td>
+                    <td>
+                        <div style="display:flex; gap:6px;">
+                            <button class="btn btn-small" type="button"
+                                onclick="abrirModalEditarEquipe('{{ item.id }}')">
+                                Editar
+                            </button>
+
+                            <form method="POST" action="{{ url_for('excluir_equipe', equipe_id=item.id) }}"
+                                onsubmit="return confirm('Deseja realmente excluir este profissional?');">
+                                <button type="submit" class="btn btn-small btn-danger">Excluir</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+
+                {% else %}
+                <tr>
+                    <td colspan="10" class="muted">Nenhum profissional cadastrado ainda.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<!-- MODAIS DE EDIÇÃO FORA DA TABELA -->
+{% for item in equipe %}
+<div id="modalEditarEquipe{{ item.id }}" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Editar Profissional</h3>
+            <button type="button" class="modal-close" onclick="fecharModalEditarEquipe('{{ item.id }}')">×</button>
+        </div>
+
+        <form method="POST" action="{{ url_for('editar_equipe', equipe_id=item.id) }}">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" name="nome" value="{{ item.nome }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Função</label>
+                    <input type="text" name="funcao" value="{{ item.funcao or '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Contrato</label>
+                    <select name="contrato">
+                        <option value="CLT" {% if item.contrato=='CLT' %}selected{% endif %}>CLT
+                        </option>
+                        <option value="PJ" {% if item.contrato=='PJ' %}selected{% endif %}>PJ</option>
+                        <option value="Empreitada" {% if item.contrato=='Empreitada' %}selected{% endif %}>Empreitada
+                        </option>
+                        <option value="Diarista" {% if item.contrato=='Diarista' %}selected{% endif %}>
+                            Diarista</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Data Início</label>
+                    <input type="date" name="data_inicio" value="{{ item.data_inicio or '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Valor Contratado</label>
+                    <input type="number" step="0.01" name="valor_contratado" value="{{ item.valor_contratado or 0 }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Valor Pago</label>
+                    <input type="number" step="0.01" name="valor_pago" value="{{ item.valor_pago or 0 }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Status Pagamento</label>
+                    <select name="status_pagamento">
+                        <option value="Pago" {% if item.status_pagamento=='Pago' %}selected{% endif %}>
+                            Pago</option>
+                        <option value="Pendente" {% if item.status_pagamento=='Pendente' %}selected{% endif %}>Pendente
+                        </option>
+                        <option value="Parcial" {% if item.status_pagamento=='Parcial' %}selected{% endif %}>Parcial
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group full">
+                    <label>Observação</label>
+                    <textarea name="observacao">{{ item.observacao or '' }}</textarea>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="fecharModalEditarEquipe('{{ item.id }}')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+<div id="modalEquipe" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Novo Profissional</h3>
+            <button type="button" class="modal-close" onclick="fecharModalEquipe()">×</button>
+        </div>
+
+        <form method="POST" action="{{ url_for('novo_membro_equipe') }}">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Obra *</label>
+                    <select name="obra_id" required>
+                        <option value="">Selecione...</option>
+                        {% for obra in obras %}
+                        <option value="{{ obra.id }}">{{ obra.codigo }} - {{ obra.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Nome *</label>
+                    <input type="text" name="nome" placeholder="João Silva" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Função</label>
+                    <input type="text" name="funcao" placeholder="Pedreiro">
+                </div>
+
+                <div class="form-group">
+                    <label>Contrato</label>
+                    <select name="contrato">
+                        <option value="">Selecione...</option>
+                        <option value="CLT">CLT</option>
+                        <option value="PJ">PJ</option>
+                        <option value="Empreitada">Empreitada</option>
+                        <option value="Diarista">Diarista</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Data Início</label>
+                    <input type="date" name="data_inicio">
+                </div>
+
+                <div class="form-group">
+                    <label>Valor Contratado</label>
+                    <input type="number" step="0.01" name="valor_contratado" placeholder="6200">
+                </div>
+
+                <div class="form-group">
+                    <label>Valor Pago</label>
+                    <input type="number" step="0.01" name="valor_pago" placeholder="3000">
+                </div>
+
+                <div class="form-group">
+                    <label>Status Pagamento</label>
+                    <select name="status_pagamento">
+                        <option value="">Selecione...</option>
+                        <option value="Pago">Pago</option>
+                        <option value="Pendente">Pendente</option>
+                        <option value="Parcial">Parcial</option>
+                    </select>
+                </div>
+
+                <div class="form-group full">
+                    <label>Observação</label>
+                    <textarea name="observacao" placeholder="Detalhes..."></textarea>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="fecharModalEquipe()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Profissional</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function abrirModalEquipe() {
+        document.getElementById("modalEquipe").style.display = "flex";
+    }
+
+    function fecharModalEquipe() {
+        document.getElementById("modalEquipe").style.display = "none";
+    }
+
+    function abrirModalEditarEquipe(id) {
+        document.getElementById("modalEditarEquipe" + id).style.display = "flex";
+    }
+
+    function fecharModalEditarEquipe(id) {
+        document.getElementById("modalEditarEquipe" + id).style.display = "none";
+    }
+
+    window.addEventListener("click", function (event) {
+        const modalNovo = document.getElementById("modalEquipe");
+        if (event.target === modalNovo) {
+            modalNovo.style.display = "none";
+        }
+
+        const modaisEditar = document.querySelectorAll("[id^='modalEditarEquipe']");
+        modaisEditar.forEach(function (modal) {
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        });
+    });
+</script>
+{% endblock %}

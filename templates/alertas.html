@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Alertas - Central de Obras{% endblock %}
+
+{% block content %}
+<div class="hdr">
+    <div>
+        <h1>Alertas</h1>
+        <p>Notificações automáticas geradas pelo sistema</p>
+    </div>
+</div>
+
+{% if alertas and alertas|length > 0 %}
+    {% for alerta in alertas %}
+    <div class="alert-card {{ alerta.tipo }}">
+        <div class="alert-title">{{ alerta.codigo }} — {{ alerta.nome }}</div>
+        <div class="alert-text">{{ alerta.mensagem }}</div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="card">
+        <div class="card-hdr">
+            <div class="card-title">Situação atual</div>
+        </div>
+        <p class="muted">Nenhum alerta ativo. Tudo em ordem.</p>
+    </div>
+{% endif %}
+{% endblock %}

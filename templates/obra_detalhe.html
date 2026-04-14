@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Obra {{ obra.codigo }} - Central de Obras{% endblock %}
+
+{% block content %}
+<div class="hdr">
+    <div>
+        <h1>{{ obra.codigo }} - {{ obra.nome }}</h1>
+        <p>{{ obra.tipologia or "-" }} • Status: {{ obra.status or "-" }}</p>
+    </div>
+</div>
+
+<div class="kpi-grid">
+    <div class="kpi or">
+        <div class="kpi-lbl">Receita</div>
+        <div class="kpi-val">{{ formatar_moeda(obra.receita_total) }}</div>
+    </div>
+
+    <div class="kpi bl">
+        <div class="kpi-lbl">Custo Lançado</div>
+        <div class="kpi-val">{{ formatar_moeda(custo_total) }}</div>
+    </div>
+
+    <div class="kpi gr">
+        <div class="kpi-lbl">Margem</div>
+        <div class="kpi-val">{{ formatar_moeda(margem) }}</div>
+    </div>
+
+    <div class="kpi rd">
+        <div class="kpi-lbl">Execução</div>
+        <div class="kpi-val">{{ obra.progresso_percentual or 0 }}%</div>
+    </div>
+</div>
+
+<div class="g2">
+    <div class="card">
+        <div class="card-hdr">
+            <div class="card-title">Custos Importados</div>
+        </div>
+        <div class="tbl-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Categoria</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in custos_importados %}
+                    <tr>
+                        <td>{{ item.categoria }}</td>
+                        <td>{{ formatar_moeda(item.valor_total) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="2" class="muted">Sem custos importados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-hdr">
+            <div class="card-title">Medições</div>
+        </div>
+        <div class="tbl-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Medição</th>
+                        <th>Etapa</th>
+                        <th>%</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in medicoes %}
+                    <tr>
+                        <td>{{ item.medicao_nome }}</td>
+                        <td>{{ item.etapa }}</td>
+                        <td>{{ item.percentual or 0 }}%</td>
+                        <td>{{ formatar_moeda(item.valor_realizado) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="muted">Sem medições.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:12px;">
+    <div class="card-hdr">
+        <div class="card-title">Custos Lançados</div>
+    </div>
+    <div class="tbl-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Categoria</th>
+                    <th>Descrição</th>
+                    <th>Fornecedor</th>
+                    <th>Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in custos %}
+                <tr>
+                    <td>{{ item.categoria }}</td>
+                    <td>{{ item.descricao }}</td>
+                    <td>{{ item.fornecedor or "-" }}</td>
+                    <td>{{ formatar_moeda(item.valor_total) }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="muted">Sem custos lançados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="g2">
+    <div class="card">
+        <div class="card-hdr">
+            <div class="card-title">Equipe</div>
+        </div>
+        <div class="tbl-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Função</th>
+                        <th>Pagamento</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in equipe %}
+                    <tr>
+                        <td>{{ item.nome }}</td>
+                        <td>{{ item.funcao or "-" }}</td>
+                        <td>{{ item.status_pagamento or "-" }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="muted">Sem equipe cadastrada.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-hdr">
+            <div class="card-title">Compras</div>
+        </div>
+        <div class="tbl-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Material</th>
+                        <th>Qtd</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in compras %}
+                    <tr>
+                        <td>{{ item.material }}</td>
+                        <td>{{ item.quantidade or 0 }}</td>
+                        <td>{{ item.status or "-" }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="muted">Sem compras cadastradas.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

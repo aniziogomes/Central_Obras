@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Fornecedores - Central de Obras{% endblock %}
+
+{% block content %}
+<div class="hdr">
+    <div>
+        <h1>Fornecedores</h1>
+        <p>Ranking e avaliação de performance</p>
+    </div>
+    <div class="hdr-right" style="display:flex; gap:8px;">
+        <a href="{{ url_for('fornecedores_exportar') }}" class="btn btn-success">Exportar Excel</a>
+        <button class="btn btn-primary" onclick="abrirModalFornecedor()">Novo Fornecedor</button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="tbl-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Categoria</th>
+                    <th>Contato</th>
+                    <th>Qualidade</th>
+                    <th>Preço</th>
+                    <th>Prazo</th>
+                    <th>Média</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fornecedor in fornecedores %}
+                {% set media = calcular_media_fornecedor(fornecedor.nota_qualidade, fornecedor.nota_preco,
+                fornecedor.nota_prazo) %}
+                <tr>
+                    <td class="td-mono">{{ fornecedor.codigo }}</td>
+                    <td class="td-name">{{ fornecedor.nome }}</td>
+                    <td>{{ fornecedor.categoria }}</td>
+                    <td>{{ fornecedor.contato or "-" }}</td>
+                    <td>{{ fornecedor.nota_qualidade or 0 }}</td>
+                    <td>{{ fornecedor.nota_preco or 0 }}</td>
+                    <td>{{ fornecedor.nota_prazo or 0 }}</td>
+                    <td><strong>{{ media }}</strong></td>
+                    <td>
+                        <div style="display:flex; gap:6px;">
+                            <button class="btn btn-small" type="button"
+                                onclick="abrirModalEditarFornecedor('{{ fornecedor.id }}')">
+                                Editar
+                            </button>
+
+                            <form method="POST"
+                                action="{{ url_for('excluir_fornecedor', fornecedor_id=fornecedor.id) }}"
+                                onsubmit="return confirm('Deseja realmente excluir este fornecedor?');">
+                                <button type="submit" class="btn btn-small btn-danger">Excluir</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="muted">Nenhum fornecedor cadastrado ainda.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAIS DE EDIÇÃO FORA DA TABELA -->
+{% for fornecedor in fornecedores %}
+<div id="modalEditarFornecedor{{ fornecedor.id }}" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Editar Fornecedor</h3>
+            <button type="button" class="modal-close"
+                onclick="fecharModalEditarFornecedor('{{ fornecedor.id }}')">×</button>
+        </div>
+
+        <form method="POST" action="{{ url_for('editar_fornecedor', fornecedor_id=fornecedor.id) }}">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" name="nome" value="{{ fornecedor.nome }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Categoria</label>
+                    <input type="text" name="categoria" value="{{ fornecedor.categoria }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Contato</label>
+                    <input type="text" name="contato" value="{{ fornecedor.contato or '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Documento</label>
+                    <input type="text" name="documento" value="{{ fornecedor.documento or '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Prazo Médio</label>
+                    <input type="number" name="prazo_medio" value="{{ fornecedor.prazo_medio or 0 }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Nota Qualidade</label>
+                    <input type="number" step="0.1" name="nota_qualidade" value="{{ fornecedor.nota_qualidade or 0 }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Nota Preço</label>
+                    <input type="number" step="0.1" name="nota_preco" value="{{ fornecedor.nota_preco or 0 }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Nota Prazo</label>
+                    <input type="number" step="0.1" name="nota_prazo" value="{{ fornecedor.nota_prazo or 0 }}">
+                </div>
+
+                <div class="form-group full">
+                    <label>Observação</label>
+                    <textarea name="observacao">{{ fornecedor.observacao or '' }}</textarea>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn"
+                    onclick="fecharModalEditarFornecedor('{{ fornecedor.id }}')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+<!-- MODAL NOVO FORNECEDOR -->
+<div id="modalFornecedor" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Novo Fornecedor</h3>
+            <button type="button" class="modal-close" onclick="fecharModalFornecedor()">×</button>
+        </div>
+
+        <form method="POST" action="{{ url_for('novo_fornecedor') }}">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>ID Fornecedor *</label>
+                    <input type="text" name="codigo" placeholder="FOR-001" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Nome / Razão Social *</label>
+                    <input type="text" name="nome" placeholder="Mineração JP Ltda" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Categoria *</label>
+                    <select name="categoria" required>
+                        <option value="">Selecione...</option>
+                        <option value="Material de Construção">Material de Construção</option>
+                        <option value="Mão de Obra">Mão de Obra</option>
+                        <option value="Equipamento">Equipamento</option>
+                        <option value="Projeto">Projeto</option>
+                        <option value="Serviço Especializado">Serviço Especializado</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Contato</label>
+                    <input type="text" name="contato" placeholder="(79) 99999-0001">
+                </div>
+
+                <div class="form-group">
+                    <label>CNPJ / CPF</label>
+                    <input type="text" name="documento" placeholder="00.000.000/0001-00">
+                </div>
+
+                <div class="form-group">
+                    <label>Prazo médio (dias)</label>
+                    <input type="number" name="prazo_medio" placeholder="3">
+                </div>
+
+                <div class="form-group">
+                    <label>Nota Qualidade</label>
+                    <input type="number" step="0.1" name="nota_qualidade" placeholder="9">
+                </div>
+
+                <div class="form-group">
+                    <label>Nota Preço</label>
+                    <input type="number" step="0.1" name="nota_preco" placeholder="8">
+                </div>
+
+                <div class="form-group">
+                    <label>Nota Prazo</label>
+                    <input type="number" step="0.1" name="nota_prazo" placeholder="9">
+                </div>
+
+                <div class="form-group full">
+                    <label>Observações</label>
+                    <textarea name="observacao" placeholder="Detalhes adicionais..."></textarea>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="fecharModalFornecedor()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Fornecedor</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function abrirModalFornecedor() {
+        document.getElementById("modalFornecedor").style.display = "flex";
+    }
+
+    function fecharModalFornecedor() {
+        document.getElementById("modalFornecedor").style.display = "none";
+    }
+
+    function abrirModalEditarFornecedor(id) {
+        document.getElementById("modalEditarFornecedor" + id).style.display = "flex";
+    }
+
+    function fecharModalEditarFornecedor(id) {
+        document.getElementById("modalEditarFornecedor" + id).style.display = "none";
+    }
+
+    window.addEventListener("click", function (event) {
+        const modalNovo = document.getElementById("modalFornecedor");
+        if (event.target === modalNovo) {
+            modalNovo.style.display = "none";
+        }
+
+        const modaisEditar = document.querySelectorAll("[id^='modalEditarFornecedor']");
+        modaisEditar.forEach(function (modal) {
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        });
+    });
+</script>
+{% endblock %}

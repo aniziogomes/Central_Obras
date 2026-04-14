@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Compras - Central de Obras{% endblock %}
+
+{% block content %}
+<div class="hdr">
+    <div>
+        <h1>Compras</h1>
+        <p>Pedidos de material por obra</p>
+    </div>
+    <div class="hdr-right" style="display:flex; gap:8px;">
+        <a href="{{ url_for('compras_exportar') }}" class="btn btn-success">Exportar Excel</a>
+        <button class="btn btn-primary" onclick="abrirModalCompra()">Nova Compra</button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="tbl-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID Obra</th>
+                    <th>Obra</th>
+                    <th>Fornecedor</th>
+                    <th>Material</th>
+                    <th>Dt Pedido</th>
+                    <th>Dt Entrega</th>
+                    <th>Qtd</th>
+                    <th>Vlr Unit.</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for compra in compras %}
+                <tr>
+                    <td class="td-mono">{{ compra.codigo_obra }}</td>
+                    <td class="td-name">{{ compra.nome_obra }}</td>
+                    <td>{{ compra.nome_fornecedor or "-" }}</td>
+                    <td>{{ compra.material }}</td>
+                    <td>{{ compra.data_pedido or "-" }}</td>
+                    <td>{{ compra.data_entrega_prevista or "-" }}</td>
+                    <td>{{ compra.quantidade or 0 }}</td>
+                    <td>{{ formatar_moeda(compra.valor_unitario) }}</td>
+                    <td>{{ compra.status or "-" }}</td>
+                    <td>
+                        <div style="display:flex; gap:6px;">
+                            <button class="btn btn-small" type="button"
+                                onclick="abrirModalEditarCompra('{{ compra.id }}')">
+                                Editar
+                            </button>
+
+                            <form method="POST" action="{{ url_for('excluir_compra', compra_id=compra.id) }}"
+                                onsubmit="return confirm('Deseja realmente excluir esta compra?');">
+                                <button type="submit" class="btn btn-small btn-danger">Excluir</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+
+                {% else %}
+                <tr>
+                    <td colspan="10" class="muted">Nenhuma compra cadastrada ainda.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<!-- MODAIS DE EDIÇÃO FORA DA TABELA -->
+{% for compra in compras %}
+<div id="modalEditarCompra{{ compra.id }}" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Editar Compra</h3>
+            <button type="button" class="modal-close" onclick="fecharModalEditarCompra('{{ compra.id }}')">×</button>
+        </div>
+
+        <form method="POST" action="{{ url_for('editar_compra', compra_id=compra.id) }}">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Material</label>
+                    <input type="text" name="material" value="{{ compra.material }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Data do Pedido</label>
+                    <input type="date" name="data_pedido" value="{{ compra.data_pedido or '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Data Entrega Prevista</label>
+                    <input type="date" name="data_entrega_prevista" value="{{ compra.data_entrega_prevista or '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Quantidade</label>
+                    <input type="number" step="0.01" name="quantidade" value="{{ compra.quantidade or 0 }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Valor Unitário</label>
+                    <input type="number" step="0.01" name="valor_unitario" value="{{ compra.valor_unitario or 0 }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Status</label>
+                    <select name="status">
+                        <option value="Aguardando" {% if compra.status=='Aguardando' %}selected{% endif %}>Aguardando
+                        </option>
+                        <option value="Entregue no Prazo" {% if compra.status=='Entregue no Prazo' %}selected{% endif
+                            %}>Entregue no Prazo</option>
+                        <option value="Entregue com Atraso" {% if compra.status=='Entregue com Atraso' %}selected{%
+                            endif %}>Entregue com Atraso</option>
+                        <option value="Cancelado" {% if compra.status=='Cancelado' %}selected{% endif %}>Cancelado
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group full">
+                    <label>Observação</label>
+                    <textarea name="observacao">{{ compra.observacao or '' }}</textarea>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="fecharModalEditarCompra('{{ compra.id }}')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+<div id="modalCompra" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Nova Compra</h3>
+            <button type="button" class="modal-close" onclick="fecharModalCompra()">×</button>
+        </div>
+
+        <form method="POST" action="{{ url_for('nova_compra') }}">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Obra *</label>
+                    <select name="obra_id" required>
+                        <option value="">Selecione...</option>
+                        {% for obra in obras %}
+                        <option value="{{ obra.id }}">{{ obra.codigo }} - {{ obra.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Fornecedor</label>
+                    <select name="fornecedor_id">
+                        <option value="">Selecione...</option>
+                        {% for fornecedor in fornecedores %}
+                        <option value="{{ fornecedor.id }}">{{ fornecedor.codigo }} - {{ fornecedor.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group full">
+                    <label>Material *</label>
+                    <input type="text" name="material" placeholder="Cimento CP-II 50 sacos" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Data do Pedido</label>
+                    <input type="date" name="data_pedido">
+                </div>
+
+                <div class="form-group">
+                    <label>Data Entrega Prevista</label>
+                    <input type="date" name="data_entrega_prevista">
+                </div>
+
+                <div class="form-group">
+                    <label>Quantidade</label>
+                    <input type="number" step="0.01" name="quantidade" placeholder="50">
+                </div>
+
+                <div class="form-group">
+                    <label>Valor Unitário (R$)</label>
+                    <input type="number" step="0.01" name="valor_unitario" placeholder="55">
+                </div>
+
+                <div class="form-group">
+                    <label>Status</label>
+                    <select name="status">
+                        <option value="">Selecione...</option>
+                        <option value="Aguardando">Aguardando</option>
+                        <option value="Entregue no Prazo">Entregue no Prazo</option>
+                        <option value="Entregue com Atraso">Entregue com Atraso</option>
+                        <option value="Cancelado">Cancelado</option>
+                    </select>
+                </div>
+
+                <div class="form-group full">
+                    <label>Observação</label>
+                    <textarea name="observacao" placeholder="Detalhes..."></textarea>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="fecharModalCompra()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Compra</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function abrirModalCompra() {
+        document.getElementById("modalCompra").style.display = "flex";
+    }
+
+    function fecharModalCompra() {
+        document.getElementById("modalCompra").style.display = "none";
+    }
+
+    function abrirModalEditarCompra(id) {
+        document.getElementById("modalEditarCompra" + id).style.display = "flex";
+    }
+
+    function fecharModalEditarCompra(id) {
+        document.getElementById("modalEditarCompra" + id).style.display = "none";
+    }
+
+    window.addEventListener("click", function (event) {
+        const modalNovo = document.getElementById("modalCompra");
+        if (event.target === modalNovo) {
+            modalNovo.style.display = "none";
+        }
+
+        const modaisEditar = document.querySelectorAll("[id^='modalEditarCompra']");
+        modaisEditar.forEach(function (modal) {
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        });
+    });
+</script>
+{% endblock %}

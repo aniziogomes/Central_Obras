@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Orçamento Importado - Central de Obras{% endblock %}
+
+{% block content %}
+<div class="hdr">
+    <div>
+        <h1>Orçamento Importado</h1>
+        <p>Resumo das categorias importadas da planilha</p>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+    <div class="tbl-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID Obra</th>
+                    <th>Obra</th>
+                    <th>Categoria</th>
+                    <th>Valor Total</th>
+                    <th>Origem</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in categorias_importadas %}
+                <tr>
+                    <td class="td-mono">{{ item.codigo_obra }}</td>
+                    <td class="td-name">{{ item.nome_obra }}</td>
+                    <td>{{ item.categoria }}</td>
+                    <td>{{ formatar_moeda(item.valor_total) }}</td>
+                    <td>{{ item.origem }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="muted">Nenhuma categoria importada ainda.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-hdr">
+        <div class="card-title">Resumo das obras importadas</div>
+    </div>
+
+    <div class="tbl-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Orçamento</th>
+                    <th>Receita Total</th>
+                    <th>Progresso</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for obra in obras %}
+                <tr>
+                    <td class="td-mono">{{ obra.codigo }}</td>
+                    <td class="td-name">{{ obra.nome }}</td>
+                    <td>{{ formatar_moeda(obra.orcamento) }}</td>
+                    <td>{{ formatar_moeda(obra.receita_total) }}</td>
+                    <td>{{ obra.progresso_percentual or 0 }}%</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="muted">Nenhuma obra importada ainda.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

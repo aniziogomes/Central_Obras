@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Importação - Central de Obras{% endblock %}
+
+{% block content %}
+<div class="hdr">
+    <div>
+        <h1>Importação</h1>
+        <p>Importar planilha da obra para o sistema</p>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+    <form method="POST" action="{{ url_for('importar_planilha_route') }}" enctype="multipart/form-data">
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Código da Obra *</label>
+                <input type="text" name="codigo_obra" placeholder="OBR-001" required>
+            </div>
+
+            <div class="form-group">
+                <label>Nome da Obra *</label>
+                <input type="text" name="nome_obra" placeholder="Residência Silva" required>
+            </div>
+
+            <div class="form-group full">
+                <label>Arquivo da Planilha *</label>
+                <input type="file" name="arquivo_planilha" accept=".xlsx,.xlsm" required>
+            </div>
+        </div>
+
+        <div class="modal-footer" style="border-top:none; padding-top:0;">
+            <button type="submit" class="btn btn-primary">Importar Planilha</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-hdr">
+        <div class="card-title">Histórico de importações</div>
+    </div>
+
+    <div class="tbl-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Arquivo</th>
+                    <th>Data</th>
+                    <th>Observação</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in importacoes %}
+                <tr>
+                    <td class="td-mono">{{ item.id }}</td>
+                    <td>{{ item.nome_arquivo }}</td>
+                    <td>{{ item.data_importacao }}</td>
+                    <td>{{ item.observacao or "-" }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="muted">Nenhuma importação realizada ainda.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
