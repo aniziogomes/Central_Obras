@@ -1,138 +1,123 @@
 <!doctype html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}Central de Obras{% endblock %}</title>
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='css/style.css') }}"
-    />
-  </head>
-  <body>
-    {% if session.get('usuario_id') %}
-    <div class="shell">
-      <aside class="sidebar">
-        <div class="logo">
-          <div class="logo-icon">⌂</div>
-          <div class="logo-title">Central de Obras</div>
-          <div class="logo-sub">Inteligência de Construção</div>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Central de Obras{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+
+<body>
+  {% if session.get('usuario_id') %}
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">⌂</div>
+        <div class="logo-title">Central de Obras</div>
+        <div class="logo-sub">Inteligência de Construção</div>
+      </div>
+
+      <nav class="nav">
+        <div class="nav-lbl">Principal</div>
+
+        <a class="nav-item {% if request.endpoint == 'dashboard_bp.dashboard' %}active{% endif %}"
+          href="{{ url_for('dashboard_bp.dashboard') }}">
+          <span class="nav-ico">◫</span>
+          <span>Dashboard</span>
+        </a>
+
+        <a class="nav-item {% if request.endpoint == 'obras_bp.obras' %}active{% endif %}"
+          href="{{ url_for('obras_bp.obras') }}">
+          <span class="nav-ico">⌂</span>
+          <span>Obras</span>
+        </a>
+
+        <a class="nav-item {% if request.endpoint == 'custos_bp.custos' %}active{% endif %}"
+          href="{{ url_for('custos_bp.custos') }}">
+          <span class="nav-ico">⛃</span>
+          <span>Custos</span>
+        </a>
+
+        <div class="nav-lbl">Gestão</div>
+
+        <a class="nav-item {% if request.endpoint == 'fornecedores_bp.fornecedores' %}active{% endif %}"
+          href="{{ url_for('fornecedores_bp.fornecedores') }}">
+          <span class="nav-ico">◉</span>
+          <span>Fornecedores</span>
+        </a>
+
+        <a class="nav-item {% if request.endpoint == 'compras_bp.compras' %}active{% endif %}"
+          href="{{ url_for('compras_bp.compras') }}">
+          <span class="nav-ico">▣</span>
+          <span>Compras</span>
+        </a>
+
+        <a class="nav-item {% if request.endpoint == 'equipe_bp.equipe' %}active{% endif %}"
+          href="{{ url_for('equipe_bp.equipe') }}">
+          <span class="nav-ico">◌</span>
+          <span>Equipe</span>
+        </a>
+
+        <a class="nav-item {% if request.endpoint == 'medicoes_bp.medicoes' %}active{% endif %}"
+          href="{{ url_for('medicoes_bp.medicoes') }}">
+          <span class="nav-ico">△</span>
+          <span>Medições</span>
+        </a>
+
+        <div class="nav-lbl">Sistema</div>
+
+        <a class="nav-item {% if request.endpoint == 'dashboard_bp.alertas' %}active{% endif %}"
+          href="{{ url_for('dashboard_bp.alertas') }}">
+          <span class="nav-ico">!</span>
+          <span>Alertas</span>
+        </a>
+
+        <a class="nav-item {% if request.endpoint == 'importacao_bp.importacao' %}active{% endif %}"
+          href="{{ url_for('importacao_bp.importacao') }}">
+          <span class="nav-ico">↥</span>
+          <span>Importação</span>
+        </a>
+
+        <a class="nav-item {% if request.endpoint == 'importacao_bp.orcamento_importado' %}active{% endif %}"
+          href="{{ url_for('importacao_bp.orcamento_importado') }}">
+          <span class="nav-ico">▤</span>
+          <span>Orçamento Importado</span>
+        </a>
+
+        <a class="nav-item" href="{{ url_for('auth_bp.logout') }}">
+          <span class="nav-ico">×</span>
+          <span>Sair</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="sync-badge">
+          <div class="pulse"></div>
+          <div class="sync-text">Dados locais ativos</div>
         </div>
+      </div>
+    </aside>
 
-        <nav class="nav">
-          <div class="nav-lbl">Principal</div>
+    <main class="main">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      {% for categoria, mensagem in messages %}
+      <div class="flash {% if categoria == 'erro' %}flash-error{% else %}flash-success{% endif %}">
+        {{ mensagem }}
+      </div>
+      {% endfor %}
+      {% endif %}
+      {% endwith %}
 
-          <a
-            class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}"
-            href="{{ url_for('dashboard') }}"
-          >
-            <span class="nav-ico">◫</span>
-            <span>Dashboard</span>
-          </a>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  {% else %}
+  {% block auth_content %}{% endblock %}
+  {% endif %}
 
-          <a
-            class="nav-item {% if request.endpoint == 'obras' %}active{% endif %}"
-            href="{{ url_for('obras') }}"
-          >
-            <span class="nav-ico">⌂</span>
-            <span>Obras</span>
-          </a>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</body>
 
-          <a
-            class="nav-item {% if request.endpoint == 'custos' %}active{% endif %}"
-            href="{{ url_for('custos') }}"
-          >
-            <span class="nav-ico">⛃</span>
-            <span>Custos</span>
-          </a>
-
-          <div class="nav-lbl">Gestão</div>
-
-          <a
-            class="nav-item {% if request.endpoint == 'fornecedores' %}active{% endif %}"
-            href="{{ url_for('fornecedores') }}"
-          >
-            <span class="nav-ico">◉</span>
-            <span>Fornecedores</span>
-          </a>
-
-          <a
-            class="nav-item {% if request.endpoint == 'compras' %}active{% endif %}"
-            href="{{ url_for('compras') }}"
-          >
-            <span class="nav-ico">▣</span>
-            <span>Compras</span>
-          </a>
-
-          <a
-            class="nav-item {% if request.endpoint == 'equipe' %}active{% endif %}"
-            href="{{ url_for('equipe') }}"
-          >
-            <span class="nav-ico">◌</span>
-            <span>Equipe</span>
-          </a>
-
-          <a
-            class="nav-item {% if request.endpoint == 'medicoes' %}active{% endif %}"
-            href="{{ url_for('medicoes') }}"
-          >
-            <span class="nav-ico">△</span>
-            <span>Medições</span>
-          </a>
-
-          <div class="nav-lbl">Sistema</div>
-
-          <a
-            class="nav-item {% if request.endpoint == 'alertas' %}active{% endif %}"
-            href="{{ url_for('alertas') }}"
-          >
-            <span class="nav-ico">!</span>
-            <span>Alertas</span>
-          </a>
-
-          <a
-            class="nav-item {% if request.endpoint == 'importacao' %}active{% endif %}"
-            href="{{ url_for('importacao') }}"
-          >
-            <span class="nav-ico">↥</span>
-            <span>Importação</span>
-          </a>
-
-          <a
-            class="nav-item {% if request.endpoint == 'orcamento_importado' %}active{% endif %}"
-            href="{{ url_for('orcamento_importado') }}"
-          >
-            <span class="nav-ico">▤</span>
-            <span>Orçamento Importado</span>
-          </a>
-
-          <a class="nav-item" href="{{ url_for('logout') }}">
-            <span class="nav-ico">×</span>
-            <span>Sair</span>
-          </a>
-        </nav>
-
-        <div class="sidebar-foot">
-          <div class="sync-badge">
-            <div class="pulse"></div>
-            <div class="sync-text">Dados locais ativos</div>
-          </div>
-        </div>
-      </aside>
-
-      <main class="main">
-        {% with messages = get_flashed_messages(with_categories=true) %} {% if
-        messages %} {% for categoria, mensagem in messages %}
-        <div
-          class="flash {% if categoria == 'erro' %}flash-error{% else %}flash-success{% endif %}"
-        >
-          {{ mensagem }}
-        </div>
-        {% endfor %} {% endif %} {% endwith %} {% block content %}{% endblock %}
-      </main>
-    </div>
-    {% else %} {% block auth_content %}{% endblock %} {% endif %}
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  </body>
 </html>

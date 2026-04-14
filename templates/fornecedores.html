@@ -9,7 +9,7 @@
         <p>Ranking e avaliação de performance</p>
     </div>
     <div class="hdr-right" style="display:flex; gap:8px;">
-        <a href="{{ url_for('fornecedores_exportar') }}" class="btn btn-success">Exportar Excel</a>
+        <a href="{{ url_for('fornecedores_bp.fornecedores_exportar') }}" class="btn btn-success">Exportar Excel</a>
         <button class="btn btn-primary" onclick="abrirModalFornecedor()">Novo Fornecedor</button>
     </div>
 </div>
@@ -51,7 +51,7 @@
                             </button>
 
                             <form method="POST"
-                                action="{{ url_for('excluir_fornecedor', fornecedor_id=fornecedor.id) }}"
+                                action="{{ url_for('fornecedores_bp.excluir_fornecedor', fornecedor_id=fornecedor.id) }}"
                                 onsubmit="return confirm('Deseja realmente excluir este fornecedor?');">
                                 <button type="submit" class="btn btn-small btn-danger">Excluir</button>
                             </form>
@@ -78,7 +78,7 @@
                 onclick="fecharModalEditarFornecedor('{{ fornecedor.id }}')">×</button>
         </div>
 
-        <form method="POST" action="{{ url_for('editar_fornecedor', fornecedor_id=fornecedor.id) }}">
+        <form method="POST" action="{{ url_for('fornecedores_bp.editar_fornecedor', fornecedor_id=fornecedor.id) }}">
             <div class="form-grid">
                 <div class="form-group">
                     <label>Nome</label>
@@ -144,7 +144,7 @@
             <button type="button" class="modal-close" onclick="fecharModalFornecedor()">×</button>
         </div>
 
-        <form method="POST" action="{{ url_for('novo_fornecedor') }}">
+        <form method="POST" action="{{ url_for('fornecedores_bp.novo_fornecedor') }}">
             <div class="form-grid">
                 <div class="form-group">
                     <label>ID Fornecedor *</label>

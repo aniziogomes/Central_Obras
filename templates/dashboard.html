@@ -14,14 +14,14 @@
     </div>
     <div class="hdr-right">
         <a class="btn btn-success"
-            href="{{ url_for('dashboard_exportar', obra=filtro_obra, categoria=filtro_categoria, status=filtro_status, data_inicio=data_inicio, data_fim=data_fim) }}">
+            href="{{ url_for('dashboard_bp.dashboard_exportar', obra=filtro_obra, categoria=filtro_categoria, status=filtro_status, data_inicio=data_inicio, data_fim=data_fim) }}">
             Exportar Excel
         </a>
     </div>
 </div>
 
 <div class="card" style="margin-bottom:12px;">
-    <form method="GET" action="{{ url_for('dashboard') }}">
+    <form method="GET" action="{{ url_for('dashboard_bp.dashboard') }}">
         <div class="form-grid">
             <div class="form-group">
                 <label>Filtrar por Obra</label>
@@ -73,7 +73,7 @@
 
         <div class="modal-footer" style="border-top:none; padding-top:12px;">
             <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
-            <a href="{{ url_for('dashboard') }}" class="btn">Limpar</a>
+            <a href="{{ url_for('dashboard_bp.dashboard') }}" class="btn">Limpar</a>
         </div>
     </form>
 </div>

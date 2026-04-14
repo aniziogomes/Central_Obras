@@ -1,0 +1,157 @@
+import pandas as pd
+from io import BytesIO
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, send_file
+from database import query_all, execute
+from services.validators import parse_valor_monetario, valor_negativo
+
+custos_bp = Blueprint("custos_bp", __name__)
+
+
+def usuario_logado():
+    return "usuario_id" in session
+
+
+@custos_bp.route("/custos")
+def custos():
+    if not usuario_logado():
+        return redirect(url_for("auth_bp.login"))
+
+    lista_custos = query_all("""
+        SELECT c.*, o.codigo AS codigo_obra, o.nome AS nome_obra
+        FROM custos c
+        JOIN obras o ON c.obra_id = o.id
+        ORDER BY c.id DESC
+    """)
+
+    obras = query_all("SELECT * FROM obras ORDER BY nome ASC")
+    return render_template("custos.html", custos=lista_custos, obras=obras)
+
+
+@custos_bp.route("/custos/novo", methods=["POST"])
+def novo_custo():
+    if not usuario_logado():
+        return redirect(url_for("auth_bp.login"))
+
+    obra_id = request.form.get("obra_id", "").strip()
+    descricao = request.form.get("descricao", "").strip()
+    categoria = request.form.get("categoria", "").strip()
+    fornecedor = request.form.get("fornecedor", "").strip()
+    data_lancamento = request.form.get("data_lancamento", "").strip()
+    valor_total = request.form.get("valor_total", "").strip()
+    nota_fiscal = request.form.get("nota_fiscal", "").strip()
+    observacao = request.form.get("observacao", "").strip()
+
+    if not obra_id or not descricao or not categoria or not valor_total:
+        flash("Preencha os campos obrigatórios do custo.", "erro")
+        return redirect(url_for("custos_bp.custos"))
+
+    try:
+        valor_total_float = parse_valor_monetario(valor_total)
+        if valor_negativo(valor_total_float):
+            raise ValueError("Valor do custo não pode ser negativo.")
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirect(url_for("custos_bp.custos"))
+
+    execute(
+        """
+        INSERT INTO custos (
+            obra_id, descricao, categoria, fornecedor,
+            data_lancamento, valor_total, nota_fiscal, observacao
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            int(obra_id),
+            descricao,
+            categoria,
+            fornecedor,
+            data_lancamento,
+            valor_total_float,
+            nota_fiscal,
+            observacao
+        )
+    )
+
+    flash("Custo lançado com sucesso.", "sucesso")
+    return redirect(url_for("custos_bp.custos"))
+
+
+@custos_bp.route("/custos/editar/<int:custo_id>", methods=["POST"])
+def editar_custo(custo_id):
+    if not usuario_logado():
+        return redirect(url_for("auth_bp.login"))
+
+    descricao = request.form.get("descricao", "").strip()
+    categoria = request.form.get("categoria", "").strip()
+    fornecedor = request.form.get("fornecedor", "").strip()
+    data_lancamento = request.form.get("data_lancamento", "").strip()
+    valor_total = request.form.get("valor_total", "").strip()
+    nota_fiscal = request.form.get("nota_fiscal", "").strip()
+    observacao = request.form.get("observacao", "").strip()
+
+    try:
+        valor_total_float = parse_valor_monetario(valor_total)
+        if valor_negativo(valor_total_float):
+            raise ValueError("Valor do custo não pode ser negativo.")
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirect(url_for("custos_bp.custos"))
+
+    execute(
+        """
+        UPDATE custos
+        SET descricao = ?, categoria = ?, fornecedor = ?,
+            data_lancamento = ?, valor_total = ?, nota_fiscal = ?, observacao = ?
+        WHERE id = ?
+        """,
+        (
+            descricao,
+            categoria,
+            fornecedor,
+            data_lancamento,
+            valor_total_float,
+            nota_fiscal,
+            observacao,
+            custo_id
+        )
+    )
+
+    flash("Custo atualizado com sucesso.", "sucesso")
+    return redirect(url_for("custos_bp.custos"))
+
+
+@custos_bp.route("/custos/excluir/<int:custo_id>", methods=["POST"])
+def excluir_custo(custo_id):
+    if not usuario_logado():
+        return redirect(url_for("auth_bp.login"))
+
+    execute("DELETE FROM custos WHERE id = ?", (custo_id,))
+    flash("Custo excluído com sucesso.", "sucesso")
+    return redirect(url_for("custos_bp.custos"))
+
+
+@custos_bp.route("/custos/exportar")
+def custos_exportar():
+    if not usuario_logado():
+        return redirect(url_for("auth_bp.login"))
+
+    lista = query_all("""
+        SELECT c.*, o.codigo AS codigo_obra, o.nome AS nome_obra
+        FROM custos c
+        JOIN obras o ON c.obra_id = o.id
+        ORDER BY c.id DESC
+    """)
+
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df = pd.DataFrame([dict(x) for x in lista])
+        df.to_excel(writer, index=False, sheet_name="Custos")
+
+    output.seek(0)
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name="custos_central_obras.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )

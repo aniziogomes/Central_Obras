@@ -9,7 +9,7 @@
         <p>Controle físico-financeiro da obra</p>
     </div>
     <div class="hdr-right" style="display:flex; gap:8px;">
-        <a href="{{ url_for('medicoes_exportar') }}" class="btn btn-success">Exportar Excel</a>
+        <a href="{{ url_for('medicoes_bp.medicoes_exportar') }}" class="btn btn-success">Exportar Excel</a>
         <button class="btn btn-primary" onclick="abrirModalMedicao()">Nova Medição</button>
     </div>
 </div>
@@ -50,7 +50,7 @@
                                 Editar
                             </button>
 
-                            <form method="POST" action="{{ url_for('excluir_medicao', medicao_id=medicao.id) }}"
+                            <form method="POST" action="{{ url_for('medicoes_bp.excluir_medicao', medicao_id=medicao.id) }}"
                                 onsubmit="return confirm('Deseja realmente excluir esta medição?');">
                                 <button type="submit" class="btn btn-small btn-danger">Excluir</button>
                             </form>
@@ -78,7 +78,7 @@
             <button type="button" class="modal-close" onclick="fecharModalEditarMedicao('{{ medicao.id }}')">×</button>
         </div>
 
-        <form method="POST" action="{{ url_for('editar_medicao', medicao_id=medicao.id) }}">
+        <form method="POST" action="{{ url_for('medicoes_bp.editar_medicao', medicao_id=medicao.id) }}">
             <div class="form-grid">
                 <div class="form-group">
                     <label>Mês</label>
@@ -139,7 +139,7 @@
             <button type="button" class="modal-close" onclick="fecharModalMedicao()">×</button>
         </div>
 
-        <form method="POST" action="{{ url_for('nova_medicao') }}">
+        <form method="POST" action="{{ url_for('medicoes_bp.nova_medicao') }}">
             <div class="form-grid">
                 <div class="form-group">
                     <label>Obra *</label>

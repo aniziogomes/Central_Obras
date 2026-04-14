@@ -9,7 +9,7 @@
         <p>Cadastro completo com gestão de dados</p>
     </div>
     <div class="hdr-right" style="display:flex; gap:8px;">
-        <a href="{{ url_for('obras_exportar') }}" class="btn btn-success">Exportar Excel</a>
+        <a href="{{ url_for('obras_bp.obras_exportar') }}" class="btn btn-success">Exportar Excel</a>
         <button class="btn btn-primary" onclick="abrirModalObra()">Nova Obra</button>
     </div>
 </div>
@@ -35,7 +35,7 @@
                 <tr>
                     <td class="td-mono">{{ obra.codigo }}</td>
                     <td class="td-name">
-                        <a href="{{ url_for('obra_detalhe', codigo=obra.codigo) }}" class="link-obra">
+                        <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra.codigo) }}" class="link-obra">
                             {{ obra.nome }}
                         </a>
                     </td>
@@ -61,7 +61,7 @@
                                 Editar
                             </button>
 
-                            <form method="POST" action="{{ url_for('excluir_obra', obra_id=obra.id) }}"
+                            <form method="POST" action="{{ url_for('obras_bp.excluir_obra', obra_id=obra.id) }}"
                                 onsubmit="return confirm('Deseja realmente excluir esta obra?');">
                                 <button type="submit" class="btn btn-small btn-danger">Excluir</button>
                             </form>
@@ -89,7 +89,7 @@
             <button type="button" class="modal-close" onclick="fecharModalEditarObra('{{ obra.id }}')">×</button>
         </div>
 
-        <form method="POST" action="{{ url_for('editar_obra', obra_id=obra.id) }}">
+        <form method="POST" action="{{ url_for('obras_bp.editar_obra', obra_id=obra.id) }}">
             <div class="form-grid">
                 <div class="form-group">
                     <label>Nome da Obra</label>
@@ -170,7 +170,7 @@
             <button type="button" class="modal-close" onclick="fecharModalObra()">×</button>
         </div>
 
-        <form method="POST" action="{{ url_for('nova_obra') }}">
+        <form method="POST" action="{{ url_for('obras_bp.nova_obra') }}">
             <div class="form-grid">
                 <div class="form-group">
                     <label>ID da Obra *</label>

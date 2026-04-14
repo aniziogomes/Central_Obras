@@ -9,7 +9,7 @@
         <p>Pedidos de material por obra</p>
     </div>
     <div class="hdr-right" style="display:flex; gap:8px;">
-        <a href="{{ url_for('compras_exportar') }}" class="btn btn-success">Exportar Excel</a>
+        <a href="{{ url_for('compras_bp.compras_exportar') }}" class="btn btn-success">Exportar Excel</a>
         <button class="btn btn-primary" onclick="abrirModalCompra()">Nova Compra</button>
     </div>
 </div>
@@ -50,7 +50,7 @@
                                 Editar
                             </button>
 
-                            <form method="POST" action="{{ url_for('excluir_compra', compra_id=compra.id) }}"
+                            <form method="POST" action="{{ url_for('compras_bp.excluir_compra', compra_id=compra.id) }}"
                                 onsubmit="return confirm('Deseja realmente excluir esta compra?');">
                                 <button type="submit" class="btn btn-small btn-danger">Excluir</button>
                             </form>
@@ -78,7 +78,7 @@
             <button type="button" class="modal-close" onclick="fecharModalEditarCompra('{{ compra.id }}')">×</button>
         </div>
 
-        <form method="POST" action="{{ url_for('editar_compra', compra_id=compra.id) }}">
+        <form method="POST" action="{{ url_for('compras_bp.editar_compra', compra_id=compra.id) }}">
             <div class="form-grid">
                 <div class="form-group full">
                     <label>Material</label>
@@ -141,7 +141,7 @@
             <button type="button" class="modal-close" onclick="fecharModalCompra()">×</button>
         </div>
 
-        <form method="POST" action="{{ url_for('nova_compra') }}">
+        <form method="POST" action="{{ url_for('compras_bp.nova_compra') }}">
             <div class="form-grid">
                 <div class="form-group">
                     <label>Obra *</label>

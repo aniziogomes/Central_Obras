@@ -9,7 +9,7 @@
         <p>Mão de obra por obra</p>
     </div>
     <div class="hdr-right" style="display:flex; gap:8px;">
-        <a href="{{ url_for('equipe_exportar') }}" class="btn btn-success">Exportar Excel</a>
+        <a href="{{ url_for('equipe_bp.equipe_exportar') }}" class="btn btn-success">Exportar Excel</a>
         <button class="btn btn-primary" onclick="abrirModalEquipe()">Novo Profissional</button>
     </div>
 </div>
@@ -50,7 +50,7 @@
                                 Editar
                             </button>
 
-                            <form method="POST" action="{{ url_for('excluir_equipe', equipe_id=item.id) }}"
+                            <form method="POST" action="{{ url_for('equipe_bp.excluir_equipe', equipe_id=item.id) }}"
                                 onsubmit="return confirm('Deseja realmente excluir este profissional?');">
                                 <button type="submit" class="btn btn-small btn-danger">Excluir</button>
                             </form>
@@ -78,7 +78,7 @@
             <button type="button" class="modal-close" onclick="fecharModalEditarEquipe('{{ item.id }}')">×</button>
         </div>
 
-        <form method="POST" action="{{ url_for('editar_equipe', equipe_id=item.id) }}">
+        <form method="POST" action="{{ url_for('equipe_bp.editar_equipe', equipe_id=item.id) }}">
             <div class="form-grid">
                 <div class="form-group">
                     <label>Nome</label>
@@ -152,7 +152,7 @@
             <button type="button" class="modal-close" onclick="fecharModalEquipe()">×</button>
         </div>
 
-        <form method="POST" action="{{ url_for('novo_membro_equipe') }}">
+        <form method="POST" action="{{ url_for('equipe_bp.novo_membro_equipe') }}">
             <div class="form-grid">
                 <div class="form-group">
                     <label>Obra *</label>

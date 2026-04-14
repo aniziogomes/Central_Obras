@@ -9,7 +9,7 @@
         <p>Lançamentos por obra e categoria</p>
     </div>
     <div class="hdr-right" style="display:flex; gap:8px;">
-        <a href="{{ url_for('custos_exportar') }}" class="btn btn-success">Exportar Excel</a>
+        <a href="{{ url_for('custos_bp.custos_exportar') }}" class="btn btn-success">Exportar Excel</a>
         <button class="btn btn-primary" onclick="abrirModalCusto()">Novo Lançamento</button>
     </div>
 </div>
@@ -48,7 +48,7 @@
                                 Editar
                             </button>
 
-                            <form method="POST" action="{{ url_for('excluir_custo', custo_id=custo.id) }}"
+                            <form method="POST" action="{{ url_for('custos_bp.excluir_custo', custo_id=custo.id) }}"
                                 onsubmit="return confirm('Deseja realmente excluir este custo?');">
                                 <button type="submit" class="btn btn-small btn-danger">Excluir</button>
                             </form>
@@ -76,7 +76,7 @@
             <button type="button" class="modal-close" onclick="fecharModalEditarCusto('{{ custo.id }}')">×</button>
         </div>
 
-        <form method="POST" action="{{ url_for('editar_custo', custo_id=custo.id) }}">
+        <form method="POST" action="{{ url_for('custos_bp.editar_custo', custo_id=custo.id) }}">
             <div class="form-grid">
                 <div class="form-group full">
                     <label>Descrição</label>
@@ -151,7 +151,7 @@
             <button type="button" class="modal-close" onclick="fecharModalCusto()">×</button>
         </div>
 
-        <form method="POST" action="{{ url_for('novo_custo') }}">
+        <form method="POST" action="{{ url_for('custos_bp.novo_custo') }}">
             <div class="form-grid">
                 <div class="form-group">
                     <label>Obra *</label>
