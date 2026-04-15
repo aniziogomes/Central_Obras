@@ -16,6 +16,7 @@ def dashboard():
     filtro_obra = request.args.get("obra", "").strip()
     filtro_categoria = request.args.get("categoria", "").strip()
     filtro_status = request.args.get("status", "").strip()
+    filtro_tipo_obra = request.args.get("tipo_obra", "").strip()
     data_inicio = request.args.get("data_inicio", "").strip()
     data_fim = request.args.get("data_fim", "").strip()
 
@@ -23,6 +24,7 @@ def dashboard():
         filtro_obra=filtro_obra,
         filtro_categoria=filtro_categoria,
         filtro_status=filtro_status,
+        filtro_tipo_obra=filtro_tipo_obra,
         data_inicio=data_inicio,
         data_fim=data_fim
     )
@@ -39,6 +41,7 @@ def dashboard():
         filtro_obra=filtro_obra,
         filtro_categoria=filtro_categoria,
         filtro_status=filtro_status,
+        filtro_tipo_obra=filtro_tipo_obra,
         data_inicio=data_inicio,
         data_fim=data_fim,
         todas_obras=todas_obras,
@@ -54,6 +57,7 @@ def dashboard_exportar():
     filtro_obra = request.args.get("obra", "").strip()
     filtro_categoria = request.args.get("categoria", "").strip()
     filtro_status = request.args.get("status", "").strip()
+    filtro_tipo_obra = request.args.get("tipo_obra", "").strip()
     data_inicio = request.args.get("data_inicio", "").strip()
     data_fim = request.args.get("data_fim", "").strip()
 
@@ -61,6 +65,7 @@ def dashboard_exportar():
         filtro_obra=filtro_obra,
         filtro_categoria=filtro_categoria,
         filtro_status=filtro_status,
+        filtro_tipo_obra=filtro_tipo_obra,
         data_inicio=data_inicio,
         data_fim=data_fim
     )
@@ -69,9 +74,9 @@ def dashboard_exportar():
 
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         df_kpis = pd.DataFrame([{
-            "Receita Total": dados["total_receita"],
-            "Custo Total": dados["total_custo"],
-            "Margem": dados["margem"],
+            "Receita Prevista": dados["total_receita"],
+            "Custo Realizado": dados["total_custo"],
+            "Resultado Atual": dados["margem"],
             "Obras em Atenção": len(dados["alertas"]),
             "Medições": dados["total_medicoes"],
             "Total Importado": dados["total_importado"]

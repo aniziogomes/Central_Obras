@@ -28,6 +28,7 @@ def nova_obra():
     nome = request.form.get("nome", "").strip()
     endereco = request.form.get("endereco", "").strip()
     tipologia = request.form.get("tipologia", "").strip()
+    tipo_obra = request.form.get("tipo_obra", "contrato").strip().lower()
     area_m2 = request.form.get("area_m2", "").strip()
     data_inicio = request.form.get("data_inicio", "").strip()
     data_fim_prevista = request.form.get("data_fim_prevista", "").strip()
@@ -39,6 +40,9 @@ def nova_obra():
     if not codigo or not nome or not tipologia or not status:
         flash("Preencha os campos obrigatórios da obra.", "erro")
         return redirect(url_for("obras_bp.obras"))
+
+    if tipo_obra not in ["venda", "contrato"]:
+        tipo_obra = "contrato"
 
     existe = query_one("SELECT * FROM obras WHERE codigo = ?", (codigo,))
     if existe:
@@ -55,10 +59,10 @@ def nova_obra():
             raise ValueError("Área não pode ser negativa.")
 
         if valor_negativo(orcamento_valor):
-            raise ValueError("Orçamento não pode ser negativo.")
+            raise ValueError("Custo previsto não pode ser negativo.")
 
         if valor_negativo(receita_valor):
-            raise ValueError("Receita total não pode ser negativa.")
+            raise ValueError("Receita prevista não pode ser negativa.")
 
         validar_intervalo_percentual(progresso_valor, "Execução (%)")
     except ValueError as e:
@@ -68,17 +72,18 @@ def nova_obra():
     obra_id = execute(
         """
         INSERT INTO obras (
-            codigo, nome, endereco, tipologia, area_m2,
+            codigo, nome, endereco, tipologia, tipo_obra, area_m2,
             data_inicio, data_fim_prevista, orcamento,
             receita_total, progresso_percentual, status
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             codigo,
             nome,
             endereco,
             tipologia,
+            tipo_obra,
             area_valor,
             data_inicio,
             data_fim_prevista,
@@ -143,6 +148,7 @@ def obra_detalhe(codigo):
 
     custo_total = sum((c["valor_total"] or 0) for c in custos)
     margem = (obra["receita_total"] or 0) - custo_total
+    lucro_previsto = (obra["receita_total"] or 0) - (obra["orcamento"] or 0)
 
     return render_template(
         "obra_detalhe.html",
@@ -153,7 +159,8 @@ def obra_detalhe(codigo):
         compras=compras,
         custos_importados=custos_importados,
         custo_total=custo_total,
-        margem=margem
+        margem=margem,
+        lucro_previsto=lucro_previsto
     )
 
 
@@ -166,6 +173,7 @@ def editar_obra(obra_id):
     nome = request.form.get("nome", "").strip()
     endereco = request.form.get("endereco", "").strip()
     tipologia = request.form.get("tipologia", "").strip()
+    tipo_obra = request.form.get("tipo_obra", "contrato").strip().lower()
     area_m2 = request.form.get("area_m2", "").strip()
     data_inicio = request.form.get("data_inicio", "").strip()
     data_fim_prevista = request.form.get("data_fim_prevista", "").strip()
@@ -173,6 +181,9 @@ def editar_obra(obra_id):
     receita_total = request.form.get("receita_total", "").strip()
     progresso_percentual = request.form.get("progresso_percentual", "").strip()
     status = request.form.get("status", "").strip()
+
+    if tipo_obra not in ["venda", "contrato"]:
+        tipo_obra = "contrato"
 
     try:
         area_valor = float(area_m2) if area_m2 else 0
@@ -184,10 +195,10 @@ def editar_obra(obra_id):
             raise ValueError("Área não pode ser negativa.")
 
         if valor_negativo(orcamento_valor):
-            raise ValueError("Orçamento não pode ser negativo.")
+            raise ValueError("Custo previsto não pode ser negativo.")
 
         if valor_negativo(receita_valor):
-            raise ValueError("Receita total não pode ser negativa.")
+            raise ValueError("Receita prevista não pode ser negativa.")
 
         validar_intervalo_percentual(progresso_valor, "Execução (%)")
     except ValueError as e:
@@ -197,7 +208,7 @@ def editar_obra(obra_id):
     execute(
         """
         UPDATE obras
-        SET nome = ?, endereco = ?, tipologia = ?, area_m2 = ?,
+        SET nome = ?, endereco = ?, tipologia = ?, tipo_obra = ?, area_m2 = ?,
             data_inicio = ?, data_fim_prevista = ?, orcamento = ?,
             receita_total = ?, progresso_percentual = ?, status = ?
         WHERE id = ?
@@ -206,6 +217,7 @@ def editar_obra(obra_id):
             nome,
             endereco,
             tipologia,
+            tipo_obra,
             area_valor,
             data_inicio,
             data_fim_prevista,

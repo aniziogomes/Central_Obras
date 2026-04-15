@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS obras (
     nome TEXT NOT NULL,
     endereco TEXT,
     tipologia TEXT,
+    tipo_obra TEXT NOT NULL DEFAULT 'contrato',
     area_m2 REAL,
     data_inicio TEXT,
     data_fim_prevista TEXT,
@@ -79,6 +80,7 @@ CREATE TABLE IF NOT EXISTS equipe (
     observacao TEXT,
     FOREIGN KEY (obra_id) REFERENCES obras(id)
 );
+
 CREATE TABLE IF NOT EXISTS medicoes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     obra_id INTEGER NOT NULL,
@@ -92,6 +94,7 @@ CREATE TABLE IF NOT EXISTS medicoes (
     observacao TEXT,
     FOREIGN KEY (obra_id) REFERENCES obras(id)
 );
+
 CREATE TABLE IF NOT EXISTS importacoes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nome_arquivo TEXT NOT NULL,

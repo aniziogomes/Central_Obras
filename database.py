@@ -11,26 +11,32 @@ def get_connection():
 
 
 def init_db():
-    # garante que a pasta do banco exista
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     conn = get_connection()
 
-    # cria estrutura base pelo schema.sql
     with open("schema.sql", "r", encoding="utf-8") as f:
         conn.executescript(f.read())
 
-    # ETAPA A:
-    # garantir que a tabela usuarios tenha as colunas necessárias
-    # sem quebrar quem já tem banco criado
+    # Garantir colunas novas em bancos antigos sem quebrar nada
+
+    # usuarios.perfil
     try:
         conn.execute("ALTER TABLE usuarios ADD COLUMN perfil TEXT NOT NULL DEFAULT 'gestor'")
         conn.commit()
     except Exception:
         pass
 
+    # usuarios.ativo
     try:
         conn.execute("ALTER TABLE usuarios ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1")
+        conn.commit()
+    except Exception:
+        pass
+
+    # obras.tipo_obra
+    try:
+        conn.execute("ALTER TABLE obras ADD COLUMN tipo_obra TEXT NOT NULL DEFAULT 'contrato'")
         conn.commit()
     except Exception:
         pass

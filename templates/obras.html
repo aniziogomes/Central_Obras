@@ -23,10 +23,11 @@
                 <tr>
                     <th>ID</th>
                     <th>Nome</th>
+                    <th>Tipo da obra</th>
                     <th>Tipologia</th>
                     <th>Área</th>
-                    <th>Orçamento</th>
-                    <th>Receita</th>
+                    <th>Custo previsto</th>
+                    <th>Receita prevista</th>
                     <th>Execução</th>
                     <th>Status</th>
                     <th>Ações</th>
@@ -41,6 +42,7 @@
                             {{ obra.nome }}
                         </a>
                     </td>
+                    <td>{{ formatar_tipo_obra(obra.tipo_obra) }}</td>
                     <td>{{ obra.tipologia or "-" }}</td>
                     <td>{{ obra.area_m2 or 0 }} m²</td>
                     <td>{{ formatar_moeda(obra.orcamento) }}</td>
@@ -77,7 +79,7 @@
 
                 {% else %}
                 <tr>
-                    <td colspan="9" class="muted">Nenhuma obra cadastrada ainda.</td>
+                    <td colspan="10" class="muted">Nenhuma obra cadastrada ainda.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -95,7 +97,7 @@
         </div>
 
         <form method="POST" action="{{ url_for('obras_bp.editar_obra', obra_id=obra.id) }}">
-            <div class="form-grid">
+            <div class="form-grid modal-form-grid">
                 <div class="form-group">
                     <label>Nome da Obra</label>
                     <input type="text" name="nome" value="{{ obra.nome }}" required>
@@ -104,6 +106,35 @@
                 <div class="form-group">
                     <label>Endereço</label>
                     <input type="text" name="endereco" value="{{ obra.endereco or '' }}">
+                </div>
+
+                <div class="form-group full tipo-obra-field">
+                    <label>Tipo da Obra</label>
+                    <div class="tipo-obra-group">
+                        <label class="tipo-obra-option">
+                            <input type="radio" name="tipo_obra" value="contrato" {% if (obra.tipo_obra or 'contrato'
+                                )=='contrato' %}checked{% endif %}>
+                            <div class="tipo-obra-card">
+                                <div class="tipo-obra-bullet"></div>
+                                <div class="tipo-obra-text">
+                                    <span class="tipo-obra-title">Por contrato</span>
+                                    <span class="tipo-obra-sub">Reforma, execução ou serviço</span>
+                                </div>
+                            </div>
+                        </label>
+
+                        <label class="tipo-obra-option">
+                            <input type="radio" name="tipo_obra" value="venda" {% if obra.tipo_obra=='venda' %}checked{%
+                                endif %}>
+                            <div class="tipo-obra-card">
+                                <div class="tipo-obra-bullet"></div>
+                                <div class="tipo-obra-text">
+                                    <span class="tipo-obra-title">Para venda</span>
+                                    <span class="tipo-obra-sub">Construção com venda prevista</span>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -127,12 +158,12 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Orçamento</label>
+                    <label>Custo previsto</label>
                     <input type="number" step="0.01" name="orcamento" value="{{ obra.orcamento or 0 }}">
                 </div>
 
                 <div class="form-group">
-                    <label>Receita Total</label>
+                    <label>Receita prevista</label>
                     <input type="number" step="0.01" name="receita_total" value="{{ obra.receita_total or 0 }}">
                 </div>
 
@@ -157,6 +188,16 @@
                 </div>
             </div>
 
+            <div class="card modal-info-card">
+                <p class="muted" style="margin:0;">
+                    {% if (obra.tipo_obra or 'contrato') == 'venda' %}
+                    Nesta obra, a receita prevista representa o valor esperado de venda do imóvel.
+                    {% else %}
+                    Nesta obra, a receita prevista representa o valor do contrato/serviço fechado com o cliente.
+                    {% endif %}
+                </p>
+            </div>
+
             <div class="modal-footer">
                 <button type="button" class="btn" onclick="fecharModalEditarObra('{{ obra.id }}')">Cancelar</button>
                 <button type="submit" class="btn btn-primary">Salvar Alterações</button>
@@ -174,7 +215,7 @@
         </div>
 
         <form method="POST" action="{{ url_for('obras_bp.nova_obra') }}">
-            <div class="form-grid">
+            <div class="form-grid modal-form-grid">
                 <div class="form-group">
                     <label>ID da Obra *</label>
                     <input type="text" name="codigo" placeholder="OBR-001" required>
@@ -188,6 +229,35 @@
                 <div class="form-group full">
                     <label>Endereço</label>
                     <input type="text" name="endereco" placeholder="Rua das Flores, 123">
+                </div>
+
+                <div class="form-group full tipo-obra-field">
+                    <label>Tipo da Obra *</label>
+                    <div class="tipo-obra-group">
+                        <label class="tipo-obra-option">
+                            <input type="radio" name="tipo_obra" id="tipoObraNovaContrato" value="contrato" checked
+                                required onchange="atualizarAjudaTipoObraNova()">
+                            <div class="tipo-obra-card">
+                                <div class="tipo-obra-bullet"></div>
+                                <div class="tipo-obra-text">
+                                    <span class="tipo-obra-title">Por contrato</span>
+                                    <span class="tipo-obra-sub">Reforma, execução ou serviço</span>
+                                </div>
+                            </div>
+                        </label>
+
+                        <label class="tipo-obra-option">
+                            <input type="radio" name="tipo_obra" id="tipoObraNovaVenda" value="venda"
+                                onchange="atualizarAjudaTipoObraNova()">
+                            <div class="tipo-obra-card">
+                                <div class="tipo-obra-bullet"></div>
+                                <div class="tipo-obra-text">
+                                    <span class="tipo-obra-title">Para venda</span>
+                                    <span class="tipo-obra-sub">Construção com venda prevista</span>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -246,6 +316,12 @@
                 </div>
             </div>
 
+            <div class="card modal-info-card">
+                <p class="muted" id="ajudaTipoObraNova" style="margin:0;">
+                    Nesta obra, a receita prevista representa o valor do contrato/serviço fechado com o cliente.
+                </p>
+            </div>
+
             <div class="modal-footer">
                 <button type="button" class="btn" onclick="fecharModalObra()">Cancelar</button>
                 <button type="submit" class="btn btn-primary">Salvar Obra</button>
@@ -276,6 +352,18 @@
         if (modal) modal.style.display = "none";
     }
 
+    function atualizarAjudaTipoObraNova() {
+        const tipoSelecionado = document.querySelector('#modalObra input[name="tipo_obra"]:checked');
+        const ajuda = document.getElementById("ajudaTipoObraNova");
+        if (!tipoSelecionado || !ajuda) return;
+
+        if (tipoSelecionado.value === "venda") {
+            ajuda.textContent = "Nesta obra, a receita prevista representa o valor esperado de venda do imóvel.";
+        } else {
+            ajuda.textContent = "Nesta obra, a receita prevista representa o valor do contrato/serviço fechado com o cliente.";
+        }
+    }
+
     window.addEventListener("click", function (event) {
         const modalNova = document.getElementById("modalObra");
         if (modalNova && event.target === modalNova) {
@@ -296,6 +384,8 @@
             const valor = barra.dataset.width || 0;
             barra.style.width = valor + "%";
         });
+
+        atualizarAjudaTipoObraNova();
     });
 </script>
 {% endblock %}

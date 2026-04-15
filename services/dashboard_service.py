@@ -33,15 +33,15 @@ def calcular_alertas(obra_ids_filtradas=None):
         )
         custo_total = custo_obra["total"] if custo_obra else 0
         receita = obra["receita_total"] or 0
-        orcamento = obra["orcamento"] or 0
+        custo_previsto = obra["orcamento"] or 0
         progresso = obra["progresso_percentual"] or 0
         status = (obra["status"] or "").lower()
 
         if receita > 0 and custo_total > receita:
-            adicionar_alerta("danger", obra["codigo"], obra["nome"], "Margem negativa. O custo já superou a receita da obra.")
+            adicionar_alerta("danger", obra["codigo"], obra["nome"], "Resultado negativo. O custo já superou a receita prevista da obra.")
 
-        if orcamento > 0 and custo_total > orcamento * 1.05:
-            adicionar_alerta("warn", obra["codigo"], obra["nome"], "Custo realizado acima do orçamento previsto.")
+        if custo_previsto > 0 and custo_total > custo_previsto * 1.05:
+            adicionar_alerta("warn", obra["codigo"], obra["nome"], "Custo realizado acima do custo previsto.")
 
         if receita > 0 and custo_total >= receita * 0.90:
             adicionar_alerta("warn", obra["codigo"], obra["nome"], "Custo já consumiu 90% ou mais da receita prevista.")
@@ -63,7 +63,7 @@ def calcular_alertas(obra_ids_filtradas=None):
 
                 if dias_restantes < 0:
                     adicionar_alerta("danger", obra["codigo"], obra["nome"], "Data final prevista já foi ultrapassada.")
-            except:
+            except Exception:
                 pass
 
     if obra_ids_filtradas:
@@ -76,7 +76,7 @@ def calcular_alertas(obra_ids_filtradas=None):
     return alertas
 
 
-def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="", data_inicio="", data_fim=""):
+def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="", filtro_tipo_obra="", data_inicio="", data_fim=""):
     obras = query_all("SELECT * FROM obras ORDER BY id DESC")
     custos = query_all("SELECT * FROM custos ORDER BY id DESC")
     fornecedores = query_all("SELECT * FROM fornecedores ORDER BY id DESC")
@@ -88,6 +88,9 @@ def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="
 
     if filtro_status:
         obras = [o for o in obras if (o["status"] or "") == filtro_status]
+
+    if filtro_tipo_obra:
+        obras = [o for o in obras if (o["tipo_obra"] or "contrato") == filtro_tipo_obra]
 
     obra_ids_filtradas = [o["id"] for o in obras]
 
@@ -121,6 +124,7 @@ def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="
     comparativo_categorias = []
     margem_por_obra = []
     tipologia_count = {}
+    tipo_obra_count = {}
 
     for custo in custos:
         cat = custo["categoria"] or "Sem categoria"
@@ -139,10 +143,7 @@ def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="
         valor_lancado = custos_por_categoria.get(categoria, 0)
         diferenca = valor_lancado - valor_importado
 
-        if valor_importado > 0:
-            desvio_percentual = (diferenca / valor_importado) * 100
-        else:
-            desvio_percentual = 0
+        desvio_percentual = (diferenca / valor_importado * 100) if valor_importado > 0 else 0
 
         comparativo_categorias.append({
             "categoria": categoria,
@@ -156,17 +157,25 @@ def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="
         custo_obra = sum((c["valor_total"] or 0) for c in custos if c["obra_id"] == obra["id"])
         total_custo += custo_obra
 
+        tipo_obra = obra["tipo_obra"] or "contrato"
+        receita_contexto = "Venda prevista" if tipo_obra == "venda" else "Contrato previsto"
+
         margem_por_obra.append({
             "codigo": obra["codigo"],
             "nome": obra["nome"],
             "tipologia": obra["tipologia"],
+            "tipo_obra": tipo_obra,
+            "receita_contexto": receita_contexto,
             "status": obra["status"],
             "execucao": obra["progresso_percentual"] or 0,
-            "margem_valor": (obra["receita_total"] or 0) - custo_obra
+            "margem_valor": (obra["receita_total"] or 0) - custo_obra,
+            "lucro_previsto": (obra["receita_total"] or 0) - (obra["orcamento"] or 0)
         })
 
         tipo = obra["tipologia"] or "Não informado"
         tipologia_count[tipo] = tipologia_count.get(tipo, 0) + 1
+
+        tipo_obra_count[tipo_obra] = tipo_obra_count.get(tipo_obra, 0) + 1
 
     margem = total_receita - total_custo
     obras_atrasadas = len([o for o in obras if o["status"] == "atrasada"])
@@ -229,6 +238,7 @@ def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="
         "comparativo_categorias": comparativo_categorias,
         "margem_por_obra": margem_por_obra,
         "tipologia_count": tipologia_count,
+        "tipo_obra_count": tipo_obra_count,
         "alertas": alertas,
         "total_medicoes": total_medicoes,
         "total_importado": total_importado,

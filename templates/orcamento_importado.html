@@ -6,11 +6,15 @@
 <div class="hdr">
     <div>
         <h1>Orçamento Importado</h1>
-        <p>Resumo das categorias importadas da planilha</p>
+        <p>Resumo das categorias importadas da planilha e visão financeira das obras</p>
     </div>
 </div>
 
 <div class="card" style="margin-bottom:16px;">
+    <div class="card-hdr">
+        <div class="card-title">Categorias importadas</div>
+    </div>
+
     <div class="tbl-wrap">
         <table>
             <thead>
@@ -52,8 +56,10 @@
                 <tr>
                     <th>ID</th>
                     <th>Nome</th>
-                    <th>Orçamento</th>
-                    <th>Receita Total</th>
+                    <th>Tipo da obra</th>
+                    <th>Custo previsto</th>
+                    <th>Receita prevista</th>
+                    <th>Lucro previsto</th>
                     <th>Progresso</th>
                 </tr>
             </thead>
@@ -62,13 +68,15 @@
                 <tr>
                     <td class="td-mono">{{ obra.codigo }}</td>
                     <td class="td-name">{{ obra.nome }}</td>
+                    <td>{{ formatar_tipo_obra(obra.tipo_obra) }}</td>
                     <td>{{ formatar_moeda(obra.orcamento) }}</td>
                     <td>{{ formatar_moeda(obra.receita_total) }}</td>
+                    <td>{{ formatar_moeda((obra.receita_total or 0) - (obra.orcamento or 0)) }}</td>
                     <td>{{ obra.progresso_percentual or 0 }}%</td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="5" class="muted">Nenhuma obra importada ainda.</td>
+                    <td colspan="7" class="muted">Nenhuma obra importada ainda.</td>
                 </tr>
                 {% endfor %}
             </tbody>

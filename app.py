@@ -1,6 +1,6 @@
 from flask import Flask
 from database import init_db
-from utils import formatar_moeda, calcular_media_fornecedor
+from utils import formatar_moeda, calcular_media_fornecedor, formatar_tipo_obra
 
 from auth import (
     criar_usuario_admin,
@@ -31,12 +31,12 @@ def inject_helpers():
     return dict(
         formatar_moeda=formatar_moeda,
         calcular_media_fornecedor=calcular_media_fornecedor,
+        formatar_tipo_obra=formatar_tipo_obra,
         eh_admin=eh_admin,
         eh_gestor=eh_gestor,
         eh_leitura=eh_leitura,
         usuario_perfil=usuario_perfil,
     )
-
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(dashboard_bp)

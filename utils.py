@@ -9,3 +9,9 @@ def calcular_media_fornecedor(qualidade, preco, prazo):
     preco = preco or 0
     prazo = prazo or 0
     return round((qualidade + preco + prazo) / 3, 1)
+
+
+def formatar_tipo_obra(tipo_obra):
+    if (tipo_obra or "contrato") == "venda":
+        return "Para venda"
+    return "Por contrato / reforma"
