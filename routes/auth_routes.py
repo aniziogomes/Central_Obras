@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from database import query_one
 from auth import verificar_senha
+from services.log_service import registrar_log
 
 auth_bp = Blueprint("auth_bp", __name__)
 
@@ -33,6 +34,11 @@ def login():
 
         if verificar_senha(senha, usuario["senha_hash"]):
             session["usuario_id"] = usuario["id"]
+            registrar_log(
+                acao="login",
+                entidade="usuario",
+                entidade_id=usuario["id"],
+                descricao=f"Usuário {usuario['username']} fez login")
             session["usuario_nome"] = usuario["nome"]
             session["usuario_perfil"] = usuario["perfil"]
             return redirect(url_for("dashboard_bp.dashboard"))

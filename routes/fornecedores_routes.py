@@ -3,6 +3,7 @@ from io import BytesIO
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from database import query_one, query_all, execute
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
+from services.log_service import registrar_log
 
 fornecedores_bp = Blueprint("fornecedores_bp", __name__)
 
@@ -42,7 +43,7 @@ def novo_fornecedor():
         flash("Já existe um fornecedor com esse código.", "erro")
         return redirect(url_for("fornecedores_bp.fornecedores"))
 
-    execute(
+    fornecedor_id = execute(
         """
         INSERT INTO fornecedores (
             codigo, nome, categoria, contato, documento,
@@ -63,6 +64,13 @@ def novo_fornecedor():
             float(nota_prazo) if nota_prazo else 0,
             observacao
         )
+    )
+
+    registrar_log(
+        acao="criação",
+        entidade="fornecedor",
+        entidade_id=fornecedor_id,
+        descricao=f"Fornecedor criado: {nome}"
     )
 
     flash("Fornecedor cadastrado com sucesso.", "sucesso")
@@ -107,6 +115,13 @@ def editar_fornecedor(fornecedor_id):
         )
     )
 
+    registrar_log(
+        acao="edição",
+        entidade="fornecedor",
+        entidade_id=fornecedor_id,
+        descricao=f"Fornecedor editado: {nome}"
+    )
+
     flash("Fornecedor atualizado com sucesso.", "sucesso")
     return redirect(url_for("fornecedores_bp.fornecedores"))
 
@@ -117,7 +132,18 @@ def excluir_fornecedor(fornecedor_id):
         flash("Você não tem permissão para excluir fornecedores.", "erro")
         return redirect(url_for("fornecedores_bp.fornecedores"))
 
+    fornecedor = query_one("SELECT * FROM fornecedores WHERE id = ?", (fornecedor_id,))
+    nome_fornecedor = fornecedor["nome"] if fornecedor else f"ID {fornecedor_id}"
+
     execute("DELETE FROM fornecedores WHERE id = ?", (fornecedor_id,))
+
+    registrar_log(
+        acao="exclusão",
+        entidade="fornecedor",
+        entidade_id=fornecedor_id,
+        descricao=f"Fornecedor excluído: {nome_fornecedor}"
+    )
+
     flash("Fornecedor excluído com sucesso.", "sucesso")
     return redirect(url_for("fornecedores_bp.fornecedores"))
 

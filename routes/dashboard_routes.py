@@ -101,3 +101,12 @@ def alertas():
 
     lista_alertas = calcular_alertas()
     return render_template("alertas.html", alertas=lista_alertas)
+
+
+@dashboard_bp.route("/logs")
+def logs():
+    if not usuario_logado() or not eh_leitura():
+        return redirect(url_for("auth_bp.login"))
+
+    logs_lista = query_all("SELECT * FROM logs ORDER BY data_hora DESC")
+    return render_template("logs.html", logs=logs_lista)

@@ -3,6 +3,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from database import query_all
 from importar_planilha import importar_planilha
 from auth import usuario_logado, eh_gestor, eh_leitura
+from services.log_service import registrar_log
 
 importacao_bp = Blueprint("importacao_bp", __name__)
 
@@ -14,7 +15,12 @@ def importacao():
 
     obras = query_all("SELECT * FROM obras ORDER BY id DESC")
     importacoes = query_all("SELECT * FROM importacoes ORDER BY id DESC")
-    return render_template("importacao.html", obras=obras, importacoes=importacoes)
+
+    return render_template(
+        "importacao.html",
+        obras=obras,
+        importacoes=importacoes
+    )
 
 
 @importacao_bp.route("/importacao/planilha", methods=["POST"])
@@ -37,7 +43,17 @@ def importar_planilha_route():
 
     try:
         importar_planilha(caminho, codigo_obra, nome_obra)
+
+        # LOG
+        registrar_log(
+            "importação",
+            "planilha",
+            None,
+            f"Planilha importada: {arquivo.filename}"
+        )
+
         flash("Planilha importada com sucesso.", "sucesso")
+
     except Exception as e:
         flash(f"Erro ao importar planilha: {str(e)}", "erro")
 
@@ -50,6 +66,7 @@ def orcamento_importado():
         return redirect(url_for("auth_bp.login"))
 
     obras = query_all("SELECT * FROM obras ORDER BY id DESC")
+
     categorias_importadas = query_all("""
         SELECT cic.*, o.codigo AS codigo_obra, o.nome AS nome_obra
         FROM custos_importados_categoria cic

@@ -107,3 +107,13 @@ CREATE TABLE IF NOT EXISTS custos_importados_categoria (
     origem TEXT DEFAULT 'planilha',
     FOREIGN KEY (obra_id) REFERENCES obras(id)
 );
+
+CREATE TABLE IF NOT EXISTS logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER,
+    acao TEXT,
+    entidade TEXT,
+    entidade_id INTEGER,
+    descricao TEXT,
+    data_hora DATETIME DEFAULT CURRENT_TIMESTAMP
+);

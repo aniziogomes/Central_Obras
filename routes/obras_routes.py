@@ -4,6 +4,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from database import query_one, query_all, execute
 from services.validators import parse_valor_monetario, valor_negativo, validar_intervalo_percentual
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
+from services.log_service import registrar_log
 
 obras_bp = Blueprint("obras_bp", __name__)
 
@@ -64,7 +65,7 @@ def nova_obra():
         flash(str(e), "erro")
         return redirect(url_for("obras_bp.obras"))
 
-    execute(
+    obra_id = execute(
         """
         INSERT INTO obras (
             codigo, nome, endereco, tipologia, area_m2,
@@ -86,6 +87,13 @@ def nova_obra():
             progresso_valor,
             status
         )
+    )
+
+    registrar_log(
+        acao="criação",
+        entidade="obra",
+        entidade_id=obra_id,
+        descricao=f"Obra criada: {nome}"
     )
 
     flash("Obra cadastrada com sucesso.", "sucesso")
@@ -209,6 +217,13 @@ def editar_obra(obra_id):
         )
     )
 
+    registrar_log(
+        acao="edição",
+        entidade="obra",
+        entidade_id=obra_id,
+        descricao=f"Obra editada: {nome}"
+    )
+
     flash("Obra atualizada com sucesso.", "sucesso")
     return redirect(url_for("obras_bp.obras"))
 
@@ -225,6 +240,13 @@ def excluir_obra(obra_id):
     execute("DELETE FROM compras WHERE obra_id = ?", (obra_id,))
     execute("DELETE FROM custos_importados_categoria WHERE obra_id = ?", (obra_id,))
     execute("DELETE FROM obras WHERE id = ?", (obra_id,))
+
+    registrar_log(
+        acao="exclusão",
+        entidade="obra",
+        entidade_id=obra_id,
+        descricao="Obra excluída"
+    )
 
     flash("Obra excluída com sucesso.", "sucesso")
     return redirect(url_for("obras_bp.obras"))

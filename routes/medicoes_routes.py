@@ -1,9 +1,10 @@
 import pandas as pd
 from io import BytesIO
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
-from database import query_all, execute
+from database import query_all, query_one, execute
 from services.validators import parse_valor_monetario, valor_negativo, validar_intervalo_percentual
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
+from services.log_service import registrar_log
 
 medicoes_bp = Blueprint("medicoes_bp", __name__)
 
@@ -58,7 +59,7 @@ def nova_medicao():
         flash(str(e), "erro")
         return redirect(url_for("medicoes_bp.medicoes"))
 
-    execute(
+    medicao_id = execute(
         """
         INSERT INTO medicoes (
             obra_id, mes, medicao_nome, etapa, percentual,
@@ -77,6 +78,13 @@ def nova_medicao():
             data_medicao,
             observacao
         )
+    )
+
+    registrar_log(
+        acao="criação",
+        entidade="medicao",
+        entidade_id=medicao_id,
+        descricao=f"Medição criada: {medicao_nome}"
     )
 
     flash("Medição cadastrada com sucesso.", "sucesso")
@@ -132,6 +140,13 @@ def editar_medicao(medicao_id):
         )
     )
 
+    registrar_log(
+        acao="edição",
+        entidade="medicao",
+        entidade_id=medicao_id,
+        descricao=f"Medição editada: {medicao_nome}"
+    )
+
     flash("Medição atualizada com sucesso.", "sucesso")
     return redirect(url_for("medicoes_bp.medicoes"))
 
@@ -142,7 +157,18 @@ def excluir_medicao(medicao_id):
         flash("Você não tem permissão para excluir medições.", "erro")
         return redirect(url_for("medicoes_bp.medicoes"))
 
+    medicao = query_one("SELECT * FROM medicoes WHERE id = ?", (medicao_id,))
+    nome_medicao = medicao["medicao_nome"] if medicao else f"ID {medicao_id}"
+
     execute("DELETE FROM medicoes WHERE id = ?", (medicao_id,))
+
+    registrar_log(
+        acao="exclusão",
+        entidade="medicao",
+        entidade_id=medicao_id,
+        descricao=f"Medição excluída: {nome_medicao}"
+    )
+
     flash("Medição excluída com sucesso.", "sucesso")
     return redirect(url_for("medicoes_bp.medicoes"))
 

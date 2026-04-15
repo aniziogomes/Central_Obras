@@ -1,9 +1,10 @@
 import pandas as pd
 from io import BytesIO
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
-from database import query_all, execute
+from database import query_all, query_one, execute
 from services.validators import parse_valor_monetario, valor_negativo
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
+from services.log_service import registrar_log
 
 custos_bp = Blueprint("custos_bp", __name__)
 
@@ -51,7 +52,7 @@ def novo_custo():
         flash(str(e), "erro")
         return redirect(url_for("custos_bp.custos"))
 
-    execute(
+    custo_id = execute(
         """
         INSERT INTO custos (
             obra_id, descricao, categoria, fornecedor,
@@ -69,6 +70,13 @@ def novo_custo():
             nota_fiscal,
             observacao
         )
+    )
+
+    registrar_log(
+        acao="criação",
+        entidade="custo",
+        entidade_id=custo_id,
+        descricao=f"Custo criado: {descricao}"
     )
 
     flash("Custo lançado com sucesso.", "sucesso")
@@ -116,6 +124,13 @@ def editar_custo(custo_id):
         )
     )
 
+    registrar_log(
+        acao="edição",
+        entidade="custo",
+        entidade_id=custo_id,
+        descricao=f"Custo editado: {descricao}"
+    )
+
     flash("Custo atualizado com sucesso.", "sucesso")
     return redirect(url_for("custos_bp.custos"))
 
@@ -126,7 +141,18 @@ def excluir_custo(custo_id):
         flash("Você não tem permissão para excluir custos.", "erro")
         return redirect(url_for("custos_bp.custos"))
 
+    custo = query_one("SELECT * FROM custos WHERE id = ?", (custo_id,))
+    descricao_custo = custo["descricao"] if custo else f"ID {custo_id}"
+
     execute("DELETE FROM custos WHERE id = ?", (custo_id,))
+
+    registrar_log(
+        acao="exclusão",
+        entidade="custo",
+        entidade_id=custo_id,
+        descricao=f"Custo excluído: {descricao_custo}"
+    )
+
     flash("Custo excluído com sucesso.", "sucesso")
     return redirect(url_for("custos_bp.custos"))
 
