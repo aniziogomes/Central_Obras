@@ -1,19 +1,16 @@
 import pandas as pd
 from io import BytesIO
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from database import query_all, execute
 from services.validators import parse_valor_monetario, valor_negativo
+from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 
 custos_bp = Blueprint("custos_bp", __name__)
 
 
-def usuario_logado():
-    return "usuario_id" in session
-
-
 @custos_bp.route("/custos")
 def custos():
-    if not usuario_logado():
+    if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     lista_custos = query_all("""
@@ -29,8 +26,9 @@ def custos():
 
 @custos_bp.route("/custos/novo", methods=["POST"])
 def novo_custo():
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_gestor():
+        flash("Você não tem permissão para cadastrar custos.", "erro")
+        return redirect(url_for("custos_bp.custos"))
 
     obra_id = request.form.get("obra_id", "").strip()
     descricao = request.form.get("descricao", "").strip()
@@ -79,8 +77,9 @@ def novo_custo():
 
 @custos_bp.route("/custos/editar/<int:custo_id>", methods=["POST"])
 def editar_custo(custo_id):
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_gestor():
+        flash("Você não tem permissão para editar custos.", "erro")
+        return redirect(url_for("custos_bp.custos"))
 
     descricao = request.form.get("descricao", "").strip()
     categoria = request.form.get("categoria", "").strip()
@@ -123,8 +122,9 @@ def editar_custo(custo_id):
 
 @custos_bp.route("/custos/excluir/<int:custo_id>", methods=["POST"])
 def excluir_custo(custo_id):
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_admin():
+        flash("Você não tem permissão para excluir custos.", "erro")
+        return redirect(url_for("custos_bp.custos"))
 
     execute("DELETE FROM custos WHERE id = ?", (custo_id,))
     flash("Custo excluído com sucesso.", "sucesso")
@@ -133,7 +133,7 @@ def excluir_custo(custo_id):
 
 @custos_bp.route("/custos/exportar")
 def custos_exportar():
-    if not usuario_logado():
+    if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     lista = query_all("""

@@ -10,7 +10,9 @@
     </div>
     <div class="hdr-right" style="display:flex; gap:8px;">
         <a href="{{ url_for('equipe_bp.equipe_exportar') }}" class="btn btn-success">Exportar Excel</a>
+        {% if eh_gestor() %}
         <button class="btn btn-primary" onclick="abrirModalEquipe()">Novo Profissional</button>
+        {% endif %}
     </div>
 </div>
 
@@ -45,15 +47,19 @@
                     <td>{{ item.status_pagamento or "-" }}</td>
                     <td>
                         <div style="display:flex; gap:6px;">
+                            {% if eh_gestor() %}
                             <button class="btn btn-small" type="button"
                                 onclick="abrirModalEditarEquipe('{{ item.id }}')">
                                 Editar
                             </button>
+                            {% endif %}
 
+                            {% if eh_admin() %}
                             <form method="POST" action="{{ url_for('equipe_bp.excluir_equipe', equipe_id=item.id) }}"
                                 onsubmit="return confirm('Deseja realmente excluir este profissional?');">
                                 <button type="submit" class="btn btn-small btn-danger">Excluir</button>
                             </form>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -68,8 +74,7 @@
     </div>
 </div>
 
-
-<!-- MODAIS DE EDIÇÃO FORA DA TABELA -->
+{% if eh_gestor() %}
 {% for item in equipe %}
 <div id="modalEditarEquipe{{ item.id }}" class="modal-overlay">
     <div class="modal-box">
@@ -93,13 +98,11 @@
                 <div class="form-group">
                     <label>Contrato</label>
                     <select name="contrato">
-                        <option value="CLT" {% if item.contrato=='CLT' %}selected{% endif %}>CLT
-                        </option>
+                        <option value="CLT" {% if item.contrato=='CLT' %}selected{% endif %}>CLT</option>
                         <option value="PJ" {% if item.contrato=='PJ' %}selected{% endif %}>PJ</option>
                         <option value="Empreitada" {% if item.contrato=='Empreitada' %}selected{% endif %}>Empreitada
                         </option>
-                        <option value="Diarista" {% if item.contrato=='Diarista' %}selected{% endif %}>
-                            Diarista</option>
+                        <option value="Diarista" {% if item.contrato=='Diarista' %}selected{% endif %}>Diarista</option>
                     </select>
                 </div>
 
@@ -121,8 +124,7 @@
                 <div class="form-group">
                     <label>Status Pagamento</label>
                     <select name="status_pagamento">
-                        <option value="Pago" {% if item.status_pagamento=='Pago' %}selected{% endif %}>
-                            Pago</option>
+                        <option value="Pago" {% if item.status_pagamento=='Pago' %}selected{% endif %}>Pago</option>
                         <option value="Pendente" {% if item.status_pagamento=='Pendente' %}selected{% endif %}>Pendente
                         </option>
                         <option value="Parcial" {% if item.status_pagamento=='Parcial' %}selected{% endif %}>Parcial
@@ -223,27 +225,32 @@
         </form>
     </div>
 </div>
+{% endif %}
 
 <script>
     function abrirModalEquipe() {
-        document.getElementById("modalEquipe").style.display = "flex";
+        const modal = document.getElementById("modalEquipe");
+        if (modal) modal.style.display = "flex";
     }
 
     function fecharModalEquipe() {
-        document.getElementById("modalEquipe").style.display = "none";
+        const modal = document.getElementById("modalEquipe");
+        if (modal) modal.style.display = "none";
     }
 
     function abrirModalEditarEquipe(id) {
-        document.getElementById("modalEditarEquipe" + id).style.display = "flex";
+        const modal = document.getElementById("modalEditarEquipe" + id);
+        if (modal) modal.style.display = "flex";
     }
 
     function fecharModalEditarEquipe(id) {
-        document.getElementById("modalEditarEquipe" + id).style.display = "none";
+        const modal = document.getElementById("modalEditarEquipe" + id);
+        if (modal) modal.style.display = "none";
     }
 
     window.addEventListener("click", function (event) {
         const modalNovo = document.getElementById("modalEquipe");
-        if (event.target === modalNovo) {
+        if (modalNovo && event.target === modalNovo) {
             modalNovo.style.display = "none";
         }
 

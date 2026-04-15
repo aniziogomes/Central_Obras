@@ -1,19 +1,16 @@
 import pandas as pd
 from io import BytesIO
-from flask import Blueprint, render_template, request, redirect, url_for, session, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, send_file
 from database import query_all
 from services.dashboard_service import calcular_kpis_dashboard, calcular_alertas
+from auth import usuario_logado, eh_leitura
 
 dashboard_bp = Blueprint("dashboard_bp", __name__)
 
 
-def usuario_logado():
-    return "usuario_id" in session
-
-
 @dashboard_bp.route("/dashboard")
 def dashboard():
-    if not usuario_logado():
+    if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     filtro_obra = request.args.get("obra", "").strip()
@@ -51,7 +48,7 @@ def dashboard():
 
 @dashboard_bp.route("/dashboard/exportar")
 def dashboard_exportar():
-    if not usuario_logado():
+    if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     filtro_obra = request.args.get("obra", "").strip()
@@ -99,7 +96,7 @@ def dashboard_exportar():
 
 @dashboard_bp.route("/alertas")
 def alertas():
-    if not usuario_logado():
+    if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     lista_alertas = calcular_alertas()

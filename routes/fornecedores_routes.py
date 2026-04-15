@@ -1,18 +1,15 @@
 import pandas as pd
 from io import BytesIO
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from database import query_one, query_all, execute
+from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 
 fornecedores_bp = Blueprint("fornecedores_bp", __name__)
 
 
-def usuario_logado():
-    return "usuario_id" in session
-
-
 @fornecedores_bp.route("/fornecedores")
 def fornecedores():
-    if not usuario_logado():
+    if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     lista_fornecedores = query_all("SELECT * FROM fornecedores ORDER BY id DESC")
@@ -21,8 +18,9 @@ def fornecedores():
 
 @fornecedores_bp.route("/fornecedores/novo", methods=["POST"])
 def novo_fornecedor():
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_gestor():
+        flash("Você não tem permissão para cadastrar fornecedores.", "erro")
+        return redirect(url_for("fornecedores_bp.fornecedores"))
 
     codigo = request.form.get("codigo", "").strip()
     nome = request.form.get("nome", "").strip()
@@ -73,8 +71,9 @@ def novo_fornecedor():
 
 @fornecedores_bp.route("/fornecedores/editar/<int:fornecedor_id>", methods=["POST"])
 def editar_fornecedor(fornecedor_id):
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_gestor():
+        flash("Você não tem permissão para editar fornecedores.", "erro")
+        return redirect(url_for("fornecedores_bp.fornecedores"))
 
     nome = request.form.get("nome", "").strip()
     categoria = request.form.get("categoria", "").strip()
@@ -114,8 +113,9 @@ def editar_fornecedor(fornecedor_id):
 
 @fornecedores_bp.route("/fornecedores/excluir/<int:fornecedor_id>", methods=["POST"])
 def excluir_fornecedor(fornecedor_id):
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_admin():
+        flash("Você não tem permissão para excluir fornecedores.", "erro")
+        return redirect(url_for("fornecedores_bp.fornecedores"))
 
     execute("DELETE FROM fornecedores WHERE id = ?", (fornecedor_id,))
     flash("Fornecedor excluído com sucesso.", "sucesso")
@@ -124,7 +124,7 @@ def excluir_fornecedor(fornecedor_id):
 
 @fornecedores_bp.route("/fornecedores/exportar")
 def fornecedores_exportar():
-    if not usuario_logado():
+    if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     lista = query_all("SELECT * FROM fornecedores ORDER BY id DESC")

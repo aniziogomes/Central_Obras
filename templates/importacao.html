@@ -10,6 +10,7 @@
     </div>
 </div>
 
+{% if eh_gestor() %}
 <div class="card" style="margin-bottom:16px;">
     <form method="POST" action="{{ url_for('importacao_bp.importar_planilha_route') }}" enctype="multipart/form-data">
         <div class="form-grid">
@@ -34,6 +35,15 @@
         </div>
     </form>
 </div>
+{% else %}
+<div class="card" style="margin-bottom:16px;">
+    <div class="card-hdr">
+        <div class="card-title">Importação bloqueada</div>
+    </div>
+    <p class="muted">Seu perfil possui acesso apenas para visualização. A importação de planilhas está disponível
+        somente para gestor e admin.</p>
+</div>
+{% endif %}
 
 <div class="card">
     <div class="card-hdr">

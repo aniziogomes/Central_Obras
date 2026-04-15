@@ -2,6 +2,13 @@ from flask import Flask
 from database import init_db
 from utils import formatar_moeda, calcular_media_fornecedor
 
+from auth import (
+    criar_usuario_admin,
+    eh_admin,
+    eh_gestor,
+    eh_leitura,
+    usuario_perfil,
+)
 from routes.auth_routes import auth_bp
 from routes.dashboard_routes import dashboard_bp
 from routes.obras_routes import obras_bp
@@ -16,13 +23,18 @@ app = Flask(__name__)
 app.secret_key = "chave_super_secreta_trocar_depois"
 
 init_db()
+criar_usuario_admin()
 
 
 @app.context_processor
 def inject_helpers():
     return dict(
         formatar_moeda=formatar_moeda,
-        calcular_media_fornecedor=calcular_media_fornecedor
+        calcular_media_fornecedor=calcular_media_fornecedor,
+        eh_admin=eh_admin,
+        eh_gestor=eh_gestor,
+        eh_leitura=eh_leitura,
+        usuario_perfil=usuario_perfil,
     )
 
 

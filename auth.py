@@ -1,4 +1,5 @@
 import bcrypt
+from flask import session
 from database import query_one, execute
 
 
@@ -24,3 +25,23 @@ def criar_usuario_admin():
             """,
             ("Administrador", "admin", senha_hash, "admin", 1)
         )
+
+
+def usuario_logado():
+    return "usuario_id" in session
+
+
+def usuario_perfil():
+    return session.get("usuario_perfil", "")
+
+
+def eh_admin():
+    return usuario_perfil() == "admin"
+
+
+def eh_gestor():
+    return usuario_perfil() in ["admin", "gestor"]
+
+
+def eh_leitura():
+    return usuario_perfil() in ["admin", "gestor", "leitura"]

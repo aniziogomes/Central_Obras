@@ -10,7 +10,9 @@
     </div>
     <div class="hdr-right" style="display:flex; gap:8px;">
         <a href="{{ url_for('fornecedores_bp.fornecedores_exportar') }}" class="btn btn-success">Exportar Excel</a>
+        {% if eh_gestor() %}
         <button class="btn btn-primary" onclick="abrirModalFornecedor()">Novo Fornecedor</button>
+        {% endif %}
     </div>
 </div>
 
@@ -45,16 +47,20 @@
                     <td><strong>{{ media }}</strong></td>
                     <td>
                         <div style="display:flex; gap:6px;">
+                            {% if eh_gestor() %}
                             <button class="btn btn-small" type="button"
                                 onclick="abrirModalEditarFornecedor('{{ fornecedor.id }}')">
                                 Editar
                             </button>
+                            {% endif %}
 
+                            {% if eh_admin() %}
                             <form method="POST"
                                 action="{{ url_for('fornecedores_bp.excluir_fornecedor', fornecedor_id=fornecedor.id) }}"
                                 onsubmit="return confirm('Deseja realmente excluir este fornecedor?');">
                                 <button type="submit" class="btn btn-small btn-danger">Excluir</button>
                             </form>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -68,7 +74,7 @@
     </div>
 </div>
 
-<!-- MODAIS DE EDIÇÃO FORA DA TABELA -->
+{% if eh_gestor() %}
 {% for fornecedor in fornecedores %}
 <div id="modalEditarFornecedor{{ fornecedor.id }}" class="modal-overlay">
     <div class="modal-box">
@@ -136,7 +142,6 @@
 </div>
 {% endfor %}
 
-<!-- MODAL NOVO FORNECEDOR -->
 <div id="modalFornecedor" class="modal-overlay">
     <div class="modal-box">
         <div class="modal-header">
@@ -212,27 +217,32 @@
         </form>
     </div>
 </div>
+{% endif %}
 
 <script>
     function abrirModalFornecedor() {
-        document.getElementById("modalFornecedor").style.display = "flex";
+        const modal = document.getElementById("modalFornecedor");
+        if (modal) modal.style.display = "flex";
     }
 
     function fecharModalFornecedor() {
-        document.getElementById("modalFornecedor").style.display = "none";
+        const modal = document.getElementById("modalFornecedor");
+        if (modal) modal.style.display = "none";
     }
 
     function abrirModalEditarFornecedor(id) {
-        document.getElementById("modalEditarFornecedor" + id).style.display = "flex";
+        const modal = document.getElementById("modalEditarFornecedor" + id);
+        if (modal) modal.style.display = "flex";
     }
 
     function fecharModalEditarFornecedor(id) {
-        document.getElementById("modalEditarFornecedor" + id).style.display = "none";
+        const modal = document.getElementById("modalEditarFornecedor" + id);
+        if (modal) modal.style.display = "none";
     }
 
     window.addEventListener("click", function (event) {
         const modalNovo = document.getElementById("modalFornecedor");
-        if (event.target === modalNovo) {
+        if (modalNovo && event.target === modalNovo) {
             modalNovo.style.display = "none";
         }
 

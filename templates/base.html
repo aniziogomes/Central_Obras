@@ -96,6 +96,16 @@
           <div class="pulse"></div>
           <div class="sync-text">Dados locais ativos</div>
         </div>
+
+        <div class="user-badge"
+          style="margin-top:14px; padding:12px; border:1px solid rgba(255,255,255,0.08); border-radius:12px; background:rgba(255,255,255,0.03);">
+          <div style="font-size:12px; color:#9ca3af;">Usuário logado</div>
+          <div style="font-size:14px; font-weight:700; color:#f3f4f6;">{{ session.get('usuario_nome', 'Usuário') }}
+          </div>
+          <div style="font-size:12px; color:#f59e0b; text-transform:uppercase; letter-spacing:0.08em;">
+            {{ usuario_perfil() or 'sem perfil' }}
+          </div>
+        </div>
       </div>
     </aside>
 

@@ -1,19 +1,16 @@
 import pandas as pd
 from io import BytesIO
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from database import query_one, query_all, execute
 from services.validators import parse_valor_monetario, valor_negativo, validar_intervalo_percentual
+from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 
 obras_bp = Blueprint("obras_bp", __name__)
 
 
-def usuario_logado():
-    return "usuario_id" in session
-
-
 @obras_bp.route("/obras")
 def obras():
-    if not usuario_logado():
+    if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     lista_obras = query_all("SELECT * FROM obras ORDER BY id DESC")
@@ -22,8 +19,9 @@ def obras():
 
 @obras_bp.route("/obras/nova", methods=["POST"])
 def nova_obra():
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_gestor():
+        flash("Você não tem permissão para cadastrar obras.", "erro")
+        return redirect(url_for("obras_bp.obras"))
 
     codigo = request.form.get("codigo", "").strip()
     nome = request.form.get("nome", "").strip()
@@ -96,7 +94,7 @@ def nova_obra():
 
 @obras_bp.route("/obras/exportar")
 def obras_exportar():
-    if not usuario_logado():
+    if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     obras = query_all("SELECT * FROM obras ORDER BY id DESC")
@@ -118,7 +116,7 @@ def obras_exportar():
 
 @obras_bp.route("/obra/<codigo>")
 def obra_detalhe(codigo):
-    if not usuario_logado():
+    if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     obra = query_one("SELECT * FROM obras WHERE codigo = ?", (codigo,))
@@ -153,8 +151,9 @@ def obra_detalhe(codigo):
 
 @obras_bp.route("/obras/editar/<int:obra_id>", methods=["POST"])
 def editar_obra(obra_id):
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_gestor():
+        flash("Você não tem permissão para editar obras.", "erro")
+        return redirect(url_for("obras_bp.obras"))
 
     nome = request.form.get("nome", "").strip()
     endereco = request.form.get("endereco", "").strip()
@@ -216,8 +215,9 @@ def editar_obra(obra_id):
 
 @obras_bp.route("/obras/excluir/<int:obra_id>", methods=["POST"])
 def excluir_obra(obra_id):
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_admin():
+        flash("Você não tem permissão para excluir obras.", "erro")
+        return redirect(url_for("obras_bp.obras"))
 
     execute("DELETE FROM custos WHERE obra_id = ?", (obra_id,))
     execute("DELETE FROM medicoes WHERE obra_id = ?", (obra_id,))

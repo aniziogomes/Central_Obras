@@ -1,19 +1,16 @@
 import pandas as pd
 from io import BytesIO
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from database import query_all, execute
 from services.validators import parse_valor_monetario, valor_negativo
+from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 
 equipe_bp = Blueprint("equipe_bp", __name__)
 
 
-def usuario_logado():
-    return "usuario_id" in session
-
-
 @equipe_bp.route("/equipe")
 def equipe():
-    if not usuario_logado():
+    if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     lista_equipe = query_all("""
@@ -29,22 +26,20 @@ def equipe():
 
 @equipe_bp.route("/equipe/novo", methods=["POST"])
 def novo_membro_equipe():
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_gestor():
+        flash("Você não tem permissão para cadastrar equipe.", "erro")
+        return redirect(url_for("equipe_bp.equipe"))
 
     obra_id = request.form.get("obra_id", "").strip()
     nome = request.form.get("nome", "").strip()
     funcao = request.form.get("funcao", "").strip()
-    contrato = request.form.get("contrato", "").strip()
-    data_inicio = request.form.get("data_inicio", "").strip()
-    valor_contratado = request.form.get("valor_contratado", "").strip()
-    valor_pago = request.form.get("valor_pago", "").strip()
-    status_pagamento = request.form.get("status_pagamento", "").strip()
-    observacao = request.form.get("observacao", "").strip()
 
     if not obra_id or not nome:
         flash("Preencha os campos obrigatórios da equipe.", "erro")
         return redirect(url_for("equipe_bp.equipe"))
+
+    valor_contratado = request.form.get("valor_contratado", "").strip()
+    valor_pago = request.form.get("valor_pago", "").strip()
 
     try:
         valor_contratado_float = parse_valor_monetario(valor_contratado)
@@ -62,21 +57,16 @@ def novo_membro_equipe():
     execute(
         """
         INSERT INTO equipe (
-            obra_id, nome, funcao, contrato, data_inicio,
-            valor_contratado, valor_pago, status_pagamento, observacao
+            obra_id, nome, funcao, valor_contratado, valor_pago
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?)
         """,
         (
             int(obra_id),
             nome,
             funcao,
-            contrato,
-            data_inicio,
             valor_contratado_float,
-            valor_pago_float,
-            status_pagamento,
-            observacao
+            valor_pago_float
         )
     )
 
@@ -86,47 +76,22 @@ def novo_membro_equipe():
 
 @equipe_bp.route("/equipe/editar/<int:equipe_id>", methods=["POST"])
 def editar_equipe(equipe_id):
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_gestor():
+        flash("Você não tem permissão para editar equipe.", "erro")
+        return redirect(url_for("equipe_bp.equipe"))
 
     nome = request.form.get("nome", "").strip()
     funcao = request.form.get("funcao", "").strip()
-    contrato = request.form.get("contrato", "").strip()
-    data_inicio = request.form.get("data_inicio", "").strip()
-    valor_contratado = request.form.get("valor_contratado", "").strip()
-    valor_pago = request.form.get("valor_pago", "").strip()
-    status_pagamento = request.form.get("status_pagamento", "").strip()
-    observacao = request.form.get("observacao", "").strip()
-
-    try:
-        valor_contratado_float = parse_valor_monetario(valor_contratado)
-        valor_pago_float = parse_valor_monetario(valor_pago)
-
-        if valor_negativo(valor_contratado_float):
-            raise ValueError("Valor contratado não pode ser negativo.")
-
-        if valor_negativo(valor_pago_float):
-            raise ValueError("Valor pago não pode ser negativo.")
-    except ValueError as e:
-        flash(str(e), "erro")
-        return redirect(url_for("equipe_bp.equipe"))
 
     execute(
         """
         UPDATE equipe
-        SET nome = ?, funcao = ?, contrato = ?, data_inicio = ?,
-            valor_contratado = ?, valor_pago = ?, status_pagamento = ?, observacao = ?
+        SET nome = ?, funcao = ?
         WHERE id = ?
         """,
         (
             nome,
             funcao,
-            contrato,
-            data_inicio,
-            valor_contratado_float,
-            valor_pago_float,
-            status_pagamento,
-            observacao,
             equipe_id
         )
     )
@@ -137,8 +102,9 @@ def editar_equipe(equipe_id):
 
 @equipe_bp.route("/equipe/excluir/<int:equipe_id>", methods=["POST"])
 def excluir_equipe(equipe_id):
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_admin():
+        flash("Você não tem permissão para excluir equipe.", "erro")
+        return redirect(url_for("equipe_bp.equipe"))
 
     execute("DELETE FROM equipe WHERE id = ?", (equipe_id,))
     flash("Profissional excluído com sucesso.", "sucesso")
@@ -147,7 +113,7 @@ def excluir_equipe(equipe_id):
 
 @equipe_bp.route("/equipe/exportar")
 def equipe_exportar():
-    if not usuario_logado():
+    if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     lista = query_all("""
@@ -163,6 +129,7 @@ def equipe_exportar():
         df.to_excel(writer, index=False, sheet_name="Equipe")
 
     output.seek(0)
+
     return send_file(
         output,
         as_attachment=True,

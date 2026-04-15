@@ -1,18 +1,15 @@
 import os
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash
 from database import query_all
 from importar_planilha import importar_planilha
+from auth import usuario_logado, eh_gestor, eh_leitura
 
 importacao_bp = Blueprint("importacao_bp", __name__)
 
 
-def usuario_logado():
-    return "usuario_id" in session
-
-
 @importacao_bp.route("/importacao")
 def importacao():
-    if not usuario_logado():
+    if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     obras = query_all("SELECT * FROM obras ORDER BY id DESC")
@@ -22,8 +19,9 @@ def importacao():
 
 @importacao_bp.route("/importacao/planilha", methods=["POST"])
 def importar_planilha_route():
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_gestor():
+        flash("Você não tem permissão para importar planilhas.", "erro")
+        return redirect(url_for("importacao_bp.importacao"))
 
     arquivo = request.files.get("arquivo_planilha")
     codigo_obra = request.form.get("codigo_obra", "").strip()
@@ -48,7 +46,7 @@ def importar_planilha_route():
 
 @importacao_bp.route("/orcamento-importado")
 def orcamento_importado():
-    if not usuario_logado():
+    if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     obras = query_all("SELECT * FROM obras ORDER BY id DESC")

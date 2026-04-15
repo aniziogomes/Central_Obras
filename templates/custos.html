@@ -10,7 +10,9 @@
     </div>
     <div class="hdr-right" style="display:flex; gap:8px;">
         <a href="{{ url_for('custos_bp.custos_exportar') }}" class="btn btn-success">Exportar Excel</a>
+        {% if eh_gestor() %}
         <button class="btn btn-primary" onclick="abrirModalCusto()">Novo Lançamento</button>
+        {% endif %}
     </div>
 </div>
 
@@ -43,15 +45,19 @@
                     <td>{{ custo.nota_fiscal or "-" }}</td>
                     <td>
                         <div style="display:flex; gap:6px;">
+                            {% if eh_gestor() %}
                             <button class="btn btn-small" type="button"
                                 onclick="abrirModalEditarCusto('{{ custo.id }}')">
                                 Editar
                             </button>
+                            {% endif %}
 
+                            {% if eh_admin() %}
                             <form method="POST" action="{{ url_for('custos_bp.excluir_custo', custo_id=custo.id) }}"
                                 onsubmit="return confirm('Deseja realmente excluir este custo?');">
                                 <button type="submit" class="btn btn-small btn-danger">Excluir</button>
                             </form>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -66,8 +72,7 @@
     </div>
 </div>
 
-
-<!-- MODAIS DE EDIÇÃO FORA DA TABELA -->
+{% if eh_gestor() %}
 {% for custo in custos %}
 <div id="modalEditarCusto{{ custo.id }}" class="modal-overlay">
     <div class="modal-box">
@@ -94,8 +99,7 @@
                             Eletricista</option>
                         <option value="Gesseiro" {% if custo.categoria=='Gesseiro' %}selected{% endif %}>Gesseiro
                         </option>
-                        <option value="Pintor" {% if custo.categoria=='Pintor' %}selected{% endif %}>
-                            Pintor</option>
+                        <option value="Pintor" {% if custo.categoria=='Pintor' %}selected{% endif %}>Pintor</option>
                         <option value="Materiais em Geral" {% if custo.categoria=='Materiais em Geral' %}selected{%
                             endif %}>Materiais em Geral</option>
                         <option value="Acabamentos" {% if custo.categoria=='Acabamentos' %}selected{% endif %}>
@@ -218,27 +222,32 @@
         </form>
     </div>
 </div>
+{% endif %}
 
 <script>
     function abrirModalCusto() {
-        document.getElementById("modalCusto").style.display = "flex";
+        const modal = document.getElementById("modalCusto");
+        if (modal) modal.style.display = "flex";
     }
 
     function fecharModalCusto() {
-        document.getElementById("modalCusto").style.display = "none";
+        const modal = document.getElementById("modalCusto");
+        if (modal) modal.style.display = "none";
     }
 
     function abrirModalEditarCusto(id) {
-        document.getElementById("modalEditarCusto" + id).style.display = "flex";
+        const modal = document.getElementById("modalEditarCusto" + id);
+        if (modal) modal.style.display = "flex";
     }
 
     function fecharModalEditarCusto(id) {
-        document.getElementById("modalEditarCusto" + id).style.display = "none";
+        const modal = document.getElementById("modalEditarCusto" + id);
+        if (modal) modal.style.display = "none";
     }
 
     window.addEventListener("click", function (event) {
         const modalNovo = document.getElementById("modalCusto");
-        if (event.target === modalNovo) {
+        if (modalNovo && event.target === modalNovo) {
             modalNovo.style.display = "none";
         }
 

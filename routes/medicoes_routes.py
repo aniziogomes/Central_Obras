@@ -1,19 +1,16 @@
 import pandas as pd
 from io import BytesIO
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from database import query_all, execute
 from services.validators import parse_valor_monetario, valor_negativo, validar_intervalo_percentual
+from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 
 medicoes_bp = Blueprint("medicoes_bp", __name__)
 
 
-def usuario_logado():
-    return "usuario_id" in session
-
-
 @medicoes_bp.route("/medicoes")
 def medicoes():
-    if not usuario_logado():
+    if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     lista_medicoes = query_all("""
@@ -29,8 +26,9 @@ def medicoes():
 
 @medicoes_bp.route("/medicoes/nova", methods=["POST"])
 def nova_medicao():
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_gestor():
+        flash("Você não tem permissão para cadastrar medições.", "erro")
+        return redirect(url_for("medicoes_bp.medicoes"))
 
     obra_id = request.form.get("obra_id", "").strip()
     mes = request.form.get("mes", "").strip()
@@ -87,8 +85,9 @@ def nova_medicao():
 
 @medicoes_bp.route("/medicoes/editar/<int:medicao_id>", methods=["POST"])
 def editar_medicao(medicao_id):
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_gestor():
+        flash("Você não tem permissão para editar medições.", "erro")
+        return redirect(url_for("medicoes_bp.medicoes"))
 
     mes = request.form.get("mes", "").strip()
     medicao_nome = request.form.get("medicao_nome", "").strip()
@@ -139,8 +138,9 @@ def editar_medicao(medicao_id):
 
 @medicoes_bp.route("/medicoes/excluir/<int:medicao_id>", methods=["POST"])
 def excluir_medicao(medicao_id):
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_admin():
+        flash("Você não tem permissão para excluir medições.", "erro")
+        return redirect(url_for("medicoes_bp.medicoes"))
 
     execute("DELETE FROM medicoes WHERE id = ?", (medicao_id,))
     flash("Medição excluída com sucesso.", "sucesso")
@@ -149,7 +149,7 @@ def excluir_medicao(medicao_id):
 
 @medicoes_bp.route("/medicoes/exportar")
 def medicoes_exportar():
-    if not usuario_logado():
+    if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     lista = query_all("""

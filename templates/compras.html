@@ -10,7 +10,9 @@
     </div>
     <div class="hdr-right" style="display:flex; gap:8px;">
         <a href="{{ url_for('compras_bp.compras_exportar') }}" class="btn btn-success">Exportar Excel</a>
+        {% if eh_gestor() %}
         <button class="btn btn-primary" onclick="abrirModalCompra()">Nova Compra</button>
+        {% endif %}
     </div>
 </div>
 
@@ -45,15 +47,19 @@
                     <td>{{ compra.status or "-" }}</td>
                     <td>
                         <div style="display:flex; gap:6px;">
+                            {% if eh_gestor() %}
                             <button class="btn btn-small" type="button"
                                 onclick="abrirModalEditarCompra('{{ compra.id }}')">
                                 Editar
                             </button>
+                            {% endif %}
 
+                            {% if eh_admin() %}
                             <form method="POST" action="{{ url_for('compras_bp.excluir_compra', compra_id=compra.id) }}"
                                 onsubmit="return confirm('Deseja realmente excluir esta compra?');">
                                 <button type="submit" class="btn btn-small btn-danger">Excluir</button>
                             </form>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -68,8 +74,7 @@
     </div>
 </div>
 
-
-<!-- MODAIS DE EDIÇÃO FORA DA TABELA -->
+{% if eh_gestor() %}
 {% for compra in compras %}
 <div id="modalEditarCompra{{ compra.id }}" class="modal-overlay">
     <div class="modal-box">
@@ -212,27 +217,32 @@
         </form>
     </div>
 </div>
+{% endif %}
 
 <script>
     function abrirModalCompra() {
-        document.getElementById("modalCompra").style.display = "flex";
+        const modal = document.getElementById("modalCompra");
+        if (modal) modal.style.display = "flex";
     }
 
     function fecharModalCompra() {
-        document.getElementById("modalCompra").style.display = "none";
+        const modal = document.getElementById("modalCompra");
+        if (modal) modal.style.display = "none";
     }
 
     function abrirModalEditarCompra(id) {
-        document.getElementById("modalEditarCompra" + id).style.display = "flex";
+        const modal = document.getElementById("modalEditarCompra" + id);
+        if (modal) modal.style.display = "flex";
     }
 
     function fecharModalEditarCompra(id) {
-        document.getElementById("modalEditarCompra" + id).style.display = "none";
+        const modal = document.getElementById("modalEditarCompra" + id);
+        if (modal) modal.style.display = "none";
     }
 
     window.addEventListener("click", function (event) {
         const modalNovo = document.getElementById("modalCompra");
-        if (event.target === modalNovo) {
+        if (modalNovo && event.target === modalNovo) {
             modalNovo.style.display = "none";
         }
 

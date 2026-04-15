@@ -10,7 +10,9 @@
     </div>
     <div class="hdr-right" style="display:flex; gap:8px;">
         <a href="{{ url_for('medicoes_bp.medicoes_exportar') }}" class="btn btn-success">Exportar Excel</a>
+        {% if eh_gestor() %}
         <button class="btn btn-primary" onclick="abrirModalMedicao()">Nova Medição</button>
+        {% endif %}
     </div>
 </div>
 
@@ -45,15 +47,20 @@
                     <td>{{ medicao.data_medicao or "-" }}</td>
                     <td>
                         <div style="display:flex; gap:6px;">
+                            {% if eh_gestor() %}
                             <button class="btn btn-small" type="button"
                                 onclick="abrirModalEditarMedicao('{{ medicao.id }}')">
                                 Editar
                             </button>
+                            {% endif %}
 
-                            <form method="POST" action="{{ url_for('medicoes_bp.excluir_medicao', medicao_id=medicao.id) }}"
+                            {% if eh_admin() %}
+                            <form method="POST"
+                                action="{{ url_for('medicoes_bp.excluir_medicao', medicao_id=medicao.id) }}"
                                 onsubmit="return confirm('Deseja realmente excluir esta medição?');">
                                 <button type="submit" class="btn btn-small btn-danger">Excluir</button>
                             </form>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -68,8 +75,7 @@
     </div>
 </div>
 
-
-<!-- MODAIS DE EDIÇÃO FORA DA TABELA -->
+{% if eh_gestor() %}
 {% for medicao in medicoes %}
 <div id="modalEditarMedicao{{ medicao.id }}" class="modal-overlay">
     <div class="modal-box">
@@ -199,27 +205,32 @@
         </form>
     </div>
 </div>
+{% endif %}
 
 <script>
     function abrirModalMedicao() {
-        document.getElementById("modalMedicao").style.display = "flex";
+        const modal = document.getElementById("modalMedicao");
+        if (modal) modal.style.display = "flex";
     }
 
     function fecharModalMedicao() {
-        document.getElementById("modalMedicao").style.display = "none";
+        const modal = document.getElementById("modalMedicao");
+        if (modal) modal.style.display = "none";
     }
 
     function abrirModalEditarMedicao(id) {
-        document.getElementById("modalEditarMedicao" + id).style.display = "flex";
+        const modal = document.getElementById("modalEditarMedicao" + id);
+        if (modal) modal.style.display = "flex";
     }
 
     function fecharModalEditarMedicao(id) {
-        document.getElementById("modalEditarMedicao" + id).style.display = "none";
+        const modal = document.getElementById("modalEditarMedicao" + id);
+        if (modal) modal.style.display = "none";
     }
 
     window.addEventListener("click", function (event) {
         const modalNovo = document.getElementById("modalMedicao");
-        if (event.target === modalNovo) {
+        if (modalNovo && event.target === modalNovo) {
             modalNovo.style.display = "none";
         }
 

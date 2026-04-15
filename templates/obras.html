@@ -10,7 +10,9 @@
     </div>
     <div class="hdr-right" style="display:flex; gap:8px;">
         <a href="{{ url_for('obras_bp.obras_exportar') }}" class="btn btn-success">Exportar Excel</a>
+        {% if eh_gestor() %}
         <button class="btn btn-primary" onclick="abrirModalObra()">Nova Obra</button>
+        {% endif %}
     </div>
 </div>
 
@@ -57,14 +59,18 @@
                     </td>
                     <td>
                         <div style="display:flex; gap:6px;">
+                            {% if eh_gestor() %}
                             <button class="btn btn-small" type="button" onclick="abrirModalEditarObra('{{ obra.id }}')">
                                 Editar
                             </button>
+                            {% endif %}
 
+                            {% if eh_admin() %}
                             <form method="POST" action="{{ url_for('obras_bp.excluir_obra', obra_id=obra.id) }}"
                                 onsubmit="return confirm('Deseja realmente excluir esta obra?');">
                                 <button type="submit" class="btn btn-small btn-danger">Excluir</button>
                             </form>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -79,8 +85,7 @@
     </div>
 </div>
 
-
-<!-- MODAIS DE EDIÇÃO FORA DA TABELA -->
+{% if eh_gestor() %}
 {% for obra in obras %}
 <div id="modalEditarObra{{ obra.id }}" class="modal-overlay">
     <div class="modal-box">
@@ -142,14 +147,12 @@
                     <select name="status">
                         <option value="planejamento" {% if obra.status=='planejamento' %}selected{% endif %}>
                             planejamento</option>
-                        <option value="andamento" {% if obra.status=='andamento' %}selected{% endif %}>
-                            andamento</option>
-                        <option value="atrasada" {% if obra.status=='atrasada' %}selected{% endif %}>
-                            atrasada</option>
-                        <option value="concluida" {% if obra.status=='concluida' %}selected{% endif %}>
-                            concluida</option>
-                        <option value="vendida" {% if obra.status=='vendida' %}selected{% endif %}>
-                            vendida</option>
+                        <option value="andamento" {% if obra.status=='andamento' %}selected{% endif %}>andamento
+                        </option>
+                        <option value="atrasada" {% if obra.status=='atrasada' %}selected{% endif %}>atrasada</option>
+                        <option value="concluida" {% if obra.status=='concluida' %}selected{% endif %}>concluida
+                        </option>
+                        <option value="vendida" {% if obra.status=='vendida' %}selected{% endif %}>vendida</option>
                     </select>
                 </div>
             </div>
@@ -250,27 +253,32 @@
         </form>
     </div>
 </div>
+{% endif %}
 
 <script>
     function abrirModalObra() {
-        document.getElementById("modalObra").style.display = "flex";
+        const modal = document.getElementById("modalObra");
+        if (modal) modal.style.display = "flex";
     }
 
     function fecharModalObra() {
-        document.getElementById("modalObra").style.display = "none";
+        const modal = document.getElementById("modalObra");
+        if (modal) modal.style.display = "none";
     }
 
     function abrirModalEditarObra(id) {
-        document.getElementById("modalEditarObra" + id).style.display = "flex";
+        const modal = document.getElementById("modalEditarObra" + id);
+        if (modal) modal.style.display = "flex";
     }
 
     function fecharModalEditarObra(id) {
-        document.getElementById("modalEditarObra" + id).style.display = "none";
+        const modal = document.getElementById("modalEditarObra" + id);
+        if (modal) modal.style.display = "none";
     }
 
     window.addEventListener("click", function (event) {
         const modalNova = document.getElementById("modalObra");
-        if (event.target === modalNova) {
+        if (modalNova && event.target === modalNova) {
             modalNova.style.display = "none";
         }
 
@@ -284,7 +292,6 @@
 
     document.addEventListener("DOMContentLoaded", function () {
         const barras = document.querySelectorAll(".progress-dinamica");
-
         barras.forEach(function (barra) {
             const valor = barra.dataset.width || 0;
             barra.style.width = valor + "%";

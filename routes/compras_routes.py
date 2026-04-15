@@ -1,19 +1,16 @@
 import pandas as pd
 from io import BytesIO
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from database import query_all, execute
 from services.validators import parse_valor_monetario, valor_negativo
+from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 
 compras_bp = Blueprint("compras_bp", __name__)
 
 
-def usuario_logado():
-    return "usuario_id" in session
-
-
 @compras_bp.route("/compras")
 def compras():
-    if not usuario_logado():
+    if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     lista_compras = query_all("""
@@ -38,8 +35,9 @@ def compras():
 
 @compras_bp.route("/compras/nova", methods=["POST"])
 def nova_compra():
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_gestor():
+        flash("Você não tem permissão para cadastrar compras.", "erro")
+        return redirect(url_for("compras_bp.compras"))
 
     obra_id = request.form.get("obra_id", "").strip()
     fornecedor_id = request.form.get("fornecedor_id", "").strip()
@@ -96,8 +94,9 @@ def nova_compra():
 
 @compras_bp.route("/compras/editar/<int:compra_id>", methods=["POST"])
 def editar_compra(compra_id):
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_gestor():
+        flash("Você não tem permissão para editar compras.", "erro")
+        return redirect(url_for("compras_bp.compras"))
 
     material = request.form.get("material", "").strip()
     data_pedido = request.form.get("data_pedido", "").strip()
@@ -145,8 +144,9 @@ def editar_compra(compra_id):
 
 @compras_bp.route("/compras/excluir/<int:compra_id>", methods=["POST"])
 def excluir_compra(compra_id):
-    if not usuario_logado():
-        return redirect(url_for("auth_bp.login"))
+    if not usuario_logado() or not eh_admin():
+        flash("Você não tem permissão para excluir compras.", "erro")
+        return redirect(url_for("compras_bp.compras"))
 
     execute("DELETE FROM compras WHERE id = ?", (compra_id,))
     flash("Compra excluída com sucesso.", "sucesso")
@@ -155,7 +155,7 @@ def excluir_compra(compra_id):
 
 @compras_bp.route("/compras/exportar")
 def compras_exportar():
-    if not usuario_logado():
+    if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     lista = query_all("""
@@ -173,6 +173,7 @@ def compras_exportar():
         df.to_excel(writer, index=False, sheet_name="Compras")
 
     output.seek(0)
+
     return send_file(
         output,
         as_attachment=True,
