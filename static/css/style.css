@@ -1089,3 +1089,26 @@ canvas {
     max-height: calc(100vh - 32px);
   }
 }
+
+.filtro-card {
+  padding: 10px 14px;
+}
+
+.filtro-header {
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+  font-weight: 600;
+  color: #555;
+}
+
+.filtro-body {
+  margin-top: 10px;
+  display: none;
+}
+
+.filtro-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}

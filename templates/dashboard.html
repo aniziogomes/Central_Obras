@@ -3,6 +3,209 @@
 {% block title %}Dashboard - Central de Obras{% endblock %}
 
 {% block content %}
+<style>
+    .dashboard-filter-shell {
+        margin-bottom: 12px;
+    }
+
+    .dashboard-filter-card {
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 18px;
+        padding: 12px 14px;
+        backdrop-filter: blur(8px);
+    }
+
+    .dashboard-filter-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .dashboard-filter-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        flex-wrap: wrap;
+    }
+
+    .dashboard-filter-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        font-size: 12px;
+        color: #d1d5db;
+        line-height: 1;
+    }
+
+    .dashboard-filter-chip strong {
+        color: #f9fafb;
+        font-weight: 600;
+    }
+
+    .dashboard-filter-summary {
+        font-size: 13px;
+        color: #9ca3af;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 14px;
+    }
+
+    .dashboard-filter-summary span {
+        white-space: nowrap;
+    }
+
+    .dashboard-filter-toggle {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.03);
+        color: #f3f4f6;
+        border-radius: 12px;
+        padding: 9px 14px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .dashboard-filter-toggle:hover {
+        background: rgba(255, 255, 255, 0.06);
+    }
+
+    .dashboard-filter-body {
+        overflow: hidden;
+        max-height: 0;
+        opacity: 0;
+        transition: max-height 0.28s ease, opacity 0.2s ease, margin-top 0.2s ease;
+        margin-top: 0;
+    }
+
+    .dashboard-filter-body.open {
+        max-height: 420px;
+        opacity: 1;
+        margin-top: 14px;
+    }
+
+    .dashboard-filter-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .dashboard-filter-field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .dashboard-filter-field label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #9ca3af;
+        font-weight: 700;
+    }
+
+    .dashboard-filter-field select,
+    .dashboard-filter-field input {
+        width: 100%;
+        min-height: 40px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.03);
+        color: #f3f4f6;
+        padding: 0 12px;
+        outline: none;
+        font-size: 13px;
+    }
+
+    .dashboard-filter-field select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.02)),
+            url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23c9ced6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+        background-repeat: no-repeat, no-repeat;
+        background-position: 0 0, right 12px center;
+        background-size: auto, 14px;
+        padding-right: 38px;
+    }
+
+    .dashboard-filter-field select option {
+        background: #12141b;
+        color: #f3f4f6;
+    }
+
+    .dashboard-filter-field select option:hover,
+    .dashboard-filter-field select option:checked,
+    .dashboard-filter-field select option:focus {
+        background: #f07030;
+        color: #ffffff;
+    }
+
+    .dashboard-filter-field select:focus,
+    .dashboard-filter-field input:focus {
+        border-color: rgba(240, 112, 48, 0.7);
+        box-shadow: 0 0 0 3px rgba(240, 112, 48, 0.12);
+        background-color: rgba(255, 255, 255, 0.04);
+    }
+
+    .dashboard-filter-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+    }
+
+    @media (max-width: 1100px) {
+        .dashboard-filter-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 760px) {
+        .dashboard-filter-top {
+            align-items: flex-start;
+        }
+
+        .dashboard-filter-left {
+            width: 100%;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .dashboard-filter-summary {
+            width: 100%;
+            gap: 6px 10px;
+        }
+
+        .dashboard-filter-toggle {
+            width: 100%;
+            text-align: center;
+        }
+
+        .dashboard-filter-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-filter-actions {
+            justify-content: stretch;
+        }
+
+        .dashboard-filter-actions .btn {
+            width: 100%;
+        }
+    }
+</style>
+
 <div class="hdr hdr-hero">
     <div>
         <div class="page-kicker">Central de Obras</div>
@@ -20,62 +223,101 @@
     </div>
 </div>
 
-<div class="card" style="margin-bottom:12px;">
-    <form method="GET" action="{{ url_for('dashboard_bp.dashboard') }}">
-        <div class="form-grid">
-            <div class="form-group">
-                <label>Filtrar por Obra</label>
-                <select name="obra">
-                    <option value="">Todas</option>
-                    {% for obra_item in todas_obras %}
-                    <option value="{{ obra_item.codigo }}" {% if filtro_obra==obra_item.codigo %}selected{% endif %}>
-                        {{ obra_item.codigo }} - {{ obra_item.nome }}
-                    </option>
-                    {% endfor %}
-                </select>
+<div class="dashboard-filter-shell">
+    <div class="dashboard-filter-card">
+        <div class="dashboard-filter-top">
+            <div class="dashboard-filter-left">
+                <div class="dashboard-filter-chip">
+                    <span>Filtros</span>
+                    <strong>{{ obras|length }} obra(s)</strong>
+                </div>
+
+                <div class="dashboard-filter-summary">
+                    <span>Obra: <strong>{{ filtro_obra if filtro_obra else "Todas" }}</strong></span>
+                    <span>Categoria: <strong>{{ filtro_categoria if filtro_categoria else "Todas" }}</strong></span>
+                    <span>Status: <strong>{{ filtro_status if filtro_status else "Todos" }}</strong></span>
+                    <span>Período:
+                        <strong>
+                            {% if data_inicio or data_fim %}
+                            {{ data_inicio if data_inicio else "início livre" }} até {{ data_fim if data_fim else "fim
+                            livre" }}
+                            {% else %}
+                            livre
+                            {% endif %}
+                        </strong>
+                    </span>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label>Filtrar por Categoria</label>
-                <select name="categoria">
-                    <option value="">Todas</option>
-                    {% for categoria_item in todas_categorias %}
-                    <option value="{{ categoria_item }}" {% if filtro_categoria==categoria_item %}selected{% endif %}>
-                        {{ categoria_item }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>Filtrar por Status</label>
-                <select name="status">
-                    <option value="">Todos</option>
-                    <option value="planejamento" {% if filtro_status=='planejamento' %}selected{% endif %}>planejamento
-                    </option>
-                    <option value="andamento" {% if filtro_status=='andamento' %}selected{% endif %}>andamento</option>
-                    <option value="atrasada" {% if filtro_status=='atrasada' %}selected{% endif %}>atrasada</option>
-                    <option value="concluida" {% if filtro_status=='concluida' %}selected{% endif %}>concluida</option>
-                    <option value="vendida" {% if filtro_status=='vendida' %}selected{% endif %}>vendida</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>Data Inicial</label>
-                <input type="date" name="data_inicio" value="{{ data_inicio }}">
-            </div>
-
-            <div class="form-group">
-                <label>Data Final</label>
-                <input type="date" name="data_fim" value="{{ data_fim }}">
-            </div>
+            <button type="button" class="dashboard-filter-toggle" id="toggleDashboardFilter">
+                Mostrar filtros
+            </button>
         </div>
 
-        <div class="modal-footer" style="border-top:none; padding-top:12px;">
-            <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
-            <a href="{{ url_for('dashboard_bp.dashboard') }}" class="btn">Limpar</a>
+        <div class="dashboard-filter-body" id="dashboardFilterBody">
+            <form method="GET" action="{{ url_for('dashboard_bp.dashboard') }}">
+                <div class="dashboard-filter-grid">
+                    <div class="dashboard-filter-field">
+                        <label>Obra</label>
+                        <select name="obra">
+                            <option value="">Todas</option>
+                            {% for obra_item in todas_obras %}
+                            <option value="{{ obra_item.codigo }}" {% if filtro_obra==obra_item.codigo %}selected{%
+                                endif %}>
+                                {{ obra_item.codigo }} - {{ obra_item.nome }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="dashboard-filter-field">
+                        <label>Categoria</label>
+                        <select name="categoria">
+                            <option value="">Todas</option>
+                            {% for categoria_item in todas_categorias %}
+                            <option value="{{ categoria_item }}" {% if filtro_categoria==categoria_item %}selected{%
+                                endif %}>
+                                {{ categoria_item }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="dashboard-filter-field">
+                        <label>Status</label>
+                        <select name="status">
+                            <option value="">Todos</option>
+                            <option value="planejamento" {% if filtro_status=='planejamento' %}selected{% endif %}>
+                                planejamento</option>
+                            <option value="andamento" {% if filtro_status=='andamento' %}selected{% endif %}>andamento
+                            </option>
+                            <option value="atrasada" {% if filtro_status=='atrasada' %}selected{% endif %}>atrasada
+                            </option>
+                            <option value="concluida" {% if filtro_status=='concluida' %}selected{% endif %}>concluida
+                            </option>
+                            <option value="vendida" {% if filtro_status=='vendida' %}selected{% endif %}>vendida
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="dashboard-filter-field">
+                        <label>Data inicial</label>
+                        <input type="date" name="data_inicio" value="{{ data_inicio }}">
+                    </div>
+
+                    <div class="dashboard-filter-field">
+                        <label>Data final</label>
+                        <input type="date" name="data_fim" value="{{ data_fim }}">
+                    </div>
+                </div>
+
+                <div class="dashboard-filter-actions">
+                    <a href="{{ url_for('dashboard_bp.dashboard') }}" class="btn">Limpar</a>
+                    <button type="submit" class="btn btn-primary">Aplicar filtros</button>
+                </div>
+            </form>
         </div>
-    </form>
+    </div>
 </div>
 
 <div class="quick-strip">
@@ -488,6 +730,18 @@
             const valor = barra.dataset.width || 0;
             barra.style.width = valor + "%";
         });
+
+        const filterToggle = document.getElementById("toggleDashboardFilter");
+        const filterBody = document.getElementById("dashboardFilterBody");
+
+        if (filterToggle && filterBody) {
+            filterToggle.addEventListener("click", function () {
+                const aberto = filterBody.classList.contains("open");
+                filterBody.classList.toggle("open");
+
+                filterToggle.textContent = aberto ? "Mostrar filtros" : "Ocultar filtros";
+            });
+        }
     });
 </script>
 {% endblock %}

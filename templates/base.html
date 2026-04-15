@@ -128,6 +128,21 @@
   {% endif %}
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    function toggleFiltro() {
+      const body = document.getElementById("filtro-body");
+      const icon = document.getElementById("filtro-icon");
+
+      if (body.style.display === "none" || body.style.display === "") {
+        body.style.display = "block";
+        icon.innerHTML = "▲";
+      } else {
+        body.style.display = "none";
+        icon.innerHTML = "▼";
+      }
+    }
+  </script>
 </body>
 
 </html>
