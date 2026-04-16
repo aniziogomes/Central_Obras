@@ -1,11 +1,22 @@
 import pandas as pd
 from io import BytesIO
-from flask import Blueprint, render_template, request, redirect, url_for, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, send_file, jsonify
 from database import query_all
-from services.dashboard_service import calcular_kpis_dashboard, calcular_alertas
+from services.dashboard_service import calcular_kpis_dashboard, calcular_alertas, serializar_dashboard_json
 from auth import usuario_logado, eh_leitura
 
 dashboard_bp = Blueprint("dashboard_bp", __name__)
+
+
+def obter_filtros_dashboard():
+    return {
+        "filtro_obra": request.args.get("obra", "").strip(),
+        "filtro_categoria": request.args.get("categoria", "").strip(),
+        "filtro_status": request.args.get("status", "").strip(),
+        "filtro_tipo_obra": request.args.get("tipo_obra", "").strip(),
+        "data_inicio": request.args.get("data_inicio", "").strip(),
+        "data_fim": request.args.get("data_fim", "").strip(),
+    }
 
 
 @dashboard_bp.route("/dashboard")
@@ -13,20 +24,15 @@ def dashboard():
     if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
-    filtro_obra = request.args.get("obra", "").strip()
-    filtro_categoria = request.args.get("categoria", "").strip()
-    filtro_status = request.args.get("status", "").strip()
-    filtro_tipo_obra = request.args.get("tipo_obra", "").strip()
-    data_inicio = request.args.get("data_inicio", "").strip()
-    data_fim = request.args.get("data_fim", "").strip()
+    filtros = obter_filtros_dashboard()
 
     dados = calcular_kpis_dashboard(
-        filtro_obra=filtro_obra,
-        filtro_categoria=filtro_categoria,
-        filtro_status=filtro_status,
-        filtro_tipo_obra=filtro_tipo_obra,
-        data_inicio=data_inicio,
-        data_fim=data_fim
+        filtro_obra=filtros["filtro_obra"],
+        filtro_categoria=filtros["filtro_categoria"],
+        filtro_status=filtros["filtro_status"],
+        filtro_tipo_obra=filtros["filtro_tipo_obra"],
+        data_inicio=filtros["data_inicio"],
+        data_fim=filtros["data_fim"]
     )
 
     todas_obras = query_all("SELECT * FROM obras ORDER BY codigo ASC")
@@ -38,15 +44,35 @@ def dashboard():
     return render_template(
         "dashboard.html",
         **dados,
-        filtro_obra=filtro_obra,
-        filtro_categoria=filtro_categoria,
-        filtro_status=filtro_status,
-        filtro_tipo_obra=filtro_tipo_obra,
-        data_inicio=data_inicio,
-        data_fim=data_fim,
+        filtro_obra=filtros["filtro_obra"],
+        filtro_categoria=filtros["filtro_categoria"],
+        filtro_status=filtros["filtro_status"],
+        filtro_tipo_obra=filtros["filtro_tipo_obra"],
+        data_inicio=filtros["data_inicio"],
+        data_fim=filtros["data_fim"],
         todas_obras=todas_obras,
         todas_categorias=todas_categorias
     )
+
+
+@dashboard_bp.route("/dashboard/dados")
+def dashboard_dados():
+    if not usuario_logado() or not eh_leitura():
+        return jsonify({"erro": "não autorizado"}), 401
+
+    filtros = obter_filtros_dashboard()
+
+    dados = calcular_kpis_dashboard(
+        filtro_obra=filtros["filtro_obra"],
+        filtro_categoria=filtros["filtro_categoria"],
+        filtro_status=filtros["filtro_status"],
+        filtro_tipo_obra=filtros["filtro_tipo_obra"],
+        data_inicio=filtros["data_inicio"],
+        data_fim=filtros["data_fim"]
+    )
+
+    payload = serializar_dashboard_json(dados, filtros)
+    return jsonify(payload)
 
 
 @dashboard_bp.route("/dashboard/exportar")
@@ -54,20 +80,15 @@ def dashboard_exportar():
     if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
-    filtro_obra = request.args.get("obra", "").strip()
-    filtro_categoria = request.args.get("categoria", "").strip()
-    filtro_status = request.args.get("status", "").strip()
-    filtro_tipo_obra = request.args.get("tipo_obra", "").strip()
-    data_inicio = request.args.get("data_inicio", "").strip()
-    data_fim = request.args.get("data_fim", "").strip()
+    filtros = obter_filtros_dashboard()
 
     dados = calcular_kpis_dashboard(
-        filtro_obra=filtro_obra,
-        filtro_categoria=filtro_categoria,
-        filtro_status=filtro_status,
-        filtro_tipo_obra=filtro_tipo_obra,
-        data_inicio=data_inicio,
-        data_fim=data_fim
+        filtro_obra=filtros["filtro_obra"],
+        filtro_categoria=filtros["filtro_categoria"],
+        filtro_status=filtros["filtro_status"],
+        filtro_tipo_obra=filtros["filtro_tipo_obra"],
+        data_inicio=filtros["data_inicio"],
+        data_fim=filtros["data_fim"]
     )
 
     output = BytesIO()

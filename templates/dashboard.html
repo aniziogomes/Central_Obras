@@ -7,12 +7,10 @@
     <div>
         <div class="page-kicker">Central de Obras</div>
         <h1>Dashboard Executivo</h1>
-        <p>
-            Acompanhe o desempenho das obras, custos e alertas em um só lugar
-        </p>
+        <p>Visão Geral</p>
     </div>
     <div class="hdr-right">
-        <a class="btn btn-success"
+        <a class="btn btn-success" id="btnExportarExcel"
             href="{{ url_for('dashboard_bp.dashboard_exportar', obra=filtro_obra, categoria=filtro_categoria, status=filtro_status, tipo_obra=filtro_tipo_obra, data_inicio=data_inicio, data_fim=data_fim) }}">
             Exportar Excel
         </a>
@@ -20,43 +18,45 @@
 </div>
 
 <div class="dashboard-filter-shell">
-    <div class="dashboard-filter-card">
+    <div class="dashboard-filter-card dashboard-filter-card--clean">
         <div class="dashboard-filter-top">
             <div class="dashboard-filter-left">
-                <div class="dashboard-filter-chip">
+                <div class="dashboard-filter-chip dashboard-filter-chip--soft">
                     <span>Filtros</span>
-                    <strong>{{ obras|length }} obra(s)</strong>
+                    <strong id="filtroResumoQuantidade">{{ obras|length }} obra(s)</strong>
                 </div>
 
-                <div class="dashboard-filter-summary">
-                    <span>Obra: <strong>{{ filtro_obra if filtro_obra else "Todas" }}</strong></span>
-                    <span>Tipo: <strong>{{ filtro_tipo_obra if filtro_tipo_obra else "Todos" }}</strong></span>
-                    <span>Categoria: <strong>{{ filtro_categoria if filtro_categoria else "Todas" }}</strong></span>
-                    <span>Status: <strong>{{ filtro_status if filtro_status else "Todos" }}</strong></span>
-                    <span>Período:
-                        <strong>
+                <div class="dashboard-filter-summary dashboard-filter-summary--soft">
+                    <span>Obra: <strong id="resumoObra">{{ filtro_obra if filtro_obra else "Todas" }}</strong></span>
+                    <span>Tipo: <strong id="resumoTipo">{{ filtro_tipo_obra if filtro_tipo_obra else "Todos"
+                            }}</strong></span>
+                    <span>Categoria: <strong id="resumoCategoria">{{ filtro_categoria if filtro_categoria else "Todas"
+                            }}</strong></span>
+                    <span>Status: <strong id="resumoStatus">{{ filtro_status if filtro_status else "Todos"
+                            }}</strong></span>
+                    <span>Período: <strong id="resumoPeriodo">
                             {% if data_inicio or data_fim %}
                             {{ data_inicio if data_inicio else "início livre" }} até {{ data_fim if data_fim else "fim
                             livre" }}
                             {% else %}
                             livre
                             {% endif %}
-                        </strong>
-                    </span>
+                        </strong></span>
                 </div>
             </div>
 
-            <button type="button" class="dashboard-filter-toggle" id="toggleDashboardFilter">
+            <button type="button" class="dashboard-filter-toggle dashboard-filter-toggle--sm"
+                id="toggleDashboardFilter">
                 Mostrar filtros
             </button>
         </div>
 
         <div class="dashboard-filter-body" id="dashboardFilterBody">
-            <form method="GET" action="{{ url_for('dashboard_bp.dashboard') }}">
-                <div class="dashboard-filter-grid">
+            <form method="GET" action="{{ url_for('dashboard_bp.dashboard') }}" id="formFiltrosDashboard">
+                <div class="dashboard-filter-grid dashboard-filter-grid--clean">
                     <div class="dashboard-filter-field">
                         <label>Obra</label>
-                        <select name="obra">
+                        <select name="obra" id="filtroObra">
                             <option value="">Todas</option>
                             {% for obra_item in todas_obras %}
                             <option value="{{ obra_item.codigo }}" {% if filtro_obra==obra_item.codigo %}selected{%
@@ -69,7 +69,7 @@
 
                     <div class="dashboard-filter-field">
                         <label>Tipo da obra</label>
-                        <select name="tipo_obra">
+                        <select name="tipo_obra" id="filtroTipoObra">
                             <option value="">Todos</option>
                             <option value="contrato" {% if filtro_tipo_obra=='contrato' %}selected{% endif %}>Por
                                 contrato / reforma</option>
@@ -80,7 +80,7 @@
 
                     <div class="dashboard-filter-field">
                         <label>Categoria</label>
-                        <select name="categoria">
+                        <select name="categoria" id="filtroCategoria">
                             <option value="">Todas</option>
                             {% for categoria_item in todas_categorias %}
                             <option value="{{ categoria_item }}" {% if filtro_categoria==categoria_item %}selected{%
@@ -93,7 +93,7 @@
 
                     <div class="dashboard-filter-field">
                         <label>Status</label>
-                        <select name="status">
+                        <select name="status" id="filtroStatus">
                             <option value="">Todos</option>
                             <option value="planejamento" {% if filtro_status=='planejamento' %}selected{% endif %}>
                                 planejamento</option>
@@ -110,23 +110,18 @@
 
                     <div class="dashboard-filter-field">
                         <label>Data inicial</label>
-                        <input type="date" name="data_inicio" value="{{ data_inicio }}">
+                        <input type="date" name="data_inicio" id="filtroDataInicio" value="{{ data_inicio }}">
                     </div>
 
                     <div class="dashboard-filter-field">
                         <label>Data final</label>
-                        <input type="date" name="data_fim" value="{{ data_fim }}">
+                        <input type="date" name="data_fim" id="filtroDataFim" value="{{ data_fim }}">
                     </div>
                 </div>
 
-                <div class="context-note">
-                    Em obras <strong>para venda</strong>, a receita prevista representa o valor esperado de venda. Em
-                    obras <strong>por contrato</strong>, representa o valor do contrato/serviço.
-                </div>
-
-                <div class="dashboard-filter-actions">
-                    <a href="{{ url_for('dashboard_bp.dashboard') }}" class="btn">Limpar</a>
-                    <button type="submit" class="btn btn-primary">Aplicar filtros</button>
+                <div class="dashboard-filter-actions dashboard-filter-actions--compact">
+                    <button type="button" id="btnLimparFiltros" class="btn btn-ghost btn-xs">Limpar</button>
+                    <button type="submit" class="btn btn-primary btn-xs">Aplicar filtros</button>
                 </div>
             </form>
         </div>
@@ -136,82 +131,85 @@
 <div class="quick-strip">
     <div class="quick-item">
         <div class="quick-label">Obras filtradas</div>
-        <div class="quick-value">{{ obras|length }}</div>
+        <div class="quick-value" id="quickObrasFiltradas">{{ obras|length }}</div>
     </div>
 
     <div class="quick-item">
         <div class="quick-label">Execução média</div>
-        <div class="quick-value">{{ '%.1f'|format(execucao_media) }}%</div>
+        <div class="quick-value" id="quickExecucaoMedia">{{ '%.1f'|format(execucao_media) }}%</div>
     </div>
 
     <div class="quick-item">
         <div class="quick-label">Custo / Receita</div>
-        <div class="quick-value">{{ '%.1f'|format(custo_percentual_receita) }}%</div>
+        <div class="quick-value" id="quickCustoReceita">{{ '%.1f'|format(custo_percentual_receita) }}%</div>
     </div>
 
     <div class="quick-item">
         <div class="quick-label">Alertas ativos</div>
-        <div class="quick-value">{{ alertas|length }}</div>
+        <div class="quick-value" id="quickAlertasAtivos">{{ alertas|length }}</div>
     </div>
 </div>
 
 <div class="kpi-grid">
     <div class="kpi or">
         <div class="kpi-lbl">Receita Prevista</div>
-        <div class="kpi-val">{{ formatar_moeda(total_receita) }}</div>
+        <div class="kpi-val" id="kpiReceita">{{ formatar_moeda(total_receita) }}</div>
         <div class="kpi-sub">
-            <span class="tag up">{{ obras|length }} obras</span>
-            <span class="tag wn">{{ total_medicoes }} medições</span>
+            <span class="tag up" id="kpiReceitaObras">{{ obras|length }} obras</span>
+            <span class="tag wn" id="kpiReceitaMedicoes">{{ total_medicoes }} medições</span>
         </div>
     </div>
 
     <div class="kpi gr">
         <div class="kpi-lbl">Resultado Atual</div>
-        <div class="kpi-val">{{ formatar_moeda(margem) }}</div>
+        <div class="kpi-val" id="kpiMargem">{{ formatar_moeda(margem) }}</div>
         <div class="kpi-sub">
-            <span class="tag up">{{ '%.1f'|format(margem_percentual) }}% da receita</span>
+            <span class="tag up" id="kpiMargemPercentual">{{ '%.1f'|format(margem_percentual) }}% da receita</span>
         </div>
     </div>
 
     <div class="kpi bl">
         <div class="kpi-lbl">Custo Total Realizado</div>
-        <div class="kpi-val">{{ formatar_moeda(total_custo) }}</div>
+        <div class="kpi-val" id="kpiCusto">{{ formatar_moeda(total_custo) }}</div>
         <div class="kpi-sub">
-            <span class="tag wn">{{ custos|length }} lançamentos</span>
-            <span class="tag dn">{{ '%.1f'|format(custo_percentual_receita) }}% da receita</span>
+            <span class="tag wn" id="kpiCustosLancados">{{ custos|length }} lançamentos</span>
+            <span class="tag dn" id="kpiCustoPercentual">{{ '%.1f'|format(custo_percentual_receita) }}% da
+                receita</span>
         </div>
     </div>
 
     <div class="kpi rd">
         <div class="kpi-lbl">Obras em Atenção</div>
-        <div class="kpi-val">{{ alertas|length }}</div>
+        <div class="kpi-val" id="kpiAlertas">{{ alertas|length }}</div>
         <div class="kpi-sub">
-            <span class="tag dn">{{ obras_atrasadas }} atrasadas</span>
-            <span class="tag up">{{ obras_ativas }} ativas</span>
+            <span class="tag dn" id="kpiObrasAtrasadas">{{ obras_atrasadas }} atrasadas</span>
+            <span class="tag up" id="kpiObrasAtivas">{{ obras_ativas }} ativas</span>
         </div>
     </div>
 </div>
 
-{% if alertas and alertas|length > 0 %}
-<div class="card" style="margin-bottom:12px;">
-    <div class="card-hdr">
-        <div class="card-title">Alertas Prioritários</div>
-    </div>
+<div id="alertasContainer">
+    {% if alertas and alertas|length > 0 %}
+    <div class="card" style="margin-bottom:12px;">
+        <div class="card-hdr">
+            <div class="card-title">Alertas Prioritários</div>
+        </div>
 
-    {% for alerta in alertas[:3] %}
-    <div class="alert-inline {{ alerta.tipo }}">
-        <strong>{{ alerta.codigo }}</strong> — {{ alerta.mensagem }}
+        {% for alerta in alertas[:3] %}
+        <div class="alert-inline {{ alerta.tipo }}">
+            <strong>{{ alerta.codigo }}</strong> — {{ alerta.mensagem }}
+        </div>
+        {% endfor %}
     </div>
-    {% endfor %}
+    {% endif %}
 </div>
-{% endif %}
 
 <div class="g2" style="margin-bottom:12px;">
     <div class="card">
         <div class="card-hdr">
             <div class="card-title">Total importado da planilha</div>
         </div>
-        <div class="kpi-val">{{ formatar_moeda(total_importado) }}</div>
+        <div class="kpi-val" id="kpiImportado">{{ formatar_moeda(total_importado) }}</div>
         <div class="kpi-sub">Soma das categorias importadas</div>
     </div>
 
@@ -219,7 +217,7 @@
         <div class="card-hdr">
             <div class="card-title">Medições registradas</div>
         </div>
-        <div class="kpi-val">{{ total_medicoes }}</div>
+        <div class="kpi-val" id="kpiMedicoes">{{ total_medicoes }}</div>
         <div class="kpi-sub">Medições cadastradas/importadas</div>
     </div>
 </div>
@@ -258,43 +256,45 @@
         <div class="card-hdr">
             <div class="card-title">Custo por categoria (lançamentos)</div>
         </div>
-
-        {% if custos_por_categoria %}
-        {% for categoria, valor in custos_por_categoria.items() %}
-        <div class="rank-item">
-            <div class="rank-info">
-                <div class="rank-name">{{ categoria }}</div>
-                <div class="rank-cat">Lançado manualmente no sistema</div>
+        <div id="custosPorCategoriaContainer">
+            {% if custos_por_categoria %}
+            {% for categoria, valor in custos_por_categoria.items() %}
+            <div class="rank-item">
+                <div class="rank-info">
+                    <div class="rank-name">{{ categoria }}</div>
+                    <div class="rank-cat">Lançado manualmente no sistema</div>
+                </div>
+                <div class="rank-score">{{ formatar_moeda(valor) }}</div>
             </div>
-            <div class="rank-score">{{ formatar_moeda(valor) }}</div>
+            {% endfor %}
+            {% else %}
+            <p class="muted">Sem custos lançados ainda.</p>
+            {% endif %}
         </div>
-        {% endfor %}
-        {% else %}
-        <p class="muted">Sem custos lançados ainda.</p>
-        {% endif %}
     </div>
 
     <div class="card">
         <div class="card-hdr">
             <div class="card-title">Ranking fornecedores</div>
         </div>
-
-        {% if ranking_fornecedores %}
-        {% for f in ranking_fornecedores %}
-        <div class="rank-item">
-            <div class="rank-n {% if loop.index <= 2 %}top{% endif %}">
-                {{ loop.index }}
+        <div id="rankingFornecedoresContainer">
+            {% if ranking_fornecedores %}
+            {% for f in ranking_fornecedores %}
+            <div class="rank-item">
+                <div class="rank-n {% if loop.index <= 2 %}top{% endif %}">
+                    {{ loop.index }}
+                </div>
+                <div class="rank-info">
+                    <div class="rank-name">{{ f.nome }}</div>
+                    <div class="rank-cat">{{ f.categoria }}</div>
+                </div>
+                <div class="rank-score">{{ f.media }}</div>
             </div>
-            <div class="rank-info">
-                <div class="rank-name">{{ f.nome }}</div>
-                <div class="rank-cat">{{ f.categoria }}</div>
-            </div>
-            <div class="rank-score">{{ f.media }}</div>
+            {% endfor %}
+            {% else %}
+            <p class="muted">Sem fornecedores cadastrados.</p>
+            {% endif %}
         </div>
-        {% endfor %}
-        {% else %}
-        <p class="muted">Sem fornecedores cadastrados.</p>
-        {% endif %}
     </div>
 </div>
 
@@ -314,7 +314,7 @@
                     <th>Desvio %</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="comparativoCategoriasBody">
                 {% for item in comparativo_categorias %}
                 <tr>
                     <td class="td-name">{{ item.categoria }}</td>
@@ -358,7 +358,7 @@
                     <th>Resultado Atual</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="resumoObrasBody">
                 {% for obra in margem_por_obra %}
                 <tr>
                     <td class="td-mono">{{ obra.codigo }}</td>
@@ -396,37 +396,216 @@
     data-progresso-labels='{{ chart_progresso_labels | default([], true) | tojson | safe }}'
     data-progresso-valores='{{ chart_progresso_valores | default([], true) | tojson | safe }}'
     data-pizza-labels='{{ chart_pizza_labels | default([], true) | tojson | safe }}'
-    data-pizza-valores='{{ chart_pizza_valores | default([], true) | tojson | safe }}' style="display:none;">
+    data-pizza-valores='{{ chart_pizza_valores | default([], true) | tojson | safe }}'
+    data-has-active-filters='{{ "true" if filtro_obra or filtro_tipo_obra or filtro_categoria or filtro_status or data_inicio or data_fim else "false" }}'
+    style="display:none;">
 </div>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const dashboardData = document.getElementById("dashboard-data");
-        if (!dashboardData) return;
+    let graficoComparativoInstance = null;
+    let graficoProgressoInstance = null;
+    let graficoPizzaInstance = null;
 
-        const labelsComparativo = JSON.parse(dashboardData.dataset.comparativoLabels || "[]");
-        const valoresImportado = JSON.parse(dashboardData.dataset.comparativoImportado || "[]");
-        const valoresLancado = JSON.parse(dashboardData.dataset.comparativoLancado || "[]");
+    function formatarMoedaBR(valor) {
+        const numero = Number(valor || 0);
+        return numero.toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL"
+        });
+    }
 
-        const labelsProgresso = JSON.parse(dashboardData.dataset.progressoLabels || "[]");
-        const valoresProgresso = JSON.parse(dashboardData.dataset.progressoValores || "[]");
+    function escaparHtml(texto) {
+        return String(texto ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
 
-        const labelsPizza = JSON.parse(dashboardData.dataset.pizzaLabels || "[]");
-        const valoresPizza = JSON.parse(dashboardData.dataset.pizzaValores || "[]");
+    function classeDiferenca(valor) {
+        if (valor > 0) return "valor-negativo";
+        if (valor < 0) return "valor-positivo";
+        return "";
+    }
 
+    function atualizarResumoFiltros(payload) {
+        document.getElementById("filtroResumoQuantidade").textContent = `${payload.quick_strip.obras_filtradas} obra(s)`;
+        document.getElementById("resumoObra").textContent = payload.filtros.obra || "Todas";
+        document.getElementById("resumoTipo").textContent = payload.filtros.tipo_obra || "Todos";
+        document.getElementById("resumoCategoria").textContent = payload.filtros.categoria || "Todas";
+        document.getElementById("resumoStatus").textContent = payload.filtros.status || "Todos";
+
+        let periodo = "livre";
+        if (payload.filtros.data_inicio || payload.filtros.data_fim) {
+            const inicio = payload.filtros.data_inicio || "início livre";
+            const fim = payload.filtros.data_fim || "fim livre";
+            periodo = `${inicio} até ${fim}`;
+        }
+        document.getElementById("resumoPeriodo").textContent = periodo;
+    }
+
+    function atualizarQuickStrip(payload) {
+        document.getElementById("quickObrasFiltradas").textContent = payload.quick_strip.obras_filtradas;
+        document.getElementById("quickExecucaoMedia").textContent = `${payload.quick_strip.execucao_media.toFixed(1)}%`;
+        document.getElementById("quickCustoReceita").textContent = `${payload.quick_strip.custo_percentual_receita.toFixed(1)}%`;
+        document.getElementById("quickAlertasAtivos").textContent = payload.quick_strip.alertas_ativos;
+    }
+
+    function atualizarKpis(payload) {
+        document.getElementById("kpiReceita").textContent = payload.kpis.total_receita_formatado;
+        document.getElementById("kpiReceitaObras").textContent = `${payload.kpis.total_obras} obras`;
+        document.getElementById("kpiReceitaMedicoes").textContent = `${payload.kpis.total_medicoes} medições`;
+
+        document.getElementById("kpiMargem").textContent = payload.kpis.margem_formatada;
+        document.getElementById("kpiMargemPercentual").textContent = `${payload.kpis.margem_percentual.toFixed(1)}% da receita`;
+
+        document.getElementById("kpiCusto").textContent = payload.kpis.total_custo_formatado;
+        document.getElementById("kpiCustosLancados").textContent = `${payload.kpis.total_custos_lancados} lançamentos`;
+        document.getElementById("kpiCustoPercentual").textContent = `${payload.quick_strip.custo_percentual_receita.toFixed(1)}% da receita`;
+
+        document.getElementById("kpiAlertas").textContent = payload.kpis.total_alertas;
+        document.getElementById("kpiObrasAtrasadas").textContent = `${payload.kpis.obras_atrasadas} atrasadas`;
+        document.getElementById("kpiObrasAtivas").textContent = `${payload.kpis.obras_ativas} ativas`;
+
+        document.getElementById("kpiImportado").textContent = payload.kpis.total_importado_formatado;
+        document.getElementById("kpiMedicoes").textContent = payload.kpis.total_medicoes;
+    }
+
+    function atualizarAlertas(payload) {
+        const container = document.getElementById("alertasContainer");
+
+        if (!payload.alertas || payload.alertas.length === 0) {
+            container.innerHTML = "";
+            return;
+        }
+
+        const alertasHtml = payload.alertas.slice(0, 3).map(alerta => `
+            <div class="alert-inline ${escaparHtml(alerta.tipo)}">
+                <strong>${escaparHtml(alerta.codigo)}</strong> — ${escaparHtml(alerta.mensagem)}
+            </div>
+        `).join("");
+
+        container.innerHTML = `
+            <div class="card" style="margin-bottom:12px;">
+                <div class="card-hdr">
+                    <div class="card-title">Alertas Prioritários</div>
+                </div>
+                ${alertasHtml}
+            </div>
+        `;
+    }
+
+    function atualizarCustosPorCategoria(payload) {
+        const container = document.getElementById("custosPorCategoriaContainer");
+
+        if (!payload.custos_por_categoria_lista || payload.custos_por_categoria_lista.length === 0) {
+            container.innerHTML = `<p class="muted">Sem custos lançados ainda.</p>`;
+            return;
+        }
+
+        container.innerHTML = payload.custos_por_categoria_lista.map(item => `
+            <div class="rank-item">
+                <div class="rank-info">
+                    <div class="rank-name">${escaparHtml(item.categoria)}</div>
+                    <div class="rank-cat">Lançado manualmente no sistema</div>
+                </div>
+                <div class="rank-score">${escaparHtml(item.valor_formatado)}</div>
+            </div>
+        `).join("");
+    }
+
+    function atualizarRankingFornecedores(payload) {
+        const container = document.getElementById("rankingFornecedoresContainer");
+
+        if (!payload.ranking_fornecedores || payload.ranking_fornecedores.length === 0) {
+            container.innerHTML = `<p class="muted">Sem fornecedores cadastrados.</p>`;
+            return;
+        }
+
+        container.innerHTML = payload.ranking_fornecedores.map((item, index) => `
+            <div class="rank-item">
+                <div class="rank-n ${index <= 1 ? "top" : ""}">
+                    ${index + 1}
+                </div>
+                <div class="rank-info">
+                    <div class="rank-name">${escaparHtml(item.nome)}</div>
+                    <div class="rank-cat">${escaparHtml(item.categoria || "")}</div>
+                </div>
+                <div class="rank-score">${escaparHtml(item.media)}</div>
+            </div>
+        `).join("");
+    }
+
+    function atualizarComparativoTabela(payload) {
+        const body = document.getElementById("comparativoCategoriasBody");
+
+        if (!payload.comparativo_categorias || payload.comparativo_categorias.length === 0) {
+            body.innerHTML = `<tr><td colspan="5" class="muted">Sem comparativos disponíveis ainda.</td></tr>`;
+            return;
+        }
+
+        body.innerHTML = payload.comparativo_categorias.map(item => `
+            <tr>
+                <td class="td-name">${escaparHtml(item.categoria)}</td>
+                <td>${escaparHtml(item.importado_formatado)}</td>
+                <td>${escaparHtml(item.lancado_formatado)}</td>
+                <td class="${classeDiferenca(item.diferenca)}">${escaparHtml(item.diferenca_formatada)}</td>
+                <td class="${classeDiferenca(item.desvio_percentual)}">${escaparHtml(item.desvio_percentual_formatado)}</td>
+            </tr>
+        `).join("");
+    }
+
+    function atualizarResumoObras(payload) {
+        const body = document.getElementById("resumoObrasBody");
+
+        if (!payload.margem_por_obra || payload.margem_por_obra.length === 0) {
+            body.innerHTML = `<tr><td colspan="8" class="muted">Nenhuma obra cadastrada.</td></tr>`;
+            return;
+        }
+
+        body.innerHTML = payload.margem_por_obra.map(item => `
+            <tr>
+                <td class="td-mono">${escaparHtml(item.codigo)}</td>
+                <td class="td-name">${escaparHtml(item.nome)}</td>
+                <td>${item.tipo_obra === "venda" ? "Para venda" : "Por contrato"}</td>
+                <td>${escaparHtml(item.tipologia || "-")}</td>
+                <td><span class="badge ${escaparHtml(item.status)}">${escaparHtml(item.status)}</span></td>
+                <td>
+                    <div class="progress-wrap">
+                        <div class="progress-text">${Number(item.execucao || 0).toFixed(1)}%</div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill progress-dinamica-inline" style="width:${Number(item.execucao || 0)}%"></div>
+                        </div>
+                    </div>
+                </td>
+                <td>${escaparHtml(item.lucro_previsto_formatado)}</td>
+                <td>${escaparHtml(item.margem_valor_formatado)}</td>
+            </tr>
+        `).join("");
+    }
+
+    function construirGraficos(payload) {
         const textoClaro = "#f0f0f0";
         const textoCinza = "#8a8a95";
 
         const canvasComparativo = document.getElementById("graficoComparativo");
-        if (canvasComparativo && labelsComparativo.length > 0) {
-            new Chart(canvasComparativo, {
+        const canvasProgresso = document.getElementById("graficoProgresso");
+        const canvasPizza = document.getElementById("graficoPizza");
+
+        if (graficoComparativoInstance) graficoComparativoInstance.destroy();
+        if (graficoProgressoInstance) graficoProgressoInstance.destroy();
+        if (graficoPizzaInstance) graficoPizzaInstance.destroy();
+
+        if (canvasComparativo && payload.charts.comparativo_labels.length > 0) {
+            graficoComparativoInstance = new Chart(canvasComparativo, {
                 type: "bar",
                 data: {
-                    labels: labelsComparativo,
+                    labels: payload.charts.comparativo_labels,
                     datasets: [
                         {
                             label: "Importado",
-                            data: valoresImportado,
+                            data: payload.charts.comparativo_importado,
                             backgroundColor: "rgba(64,128,240,0.75)",
                             borderColor: "rgba(64,128,240,1)",
                             borderWidth: 1,
@@ -434,7 +613,7 @@
                         },
                         {
                             label: "Lançado",
-                            data: valoresLancado,
+                            data: payload.charts.comparativo_lancado,
                             backgroundColor: "rgba(240,112,48,0.75)",
                             borderColor: "rgba(240,112,48,1)",
                             borderWidth: 1,
@@ -446,9 +625,7 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            labels: { color: textoClaro }
-                        }
+                        legend: { labels: { color: textoClaro } }
                     },
                     scales: {
                         x: {
@@ -464,16 +641,15 @@
             });
         }
 
-        const canvasProgresso = document.getElementById("graficoProgresso");
-        if (canvasProgresso && labelsProgresso.length > 0) {
-            new Chart(canvasProgresso, {
+        if (canvasProgresso && payload.charts.progresso_labels.length > 0) {
+            graficoProgressoInstance = new Chart(canvasProgresso, {
                 type: "bar",
                 data: {
-                    labels: labelsProgresso,
+                    labels: payload.charts.progresso_labels,
                     datasets: [
                         {
                             label: "% Execução",
-                            data: valoresProgresso,
+                            data: payload.charts.progresso_valores,
                             backgroundColor: "rgba(52,199,123,0.75)",
                             borderColor: "rgba(52,199,123,1)",
                             borderWidth: 1,
@@ -485,9 +661,7 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            labels: { color: textoClaro }
-                        }
+                        legend: { labels: { color: textoClaro } }
                     },
                     scales: {
                         x: {
@@ -505,15 +679,14 @@
             });
         }
 
-        const canvasPizza = document.getElementById("graficoPizza");
-        if (canvasPizza && labelsPizza.length > 0) {
-            new Chart(canvasPizza, {
+        if (canvasPizza && payload.charts.pizza_labels.length > 0) {
+            graficoPizzaInstance = new Chart(canvasPizza, {
                 type: "doughnut",
                 data: {
-                    labels: labelsPizza,
+                    labels: payload.charts.pizza_labels,
                     datasets: [
                         {
-                            data: valoresPizza,
+                            data: payload.charts.pizza_valores,
                             backgroundColor: [
                                 "#f07030",
                                 "#4080f0",
@@ -534,30 +707,157 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            labels: { color: textoClaro }
-                        }
+                        legend: { labels: { color: textoClaro } }
                     }
                 }
             });
         }
+    }
 
-        const barras = document.querySelectorAll(".progress-dinamica");
-        barras.forEach(function (barra) {
-            const valor = barra.dataset.width || 0;
-            barra.style.width = valor + "%";
+    function atualizarLinkExportacao(payload) {
+        const params = new URLSearchParams();
+        if (payload.filtros.obra) params.set("obra", payload.filtros.obra);
+        if (payload.filtros.categoria) params.set("categoria", payload.filtros.categoria);
+        if (payload.filtros.status) params.set("status", payload.filtros.status);
+        if (payload.filtros.tipo_obra) params.set("tipo_obra", payload.filtros.tipo_obra);
+        if (payload.filtros.data_inicio) params.set("data_inicio", payload.filtros.data_inicio);
+        if (payload.filtros.data_fim) params.set("data_fim", payload.filtros.data_fim);
+
+        const btn = document.getElementById("btnExportarExcel");
+        btn.href = `${window.location.origin}/dashboard/exportar?${params.toString()}`;
+    }
+
+    function atualizarUrlNavegador() {
+        const form = document.getElementById("formFiltrosDashboard");
+        const formData = new FormData(form);
+        const params = new URLSearchParams();
+
+        for (const [chave, valor] of formData.entries()) {
+            if (valor) params.set(chave, valor);
+        }
+
+        const novaUrl = `${window.location.pathname}${params.toString() ? "?" + params.toString() : ""}`;
+        window.history.replaceState({}, "", novaUrl);
+    }
+
+    async function atualizarDashboardParcial(manterFiltrosAbertos = true) {
+        const form = document.getElementById("formFiltrosDashboard");
+        const formData = new FormData(form);
+        const params = new URLSearchParams();
+
+        for (const [chave, valor] of formData.entries()) {
+            if (valor) params.set(chave, valor);
+        }
+
+        try {
+            const response = await fetch(`/dashboard/dados?${params.toString()}`, {
+                headers: {
+                    "X-Requested-With": "fetch"
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error("Erro ao atualizar dashboard");
+            }
+
+            const payload = await response.json();
+
+            atualizarResumoFiltros(payload);
+            atualizarQuickStrip(payload);
+            atualizarKpis(payload);
+            atualizarAlertas(payload);
+            atualizarCustosPorCategoria(payload);
+            atualizarRankingFornecedores(payload);
+            atualizarComparativoTabela(payload);
+            atualizarResumoObras(payload);
+            construirGraficos(payload);
+            atualizarLinkExportacao(payload);
+            atualizarUrlNavegador();
+
+            if (manterFiltrosAbertos) {
+                abrirFiltros();
+            }
+        } catch (erro) {
+            console.error("Erro ao atualizar dashboard:", erro);
+        }
+    }
+
+    const filterToggle = document.getElementById("toggleDashboardFilter");
+    const filterBody = document.getElementById("dashboardFilterBody");
+    const dashboardData = document.getElementById("dashboard-data");
+    const hasActiveFilters = dashboardData?.dataset.hasActiveFilters === "true";
+
+    function abrirFiltros() {
+        filterBody.classList.add("open");
+        filterToggle.textContent = "Ocultar filtros";
+    }
+
+    function fecharFiltros() {
+        filterBody.classList.remove("open");
+        filterToggle.textContent = "Mostrar filtros";
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        if (hasActiveFilters) {
+            abrirFiltros();
+        } else {
+            fecharFiltros();
+        }
+
+        const labelsComparativo = JSON.parse(dashboardData.dataset.comparativoLabels || "[]");
+        const valoresImportado = JSON.parse(dashboardData.dataset.comparativoImportado || "[]");
+        const valoresLancado = JSON.parse(dashboardData.dataset.comparativoLancado || "[]");
+        const labelsProgresso = JSON.parse(dashboardData.dataset.progressoLabels || "[]");
+        const valoresProgresso = JSON.parse(dashboardData.dataset.progressoValores || "[]");
+        const labelsPizza = JSON.parse(dashboardData.dataset.pizzaLabels || "[]");
+        const valoresPizza = JSON.parse(dashboardData.dataset.pizzaValores || "[]");
+
+        construirGraficos({
+            charts: {
+                comparativo_labels: labelsComparativo,
+                comparativo_importado: valoresImportado,
+                comparativo_lancado: valoresLancado,
+                progresso_labels: labelsProgresso,
+                progresso_valores: valoresProgresso,
+                pizza_labels: labelsPizza,
+                pizza_valores: valoresPizza
+            }
         });
 
-        const filterToggle = document.getElementById("toggleDashboardFilter");
-        const filterBody = document.getElementById("dashboardFilterBody");
+        const filterForm = document.getElementById("formFiltrosDashboard");
+        filterForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
+            await atualizarDashboardParcial(true);
+        });
 
-        if (filterToggle && filterBody) {
-            filterToggle.addEventListener("click", function () {
-                const aberto = filterBody.classList.contains("open");
-                filterBody.classList.toggle("open");
-                filterToggle.textContent = aberto ? "Mostrar filtros" : "Ocultar filtros";
-            });
-        }
+        document.getElementById("btnLimparFiltros").addEventListener("click", async function () {
+            document.getElementById("filtroObra").value = "";
+            document.getElementById("filtroTipoObra").value = "";
+            document.getElementById("filtroCategoria").value = "";
+            document.getElementById("filtroStatus").value = "";
+            document.getElementById("filtroDataInicio").value = "";
+            document.getElementById("filtroDataFim").value = "";
+
+            await atualizarDashboardParcial(false);
+            fecharFiltros();
+        });
+
+        filterToggle.addEventListener("click", function () {
+            const aberto = filterBody.classList.contains("open");
+            if (aberto) {
+                fecharFiltros();
+            } else {
+                abrirFiltros();
+            }
+        });
+
+        window.atualizarDashboardParcial = atualizarDashboardParcial;
+
+        document.addEventListener("visibilitychange", function () {
+            if (!document.hidden) {
+                atualizarDashboardParcial(filterBody.classList.contains("open"));
+            }
+        });
     });
 </script>
 {% endblock %}

@@ -1,6 +1,6 @@
 from datetime import datetime
 from database import query_all, query_one
-from utils import calcular_media_fornecedor
+from utils import calcular_media_fornecedor, formatar_moeda
 from services.validators import data_no_periodo
 
 
@@ -142,7 +142,6 @@ def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="
         valor_importado = custos_importados_por_categoria.get(categoria, 0)
         valor_lancado = custos_por_categoria.get(categoria, 0)
         diferenca = valor_lancado - valor_importado
-
         desvio_percentual = (diferenca / valor_importado * 100) if valor_importado > 0 else 0
 
         comparativo_categorias.append({
@@ -174,7 +173,6 @@ def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="
 
         tipo = obra["tipologia"] or "Não informado"
         tipologia_count[tipo] = tipologia_count.get(tipo, 0) + 1
-
         tipo_obra_count[tipo_obra] = tipo_obra_count.get(tipo_obra, 0) + 1
 
     margem = total_receita - total_custo
@@ -252,4 +250,77 @@ def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="
         "margem_percentual": margem_percentual,
         "custo_percentual_receita": custo_percentual_receita,
         "execucao_media": execucao_media,
+    }
+
+
+def serializar_dashboard_json(dados, filtros):
+    return {
+        "filtros": {
+            "obra": filtros.get("filtro_obra", ""),
+            "categoria": filtros.get("filtro_categoria", ""),
+            "status": filtros.get("filtro_status", ""),
+            "tipo_obra": filtros.get("filtro_tipo_obra", ""),
+            "data_inicio": filtros.get("data_inicio", ""),
+            "data_fim": filtros.get("data_fim", ""),
+        },
+        "quick_strip": {
+            "obras_filtradas": len(dados["obras"]),
+            "execucao_media": round(dados["execucao_media"], 1),
+            "custo_percentual_receita": round(dados["custo_percentual_receita"], 1),
+            "alertas_ativos": len(dados["alertas"]),
+        },
+        "kpis": {
+            "total_receita": dados["total_receita"],
+            "total_receita_formatado": formatar_moeda(dados["total_receita"]),
+            "total_custo": dados["total_custo"],
+            "total_custo_formatado": formatar_moeda(dados["total_custo"]),
+            "margem": dados["margem"],
+            "margem_formatada": formatar_moeda(dados["margem"]),
+            "margem_percentual": round(dados["margem_percentual"], 1),
+            "obras_atrasadas": dados["obras_atrasadas"],
+            "obras_ativas": dados["obras_ativas"],
+            "total_medicoes": dados["total_medicoes"],
+            "total_importado": dados["total_importado"],
+            "total_importado_formatado": formatar_moeda(dados["total_importado"]),
+            "total_alertas": len(dados["alertas"]),
+            "total_custos_lancados": len(dados["custos"]),
+            "total_obras": len(dados["obras"]),
+        },
+        "alertas": dados["alertas"],
+        "ranking_fornecedores": dados["ranking_fornecedores"],
+        "comparativo_categorias": [
+            {
+                **item,
+                "importado_formatado": formatar_moeda(item["importado"]),
+                "lancado_formatado": formatar_moeda(item["lancado"]),
+                "diferenca_formatada": formatar_moeda(item["diferenca"]),
+                "desvio_percentual_formatado": f'{item["desvio_percentual"]:.1f}%'
+            }
+            for item in dados["comparativo_categorias"]
+        ],
+        "margem_por_obra": [
+            {
+                **item,
+                "lucro_previsto_formatado": formatar_moeda(item["lucro_previsto"]),
+                "margem_valor_formatado": formatar_moeda(item["margem_valor"]),
+            }
+            for item in dados["margem_por_obra"]
+        ],
+        "custos_por_categoria_lista": [
+            {
+                "categoria": categoria,
+                "valor": valor,
+                "valor_formatado": formatar_moeda(valor),
+            }
+            for categoria, valor in dados["custos_por_categoria"].items()
+        ],
+        "charts": {
+            "comparativo_labels": dados["chart_comparativo_labels"],
+            "comparativo_importado": dados["chart_comparativo_importado"],
+            "comparativo_lancado": dados["chart_comparativo_lancado"],
+            "progresso_labels": dados["chart_progresso_labels"],
+            "progresso_valores": dados["chart_progresso_valores"],
+            "pizza_labels": dados["chart_pizza_labels"],
+            "pizza_valores": dados["chart_pizza_valores"],
+        }
     }
