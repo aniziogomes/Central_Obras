@@ -1600,7 +1600,7 @@ canvas {
 }
 
 .tipo-obra-option input[type="radio"]:checked+.tipo-obra-card {
-  border-color: rgba(240, 112, 48, 0.72);
+  border-color: rgba(240, 112, 48, 0.56);
   background:
     linear-gradient(180deg, rgba(240, 112, 48, 0.13), rgba(240, 112, 48, 0.07));
   box-shadow:

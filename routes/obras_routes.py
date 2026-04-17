@@ -1,3 +1,4 @@
+import re
 import pandas as pd
 from io import BytesIO
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
@@ -9,13 +10,37 @@ from services.log_service import registrar_log
 obras_bp = Blueprint("obras_bp", __name__)
 
 
+def gerar_codigo_obra():
+    obras = query_all("SELECT codigo FROM obras WHERE codigo IS NOT NULL AND codigo != ''")
+
+    maior_numero = 0
+    padrao = re.compile(r"^OBR-(\d+)$", re.IGNORECASE)
+
+    for obra in obras:
+        codigo = (obra["codigo"] or "").strip()
+        match = padrao.match(codigo)
+        if match:
+            numero = int(match.group(1))
+            if numero > maior_numero:
+                maior_numero = numero
+
+    proximo_numero = maior_numero + 1
+    return f"OBR-{proximo_numero:03d}"
+
+
 @obras_bp.route("/obras")
 def obras():
     if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
     lista_obras = query_all("SELECT * FROM obras ORDER BY id DESC")
-    return render_template("obras.html", obras=lista_obras)
+    proximo_codigo = gerar_codigo_obra()
+
+    return render_template(
+        "obras.html",
+        obras=lista_obras,
+        proximo_codigo=proximo_codigo
+    )
 
 
 @obras_bp.route("/obras/nova", methods=["POST"])
@@ -37,7 +62,10 @@ def nova_obra():
     progresso_percentual = request.form.get("progresso_percentual", "").strip()
     status = request.form.get("status", "").strip()
 
-    if not codigo or not nome or not tipologia or not status:
+    if not codigo:
+        codigo = gerar_codigo_obra()
+
+    if not nome or not tipologia or not status:
         flash("Preencha os campos obrigatórios da obra.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
@@ -98,7 +126,7 @@ def nova_obra():
         acao="criação",
         entidade="obra",
         entidade_id=obra_id,
-        descricao=f"Obra criada: {nome}"
+        descricao=f"Obra criada: {nome} ({codigo})"
     )
 
     flash("Obra cadastrada com sucesso.", "sucesso")
