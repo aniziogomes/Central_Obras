@@ -11,8 +11,37 @@
     <div class="hdr-right" style="display:flex; gap:8px;">
         <a href="{{ url_for('custos_bp.custos_exportar') }}" class="btn btn-success">Exportar Excel</a>
         {% if eh_gestor() %}
-        <button class="btn btn-primary" onclick="abrirModalCusto()">Novo Lançamento</button>
+        <button class="btn btn-primary" onclick="abrirModalCusto()">+ Novo Lançamento</button>
         {% endif %}
+    </div>
+</div>
+
+<div class="custos-kpi-grid">
+    {% for card in cards_categorias %}
+    <div class="custos-kpi-card {{ card.cor }}" data-categoria-card="{{ card.titulo }}">
+        <div class="custos-kpi-title">{{ card.titulo }}</div>
+        <div class="custos-kpi-value">{{ formatar_moeda(card.valor) }}</div>
+        <div class="custos-kpi-sub">{{ card.quantidade }} lançamento{% if card.quantidade != 1 %}s{% endif %}</div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="custos-toolbar">
+    <div class="custos-search-wrap">
+        <span class="custos-search-icon">⌕</span>
+        <input type="text" id="custoSearch" class="custos-search-input" placeholder="Buscar custo..."
+            oninput="filtrarCustos()">
+    </div>
+
+    <div class="custos-status-chips">
+        <button type="button" class="custo-chip active" onclick="selecionarFiltroCategoria('todas', this)">
+            Todas
+        </button>
+        {% for categoria in categorias_custo %}
+        <button type="button" class="custo-chip" onclick="selecionarFiltroCategoria('{{ categoria }}', this)">
+            {{ categoria }}
+        </button>
+        {% endfor %}
     </div>
 </div>
 
@@ -32,9 +61,10 @@
                     <th>Ações</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="custosTableBody">
                 {% for custo in custos %}
-                <tr>
+                <tr class="custo-row" data-categoria="{{ custo.categoria or '' }}"
+                    data-search="{{ (custo.codigo_obra or '')|lower }} {{ (custo.nome_obra or '')|lower }} {{ (custo.descricao or '')|lower }} {{ (custo.categoria or '')|lower }} {{ (custo.fornecedor or '')|lower }} {{ (custo.nota_fiscal or '')|lower }}">
                     <td class="td-mono">{{ custo.codigo_obra }}</td>
                     <td class="td-name">{{ custo.nome_obra }}</td>
                     <td>{{ custo.descricao }}</td>
@@ -63,12 +93,16 @@
                 </tr>
 
                 {% else %}
-                <tr>
+                <tr id="linhaSemCustosOriginal">
                     <td colspan="9" class="muted">Nenhum custo lançado ainda.</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+
+        <div id="custosSemResultado" class="custos-empty-state" style="display:none;">
+            Nenhum custo encontrado com os filtros aplicados.
+        </div>
     </div>
 </div>
 
@@ -91,25 +125,12 @@
                 <div class="form-group">
                     <label>Categoria</label>
                     <select name="categoria" required>
-                        <option value="Administração" {% if custo.categoria=='Administração' %}selected{% endif %}>
-                            Administração</option>
-                        <option value="Mão de Obra" {% if custo.categoria=='Mão de Obra' %}selected{% endif %}>Mão de
-                            Obra</option>
-                        <option value="Eletricista" {% if custo.categoria=='Eletricista' %}selected{% endif %}>
-                            Eletricista</option>
-                        <option value="Gesseiro" {% if custo.categoria=='Gesseiro' %}selected{% endif %}>Gesseiro
+                        <option value="">Selecione...</option>
+                        {% for categoria in categorias_custo %}
+                        <option value="{{ categoria }}" {% if custo.categoria==categoria %}selected{% endif %}>
+                            {{ categoria }}
                         </option>
-                        <option value="Pintor" {% if custo.categoria=='Pintor' %}selected{% endif %}>Pintor</option>
-                        <option value="Materiais em Geral" {% if custo.categoria=='Materiais em Geral' %}selected{%
-                            endif %}>Materiais em Geral</option>
-                        <option value="Acabamentos" {% if custo.categoria=='Acabamentos' %}selected{% endif %}>
-                            Acabamentos</option>
-                        <option value="Ferramentas" {% if custo.categoria=='Ferramentas' %}selected{% endif %}>
-                            Ferramentas</option>
-                        <option value="Equipamentos" {% if custo.categoria=='Equipamentos' %}selected{% endif %}>
-                            Equipamentos</option>
-                        <option value="Medições Caixa" {% if custo.categoria=='Medições Caixa' %}selected{% endif %}>
-                            Medições Caixa</option>
+                        {% endfor %}
                     </select>
                 </div>
 
@@ -171,16 +192,9 @@
                     <label>Categoria *</label>
                     <select name="categoria" required>
                         <option value="">Selecione...</option>
-                        <option value="Administração">Administração</option>
-                        <option value="Mão de Obra">Mão de Obra</option>
-                        <option value="Eletricista">Eletricista</option>
-                        <option value="Gesseiro">Gesseiro</option>
-                        <option value="Pintor">Pintor</option>
-                        <option value="Materiais em Geral">Materiais em Geral</option>
-                        <option value="Acabamentos">Acabamentos</option>
-                        <option value="Ferramentas">Ferramentas</option>
-                        <option value="Equipamentos">Equipamentos</option>
-                        <option value="Medições Caixa">Medições Caixa</option>
+                        {% for categoria in categorias_custo %}
+                        <option value="{{ categoria }}">{{ categoria }}</option>
+                        {% endfor %}
                     </select>
                 </div>
 
@@ -225,6 +239,8 @@
 {% endif %}
 
 <script>
+    let filtroCategoriaAtual = "todas";
+
     function abrirModalCusto() {
         const modal = document.getElementById("modalCusto");
         if (modal) modal.style.display = "flex";
@@ -245,6 +261,61 @@
         if (modal) modal.style.display = "none";
     }
 
+    function selecionarFiltroCategoria(categoria, botao) {
+        filtroCategoriaAtual = categoria;
+
+        document.querySelectorAll(".custo-chip").forEach(function (chip) {
+            chip.classList.remove("active");
+        });
+
+        if (botao) {
+            botao.classList.add("active");
+        }
+
+        destacarCardCategoria(categoria);
+        filtrarCustos();
+    }
+
+    function destacarCardCategoria(categoria) {
+        const cards = document.querySelectorAll(".custos-kpi-card");
+
+        cards.forEach(function (card) {
+            card.classList.remove("ativo");
+            const categoriaCard = (card.dataset.categoriaCard || "").toLowerCase();
+            if (categoria !== "todas" && categoriaCard === categoria.toLowerCase()) {
+                card.classList.add("ativo");
+            }
+        });
+    }
+
+    function filtrarCustos() {
+        const input = document.getElementById("custoSearch");
+        const termo = input ? input.value.trim().toLowerCase() : "";
+        const linhas = document.querySelectorAll(".custo-row");
+        const emptyState = document.getElementById("custosSemResultado");
+
+        let visiveis = 0;
+
+        linhas.forEach(function (linha) {
+            const textoBusca = (linha.dataset.search || "").toLowerCase();
+            const categoriaLinha = (linha.dataset.categoria || "").toLowerCase();
+
+            const correspondeBusca = !termo || textoBusca.includes(termo);
+            const correspondeCategoria = filtroCategoriaAtual === "todas" || categoriaLinha === filtroCategoriaAtual.toLowerCase();
+
+            if (correspondeBusca && correspondeCategoria) {
+                linha.style.display = "";
+                visiveis++;
+            } else {
+                linha.style.display = "none";
+            }
+        });
+
+        if (emptyState) {
+            emptyState.style.display = visiveis === 0 && linhas.length > 0 ? "flex" : "none";
+        }
+    }
+
     window.addEventListener("click", function (event) {
         const modalNovo = document.getElementById("modalCusto");
         if (modalNovo && event.target === modalNovo) {
@@ -257,6 +328,10 @@
                 modal.style.display = "none";
             }
         });
+    });
+
+    document.addEventListener("DOMContentLoaded", function () {
+        filtrarCustos();
     });
 </script>
 {% endblock %}

@@ -1,6 +1,16 @@
 from datetime import datetime
 
 
+CATEGORIAS_CUSTO_VALIDAS = [
+    "Material",
+    "Mão de Obra",
+    "Equipamento",
+    "Projeto/Engenharia",
+    "Taxas e Impostos",
+    "Outros",
+]
+
+
 def data_no_periodo(data_texto, data_inicio="", data_fim=""):
     if not data_texto:
         return True
@@ -55,3 +65,8 @@ def valor_negativo(valor):
 def validar_intervalo_percentual(valor, campo="Percentual"):
     if valor < 0 or valor > 100:
         raise ValueError(f"{campo} deve ficar entre 0 e 100.")
+
+
+def validar_categoria_custo(categoria):
+    if categoria not in CATEGORIAS_CUSTO_VALIDAS:
+        raise ValueError("Categoria de custo inválida.")

@@ -2,11 +2,49 @@ import pandas as pd
 from io import BytesIO
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from database import query_all, query_one, execute
-from services.validators import parse_valor_monetario, valor_negativo
+from services.validators import (
+    parse_valor_monetario,
+    valor_negativo,
+    validar_categoria_custo,
+    CATEGORIAS_CUSTO_VALIDAS
+)
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 from services.log_service import registrar_log
 
 custos_bp = Blueprint("custos_bp", __name__)
+
+
+def normalizar_categoria_card(categoria):
+    mapa = {
+        "Material": "Material",
+        "Mão de Obra": "Mão de Obra",
+        "Equipamento": "Equipamento",
+        "Projeto/Engenharia": "Projeto/Engenharia",
+        "Taxas e Impostos": "Taxas e Impostos",
+        "Outros": "Outros",
+    }
+    return mapa.get(categoria, "Outros")
+
+
+def gerar_cards_categorias(lista_custos):
+    cards_base = [
+        {"slug": "mao-de-obra", "titulo": "Mão de Obra", "cor": "or", "valor": 0, "quantidade": 0},
+        {"slug": "projeto-engenharia", "titulo": "Projeto/Engenharia", "cor": "bl", "valor": 0, "quantidade": 0},
+        {"slug": "material", "titulo": "Material", "cor": "gr", "valor": 0, "quantidade": 0},
+        {"slug": "equipamento", "titulo": "Equipamento", "cor": "yl", "valor": 0, "quantidade": 0},
+        {"slug": "taxas-impostos", "titulo": "Taxas e Impostos", "cor": "pu", "valor": 0, "quantidade": 0},
+        {"slug": "outros", "titulo": "Outros", "cor": "rd", "valor": 0, "quantidade": 0},
+    ]
+
+    indice = {card["titulo"]: card for card in cards_base}
+
+    for custo in lista_custos:
+        categoria = normalizar_categoria_card(custo["categoria"])
+        if categoria in indice:
+            indice[categoria]["valor"] += custo["valor_total"] or 0
+            indice[categoria]["quantidade"] += 1
+
+    return cards_base
 
 
 @custos_bp.route("/custos")
@@ -22,7 +60,15 @@ def custos():
     """)
 
     obras = query_all("SELECT * FROM obras ORDER BY nome ASC")
-    return render_template("custos.html", custos=lista_custos, obras=obras)
+    cards_categorias = gerar_cards_categorias(lista_custos)
+
+    return render_template(
+        "custos.html",
+        custos=lista_custos,
+        obras=obras,
+        categorias_custo=CATEGORIAS_CUSTO_VALIDAS,
+        cards_categorias=cards_categorias
+    )
 
 
 @custos_bp.route("/custos/novo", methods=["POST"])
@@ -45,6 +91,8 @@ def novo_custo():
         return redirect(url_for("custos_bp.custos"))
 
     try:
+        validar_categoria_custo(categoria)
+
         valor_total_float = parse_valor_monetario(valor_total)
         if valor_negativo(valor_total_float):
             raise ValueError("Valor do custo não pode ser negativo.")
@@ -98,6 +146,8 @@ def editar_custo(custo_id):
     observacao = request.form.get("observacao", "").strip()
 
     try:
+        validar_categoria_custo(categoria)
+
         valor_total_float = parse_valor_monetario(valor_total)
         if valor_negativo(valor_total_float):
             raise ValueError("Valor do custo não pode ser negativo.")
