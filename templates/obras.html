@@ -16,6 +16,40 @@
     </div>
 </div>
 
+<div class="obras-toolbar">
+    <div class="obras-search-wrap">
+        <span class="obras-search-icon">⌕</span>
+        <input type="text" id="obraSearch" class="obras-search-input" placeholder="Buscar obra..."
+            oninput="filtrarObras()">
+    </div>
+
+    <div class="obras-status-chips">
+        <button type="button" class="obra-chip active" data-status="todas"
+            onclick="selecionarFiltroStatus('todas', this)">
+            Todas
+        </button>
+        <button type="button" class="obra-chip" data-status="andamento"
+            onclick="selecionarFiltroStatus('andamento', this)">
+            Em andamento
+        </button>
+        <button type="button" class="obra-chip" data-status="concluida"
+            onclick="selecionarFiltroStatus('concluida', this)">
+            Concluídas
+        </button>
+        <button type="button" class="obra-chip" data-status="atrasada"
+            onclick="selecionarFiltroStatus('atrasada', this)">
+            Atrasadas
+        </button>
+        <button type="button" class="obra-chip" data-status="planejamento"
+            onclick="selecionarFiltroStatus('planejamento', this)">
+            Planejamento
+        </button>
+        <button type="button" class="obra-chip" data-status="vendida" onclick="selecionarFiltroStatus('vendida', this)">
+            Vendidas
+        </button>
+    </div>
+</div>
+
 <div class="card">
     <div class="tbl-wrap">
         <table>
@@ -33,9 +67,10 @@
                     <th>Ações</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="obrasTableBody">
                 {% for obra in obras %}
-                <tr>
+                <tr class="obra-row" data-status="{{ obra.status or '' }}"
+                    data-search="{{ (obra.codigo or '')|lower }} {{ (obra.nome or '')|lower }} {{ (obra.tipologia or '')|lower }} {{ (obra.endereco or '')|lower }} {{ (obra.tipo_obra or '')|lower }}">
                     <td class="td-mono">{{ obra.codigo }}</td>
                     <td class="td-name">
                         <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra.codigo) }}" class="link-obra">
@@ -78,12 +113,16 @@
                 </tr>
 
                 {% else %}
-                <tr>
+                <tr id="linhaSemObrasOriginal">
                     <td colspan="10" class="muted">Nenhuma obra cadastrada ainda.</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+
+        <div id="obrasSemResultado" class="obras-empty-state" style="display:none;">
+            Nenhuma obra encontrada com os filtros aplicados.
+        </div>
     </div>
 </div>
 
@@ -332,6 +371,8 @@
 {% endif %}
 
 <script>
+    let filtroStatusAtual = "todas";
+
     function abrirModalObra() {
         const modal = document.getElementById("modalObra");
         if (modal) modal.style.display = "flex";
@@ -364,6 +405,48 @@
         }
     }
 
+    function selecionarFiltroStatus(status, botao) {
+        filtroStatusAtual = status;
+
+        document.querySelectorAll(".obra-chip").forEach(function (chip) {
+            chip.classList.remove("active");
+        });
+
+        if (botao) {
+            botao.classList.add("active");
+        }
+
+        filtrarObras();
+    }
+
+    function filtrarObras() {
+        const input = document.getElementById("obraSearch");
+        const termo = input ? input.value.trim().toLowerCase() : "";
+        const linhas = document.querySelectorAll(".obra-row");
+        const emptyState = document.getElementById("obrasSemResultado");
+
+        let visiveis = 0;
+
+        linhas.forEach(function (linha) {
+            const textoBusca = (linha.dataset.search || "").toLowerCase();
+            const statusLinha = (linha.dataset.status || "").toLowerCase();
+
+            const correspondeBusca = !termo || textoBusca.includes(termo);
+            const correspondeStatus = filtroStatusAtual === "todas" || statusLinha === filtroStatusAtual;
+
+            if (correspondeBusca && correspondeStatus) {
+                linha.style.display = "";
+                visiveis++;
+            } else {
+                linha.style.display = "none";
+            }
+        });
+
+        if (emptyState) {
+            emptyState.style.display = visiveis === 0 && linhas.length > 0 ? "flex" : "none";
+        }
+    }
+
     window.addEventListener("click", function (event) {
         const modalNova = document.getElementById("modalObra");
         if (modalNova && event.target === modalNova) {
@@ -386,6 +469,7 @@
         });
 
         atualizarAjudaTipoObraNova();
+        filtrarObras();
     });
 </script>
 {% endblock %}
