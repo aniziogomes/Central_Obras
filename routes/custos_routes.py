@@ -28,13 +28,10 @@ def normalizar_categoria_card(categoria):
 
 def gerar_cards_categorias(lista_custos):
     cards_base = [
-        {"slug": "mao-de-obra", "titulo": "Mão de Obra", "cor": "or", "valor": 0, "quantidade": 0},
-        {"slug": "projeto-engenharia", "titulo": "Projeto/Engenharia", "cor": "bl", "valor": 0, "quantidade": 0},
-        {"slug": "material", "titulo": "Material", "cor": "gr", "valor": 0, "quantidade": 0},
-        {"slug": "equipamento", "titulo": "Equipamento", "cor": "yl", "valor": 0, "quantidade": 0},
-        {"slug": "taxas-impostos", "titulo": "Taxas e Impostos", "cor": "pu", "valor": 0, "quantidade": 0},
-        {"slug": "outros", "titulo": "Outros", "cor": "rd", "valor": 0, "quantidade": 0},
-    ]
+    {"slug": "mao-de-obra", "titulo": "Mão de Obra", "cor": "or", "valor": 0, "quantidade": 0},
+    {"slug": "projeto-engenharia", "titulo": "Projeto/Engenharia", "cor": "bl", "valor": 0, "quantidade": 0},
+    {"slug": "material", "titulo": "Material", "cor": "gr", "valor": 0, "quantidade": 0},
+]
 
     indice = {card["titulo"]: card for card in cards_base}
 

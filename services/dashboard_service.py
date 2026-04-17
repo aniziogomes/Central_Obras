@@ -210,13 +210,26 @@ def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="
 
     alertas = calcular_alertas(obra_ids_filtradas)
 
+    # --- Dados para gráficos ---
+
+    # Gráfico: Margem por obra (barras verticais)
+    chart_margem_labels = [item["nome"] for item in margem_por_obra]
+    chart_margem_valores = [item["margem_valor"] for item in margem_por_obra]
+
+    # Gráfico: Tipologia (donut)
+    chart_tipologia_labels = list(tipologia_count.keys())
+    chart_tipologia_valores = list(tipologia_count.values())
+
+    # Gráfico: Custo por categoria (barras horizontais)
+    chart_custo_cat_labels = list(custos_por_categoria.keys())
+    chart_custo_cat_valores = list(custos_por_categoria.values())
+
+    # Mantidos por compatibilidade (progresso e comparativo)
     chart_comparativo_labels = [item["categoria"] for item in comparativo_categorias]
     chart_comparativo_importado = [item["importado"] for item in comparativo_categorias]
     chart_comparativo_lancado = [item["lancado"] for item in comparativo_categorias]
-
     chart_progresso_labels = [item["codigo"] for item in margem_por_obra]
     chart_progresso_valores = [item["execucao"] for item in margem_por_obra]
-
     chart_pizza_labels = list(custos_por_categoria.keys())
     chart_pizza_valores = list(custos_por_categoria.values())
 
@@ -240,6 +253,14 @@ def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="
         "alertas": alertas,
         "total_medicoes": total_medicoes,
         "total_importado": total_importado,
+        # Novos gráficos
+        "chart_margem_labels": chart_margem_labels,
+        "chart_margem_valores": chart_margem_valores,
+        "chart_tipologia_labels": chart_tipologia_labels,
+        "chart_tipologia_valores": chart_tipologia_valores,
+        "chart_custo_cat_labels": chart_custo_cat_labels,
+        "chart_custo_cat_valores": chart_custo_cat_valores,
+        # Legados
         "chart_comparativo_labels": chart_comparativo_labels,
         "chart_comparativo_importado": chart_comparativo_importado,
         "chart_comparativo_lancado": chart_comparativo_lancado,
@@ -315,6 +336,14 @@ def serializar_dashboard_json(dados, filtros):
             for categoria, valor in dados["custos_por_categoria"].items()
         ],
         "charts": {
+            # Novos gráficos
+            "margem_labels": dados["chart_margem_labels"],
+            "margem_valores": dados["chart_margem_valores"],
+            "tipologia_labels": dados["chart_tipologia_labels"],
+            "tipologia_valores": dados["chart_tipologia_valores"],
+            "custo_cat_labels": dados["chart_custo_cat_labels"],
+            "custo_cat_valores": dados["chart_custo_cat_valores"],
+            # Legados (mantidos para compatibilidade)
             "comparativo_labels": dados["chart_comparativo_labels"],
             "comparativo_importado": dados["chart_comparativo_importado"],
             "comparativo_lancado": dados["chart_comparativo_lancado"],
