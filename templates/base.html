@@ -13,80 +13,162 @@
   <div class="shell">
     <aside class="sidebar">
       <div class="logo">
-        <div class="logo-icon">⌂</div>
-        <div class="logo-title">Central de Obras</div>
-        <div class="logo-sub">Inteligência de Construção</div>
+        <div class="logo-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
+        </div>
+        <div>
+          <div class="logo-title">Central de Obras</div>
+          <div class="logo-sub">Inteligência de Construção</div>
+        </div>
       </div>
 
       <nav class="nav">
         <div class="nav-lbl">Principal</div>
 
         <a class="nav-item {% if request.endpoint == 'dashboard_bp.dashboard' %}active{% endif %}"
-          href="{{ url_for('dashboard_bp.dashboard') }}">
-          <span class="nav-ico">◫</span>
+          href="{{ url_for('dashboard_bp.dashboard') }}" data-spa>
+          <span class="nav-ico">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+            </svg>
+          </span>
           <span>Dashboard</span>
         </a>
 
         <a class="nav-item {% if request.endpoint == 'obras_bp.obras' %}active{% endif %}"
-          href="{{ url_for('obras_bp.obras') }}">
-          <span class="nav-ico">⌂</span>
+          href="{{ url_for('obras_bp.obras') }}" data-spa>
+          <span class="nav-ico">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </span>
           <span>Obras</span>
         </a>
 
         <a class="nav-item {% if request.endpoint == 'custos_bp.custos' %}active{% endif %}"
-          href="{{ url_for('custos_bp.custos') }}">
-          <span class="nav-ico">⛃</span>
+          href="{{ url_for('custos_bp.custos') }}" data-spa>
+          <span class="nav-ico">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23" />
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+          </span>
           <span>Custos</span>
         </a>
 
         <div class="nav-lbl">Gestão</div>
 
         <a class="nav-item {% if request.endpoint == 'fornecedores_bp.fornecedores' %}active{% endif %}"
-          href="{{ url_for('fornecedores_bp.fornecedores') }}">
-          <span class="nav-ico">◉</span>
+          href="{{ url_for('fornecedores_bp.fornecedores') }}" data-spa>
+          <span class="nav-ico">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </span>
           <span>Fornecedores</span>
         </a>
 
         <a class="nav-item {% if request.endpoint == 'compras_bp.compras' %}active{% endif %}"
-          href="{{ url_for('compras_bp.compras') }}">
-          <span class="nav-ico">▣</span>
+          href="{{ url_for('compras_bp.compras') }}" data-spa>
+          <span class="nav-ico">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="9" cy="21" r="1" />
+              <circle cx="20" cy="21" r="1" />
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+            </svg>
+          </span>
           <span>Compras</span>
         </a>
 
         <a class="nav-item {% if request.endpoint == 'equipe_bp.equipe' %}active{% endif %}"
-          href="{{ url_for('equipe_bp.equipe') }}">
-          <span class="nav-ico">◌</span>
+          href="{{ url_for('equipe_bp.equipe') }}" data-spa>
+          <span class="nav-ico">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          </span>
           <span>Equipe</span>
         </a>
 
         <a class="nav-item {% if request.endpoint == 'medicoes_bp.medicoes' %}active{% endif %}"
-          href="{{ url_for('medicoes_bp.medicoes') }}">
-          <span class="nav-ico">△</span>
+          href="{{ url_for('medicoes_bp.medicoes') }}" data-spa>
+          <span class="nav-ico">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+            </svg>
+          </span>
           <span>Medições</span>
         </a>
 
         <div class="nav-lbl">Sistema</div>
 
         <a class="nav-item {% if request.endpoint == 'dashboard_bp.alertas' %}active{% endif %}"
-          href="{{ url_for('dashboard_bp.alertas') }}">
-          <span class="nav-ico">!</span>
+          href="{{ url_for('dashboard_bp.alertas') }}" data-spa>
+          <span class="nav-ico">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+          </span>
           <span>Alertas</span>
         </a>
 
         <a class="nav-item {% if request.endpoint == 'importacao_bp.importacao' %}active{% endif %}"
-          href="{{ url_for('importacao_bp.importacao') }}">
-          <span class="nav-ico">↥</span>
+          href="{{ url_for('importacao_bp.importacao') }}" data-spa>
+          <span class="nav-ico">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 16 12 12 8 16" />
+              <line x1="12" y1="12" x2="12" y2="21" />
+              <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
+            </svg>
+          </span>
           <span>Importação</span>
         </a>
 
         <a class="nav-item {% if request.endpoint == 'importacao_bp.orcamento_importado' %}active{% endif %}"
-          href="{{ url_for('importacao_bp.orcamento_importado') }}">
-          <span class="nav-ico">▤</span>
-          <span>Orçamento Importado</span>
+          href="{{ url_for('importacao_bp.orcamento_importado') }}" data-spa>
+          <span class="nav-ico">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+          </span>
+          <span>Orçamento</span>
         </a>
 
-        <a class="nav-item" href="{{ url_for('auth_bp.logout') }}">
-          <span class="nav-ico">×</span>
+        <a class="nav-item nav-item--logout" href="{{ url_for('auth_bp.logout') }}">
+          <span class="nav-ico">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </span>
           <span>Sair</span>
         </a>
       </nav>
@@ -96,20 +178,17 @@
           <div class="pulse"></div>
           <div class="sync-text">Dados locais ativos</div>
         </div>
-
-        <div class="user-badge"
-          style="margin-top:14px; padding:12px; border:1px solid rgba(255,255,255,0.08); border-radius:12px; background:rgba(255,255,255,0.03);">
-          <div style="font-size:12px; color:#9ca3af;">Usuário logado</div>
-          <div style="font-size:14px; font-weight:700; color:#f3f4f6;">{{ session.get('usuario_nome', 'Usuário') }}
-          </div>
-          <div style="font-size:12px; color:#f59e0b; text-transform:uppercase; letter-spacing:0.08em;">
-            {{ usuario_perfil() or 'sem perfil' }}
+        <div class="user-badge">
+          <div class="user-badge-avatar">{{ session.get('usuario_nome', 'U')[0] | upper }}</div>
+          <div class="user-badge-info">
+            <div class="user-badge-name">{{ session.get('usuario_nome', 'Usuário') }}</div>
+            <div class="user-badge-role">{{ usuario_perfil() or 'sem perfil' }}</div>
           </div>
         </div>
       </div>
     </aside>
 
-    <main class="main">
+    <main class="main" id="spa-main">
       {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
       {% for categoria, mensagem in messages %}
@@ -123,6 +202,7 @@
       {% block content %}{% endblock %}
     </main>
   </div>
+
   {% else %}
   {% block auth_content %}{% endblock %}
   {% endif %}
@@ -130,17 +210,134 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script>
+    /* =============================================
+       SPA NAVIGATION
+       Intercepta cliques nos links [data-spa],
+       faz fetch da página e substitui apenas o
+       conteúdo do #spa-main — sem reload da tela.
+       ============================================= */
+    (function () {
+      const main = document.getElementById('spa-main');
+      if (!main) return;
+
+      // Destrói gráficos Chart.js antes de limpar o DOM
+      function destroyCharts() {
+        main.querySelectorAll('canvas').forEach(c => {
+          const chart = Chart.getChart(c);
+          if (chart) chart.destroy();
+        });
+      }
+
+      // Re-executa scripts inline presentes no novo conteúdo
+      function runPageScripts(container) {
+        container.querySelectorAll('script').forEach(oldScript => {
+          const s = document.createElement('script');
+          if (oldScript.src) {
+            s.src = oldScript.src;
+            s.async = false;
+          } else {
+            s.textContent = oldScript.textContent;
+          }
+          document.body.appendChild(s);
+          document.body.removeChild(s);
+        });
+      }
+
+      // Loading visual no main
+      function setLoading(on) {
+        main.style.opacity = on ? '0.45' : '1';
+        main.style.pointerEvents = on ? 'none' : '';
+        main.style.transition = 'opacity 0.18s ease';
+      }
+
+      // Atualiza item ativo na sidebar
+      function setActiveNav(href) {
+        const path = new URL(href, location.origin).pathname;
+        document.querySelectorAll('.nav-item[data-spa]').forEach(a => {
+          const aPath = new URL(a.href, location.origin).pathname;
+          a.classList.toggle('active', aPath === path);
+        });
+      }
+
+      async function navigate(url, pushState = true) {
+        setLoading(true);
+        try {
+          const res = await fetch(url, {
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          });
+
+          // Redirecionado para login
+          if (res.redirected) {
+            location.href = res.url;
+            return;
+          }
+
+          const html = await res.text();
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+
+          const newMain = doc.getElementById('spa-main');
+          if (!newMain) {
+            location.href = url;
+            return;
+          }
+
+          destroyCharts();
+
+          // Fade out → troca → fade in
+          main.style.opacity = '0';
+          await new Promise(r => setTimeout(r, 120));
+
+          main.innerHTML = newMain.innerHTML;
+          runPageScripts(main);
+
+          if (pushState) history.pushState({ url }, '', url);
+          setActiveNav(url);
+
+          const newTitle = doc.querySelector('title');
+          if (newTitle) document.title = newTitle.textContent;
+
+          window.scrollTo(0, 0);
+          main.style.opacity = '1';
+
+        } catch (err) {
+          console.error('SPA nav error:', err);
+          location.href = url;
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      // Intercepta todos os cliques em links [data-spa]
+      document.addEventListener('click', function (e) {
+        const link = e.target.closest('a[data-spa]');
+        if (!link) return;
+        e.preventDefault();
+        if (link.href === location.href) return; // já está na página
+        navigate(link.href);
+      });
+
+      // Botão voltar/avançar do browser
+      window.addEventListener('popstate', function (e) {
+        if (e.state && e.state.url) navigate(e.state.url, false);
+        else navigate(location.href, false);
+      });
+
+      // Registra estado inicial
+      history.replaceState({ url: location.href }, '', location.href);
+    })();
+
+    /* =============================================
+       TOGGLE FILTRO (compatibilidade legado)
+       ============================================= */
     function toggleFiltro() {
       const body = document.getElementById("filtro-body");
       const icon = document.getElementById("filtro-icon");
-
-      if (body.style.display === "none" || body.style.display === "") {
-        body.style.display = "block";
-        icon.innerHTML = "▲";
-      } else {
-        body.style.display = "none";
-        icon.innerHTML = "▼";
-      }
+      if (!body) return;
+      const aberto = body.style.display === "block";
+      body.style.display = aberto ? "none" : "block";
+      if (icon) icon.innerHTML = aberto ? "▼" : "▲";
     }
   </script>
 </body>

@@ -9,14 +9,81 @@
         <p>Lançamentos por obra e categoria</p>
     </div>
     <div class="hdr-right" style="display:flex; gap:8px;">
-        <a href="{{ url_for('custos_bp.custos_exportar') }}" class="btn btn-success">Exportar Excel</a>
+        <a id="linkExportarCustos"
+            href="{{ url_for('custos_bp.custos_exportar', obra=filtro_obra, data_inicio=data_inicio, data_fim=data_fim) }}"
+            class="btn btn-success">
+            Exportar Excel
+        </a>
         {% if eh_gestor() %}
         <button class="btn btn-primary" onclick="abrirModalCusto()">+ Novo Lançamento</button>
         {% endif %}
     </div>
 </div>
 
-<div class="custos-kpi-grid">
+<div class="dashboard-filter-shell">
+    <div class="dashboard-filter-card dashboard-filter-card--clean">
+        <div class="dashboard-filter-top">
+            <div class="dashboard-filter-left">
+                <div class="dashboard-filter-chip dashboard-filter-chip--soft">
+                    <span>Filtros</span>
+                    <strong id="custosResumoTotal">{{ custos|length }} lançamento(s)</strong>
+                </div>
+
+                <div class="dashboard-filter-summary dashboard-filter-summary--soft">
+                    <span>Obra: <strong id="resumoObra">{{ filtro_obra if filtro_obra else "Todas" }}</strong></span>
+                    <span>Período: <strong id="resumoPeriodo">
+                            {% if data_inicio or data_fim %}
+                            {{ data_inicio if data_inicio else "início livre" }} até {{ data_fim if data_fim else "fim
+                            livre" }}
+                            {% else %}
+                            livre
+                            {% endif %}
+                        </strong></span>
+                </div>
+            </div>
+
+            <button type="button" class="dashboard-filter-toggle dashboard-filter-toggle--sm" id="toggleCustoFilter">
+                Mostrar filtros
+            </button>
+        </div>
+
+        <div class="dashboard-filter-body" id="custoFilterBody">
+            <form method="GET" action="{{ url_for('custos_bp.custos') }}" id="formFiltrosCustos">
+                <div class="dashboard-filter-grid dashboard-filter-grid--clean custos-filter-grid">
+                    <div class="dashboard-filter-field">
+                        <label>Obra</label>
+                        <select name="obra" id="filtroCustoObra">
+                            <option value="">Todas</option>
+                            {% for obra_item in todas_obras %}
+                            <option value="{{ obra_item.codigo }}" {% if filtro_obra==obra_item.codigo %}selected{%
+                                endif %}>
+                                {{ obra_item.codigo }} - {{ obra_item.nome }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="dashboard-filter-field">
+                        <label>Data inicial</label>
+                        <input type="date" name="data_inicio" id="filtroCustoDataInicio" value="{{ data_inicio }}">
+                    </div>
+
+                    <div class="dashboard-filter-field">
+                        <label>Data final</label>
+                        <input type="date" name="data_fim" id="filtroCustoDataFim" value="{{ data_fim }}">
+                    </div>
+                </div>
+
+                <div class="dashboard-filter-actions dashboard-filter-actions--compact">
+                    <button type="button" id="btnLimparFiltrosCustos" class="btn btn-ghost btn-xs">Limpar</button>
+                    <button type="submit" class="btn btn-primary btn-xs">Aplicar filtros</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="custos-kpi-grid" id="custosKpiGrid">
     {% for card in cards_categorias %}
     <div class="custos-kpi-card {{ card.cor }}" data-categoria-card="{{ card.titulo }}">
         <div class="custos-kpi-title">{{ card.titulo }}</div>
@@ -81,7 +148,6 @@
                                 Editar
                             </button>
                             {% endif %}
-
                             {% if eh_admin() %}
                             <form method="POST" action="{{ url_for('custos_bp.excluir_custo', custo_id=custo.id) }}"
                                 onsubmit="return confirm('Deseja realmente excluir este custo?');">
@@ -91,7 +157,6 @@
                         </div>
                     </td>
                 </tr>
-
                 {% else %}
                 <tr id="linhaSemCustosOriginal">
                     <td colspan="9" class="muted">Nenhum custo lançado ainda.</td>
@@ -239,99 +304,298 @@
 {% endif %}
 
 <script>
-    let filtroCategoriaAtual = "todas";
+    (function () {
+        let filtroCategoriaAtual = "todas";
 
-    function abrirModalCusto() {
-        const modal = document.getElementById("modalCusto");
-        if (modal) modal.style.display = "flex";
-    }
-
-    function fecharModalCusto() {
-        const modal = document.getElementById("modalCusto");
-        if (modal) modal.style.display = "none";
-    }
-
-    function abrirModalEditarCusto(id) {
-        const modal = document.getElementById("modalEditarCusto" + id);
-        if (modal) modal.style.display = "flex";
-    }
-
-    function fecharModalEditarCusto(id) {
-        const modal = document.getElementById("modalEditarCusto" + id);
-        if (modal) modal.style.display = "none";
-    }
-
-    function selecionarFiltroCategoria(categoria, botao) {
-        filtroCategoriaAtual = categoria;
-
-        document.querySelectorAll(".custo-chip").forEach(function (chip) {
-            chip.classList.remove("active");
-        });
-
-        if (botao) {
-            botao.classList.add("active");
+        function esc(texto) {
+            return String(texto ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
         }
 
-        destacarCardCategoria(categoria);
+        function abrirFiltrosCusto() {
+            const body = document.getElementById("custoFilterBody");
+            const toggle = document.getElementById("toggleCustoFilter");
+            if (body) body.classList.add("open");
+            if (toggle) toggle.textContent = "Ocultar filtros";
+        }
+
+        function fecharFiltrosCusto() {
+            const body = document.getElementById("custoFilterBody");
+            const toggle = document.getElementById("toggleCustoFilter");
+            if (body) body.classList.remove("open");
+            if (toggle) toggle.textContent = "Mostrar filtros";
+        }
+
+        function abrirModalCusto() {
+            const modal = document.getElementById("modalCusto");
+            if (modal) modal.style.display = "flex";
+        }
+
+        function fecharModalCusto() {
+            const modal = document.getElementById("modalCusto");
+            if (modal) modal.style.display = "none";
+        }
+
+        function abrirModalEditarCusto(id) {
+            const modal = document.getElementById("modalEditarCusto" + id);
+            if (modal) modal.style.display = "flex";
+        }
+
+        function fecharModalEditarCusto(id) {
+            const modal = document.getElementById("modalEditarCusto" + id);
+            if (modal) modal.style.display = "none";
+        }
+
+        window.abrirModalCusto = abrirModalCusto;
+        window.fecharModalCusto = fecharModalCusto;
+        window.abrirModalEditarCusto = abrirModalEditarCusto;
+        window.fecharModalEditarCusto = fecharModalEditarCusto;
+
+        function selecionarFiltroCategoria(categoria, botao) {
+            filtroCategoriaAtual = categoria;
+
+            document.querySelectorAll(".custo-chip").forEach(function (chip) {
+                chip.classList.remove("active");
+            });
+
+            if (botao) {
+                botao.classList.add("active");
+            }
+
+            document.querySelectorAll(".custos-kpi-card").forEach(function (card) {
+                card.classList.remove("ativo");
+                const categoriaCard = (card.dataset.categoriaCard || "").toLowerCase();
+                if (categoria !== "todas" && categoriaCard === categoria.toLowerCase()) {
+                    card.classList.add("ativo");
+                }
+            });
+
+            filtrarCustos();
+        }
+
+        window.selecionarFiltroCategoria = selecionarFiltroCategoria;
+
+        function filtrarCustos() {
+            const input = document.getElementById("custoSearch");
+            const termo = input ? input.value.trim().toLowerCase() : "";
+            const linhas = document.querySelectorAll(".custo-row");
+            const emptyState = document.getElementById("custosSemResultado");
+
+            let visiveis = 0;
+
+            linhas.forEach(function (linha) {
+                const textoBusca = (linha.dataset.search || "").toLowerCase();
+                const categoriaLinha = (linha.dataset.categoria || "").toLowerCase();
+
+                const correspondeBusca = !termo || textoBusca.includes(termo);
+                const correspondeCategoria = filtroCategoriaAtual === "todas" || categoriaLinha === filtroCategoriaAtual.toLowerCase();
+
+                if (correspondeBusca && correspondeCategoria) {
+                    linha.style.display = "";
+                    visiveis++;
+                } else {
+                    linha.style.display = "none";
+                }
+            });
+
+            if (emptyState) {
+                emptyState.style.display = visiveis === 0 && linhas.length > 0 ? "flex" : "none";
+            }
+        }
+
+        window.filtrarCustos = filtrarCustos;
+
+        function renderizarCards(cards) {
+            const grid = document.getElementById("custosKpiGrid");
+            if (!grid) return;
+
+            grid.innerHTML = cards.map(c => `
+            <div class="custos-kpi-card ${esc(c.cor)}" data-categoria-card="${esc(c.titulo)}">
+                <div class="custos-kpi-title">${esc(c.titulo)}</div>
+                <div class="custos-kpi-value">${esc(c.valor_formatado)}</div>
+                <div class="custos-kpi-sub">${c.quantidade} lançamento${c.quantidade !== 1 ? "s" : ""}</div>
+            </div>
+        `).join("");
+        }
+
+        function renderizarTabela(custos, podeEditar, podeExcluir) {
+            const tbody = document.getElementById("custosTableBody");
+            const emptyState = document.getElementById("custosSemResultado");
+
+            if (!tbody) return;
+
+            if (!custos || custos.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="muted">Nenhum custo lançado ainda.</td></tr>`;
+                if (emptyState) emptyState.style.display = "none";
+                return;
+            }
+
+            tbody.innerHTML = custos.map(c => {
+                const search = [
+                    c.codigo_obra,
+                    c.nome_obra,
+                    c.descricao,
+                    c.categoria,
+                    c.fornecedor,
+                    c.nota_fiscal
+                ].map(v => (v || "").toLowerCase()).join(" ");
+
+                const acoes = `<div style="display:flex; gap:6px;">
+                ${podeEditar ? `<button class="btn btn-small" type="button" onclick="abrirModalEditarCusto('${esc(String(c.id))}')">Editar</button>` : ""}
+                ${podeExcluir ? `<form method="POST" action="/custos/excluir/${esc(String(c.id))}" onsubmit="return confirm('Deseja realmente excluir este custo?');"><button type="submit" class="btn btn-small btn-danger">Excluir</button></form>` : ""}
+            </div>`;
+
+                return `
+                <tr class="custo-row"
+                    data-categoria="${esc(c.categoria)}"
+                    data-search="${esc(search)}">
+                    <td class="td-mono">${esc(c.codigo_obra)}</td>
+                    <td class="td-name">${esc(c.nome_obra)}</td>
+                    <td>${esc(c.descricao)}</td>
+                    <td>${esc(c.categoria)}</td>
+                    <td>${esc(c.fornecedor)}</td>
+                    <td>${esc(c.data_lancamento)}</td>
+                    <td>${esc(c.valor_formatado)}</td>
+                    <td>${esc(c.nota_fiscal)}</td>
+                    <td>${acoes}</td>
+                </tr>
+            `;
+            }).join("");
+
+            filtrarCustos();
+        }
+
+        function atualizarResumo(payload) {
+            const resumoObra = document.getElementById("resumoObra");
+            const resumoPeriodo = document.getElementById("resumoPeriodo");
+            const resumoTotal = document.getElementById("custosResumoTotal");
+            const linkExportar = document.getElementById("linkExportarCustos");
+
+            if (resumoObra) {
+                resumoObra.textContent = payload.filtros.obra || "Todas";
+            }
+
+            if (resumoPeriodo) {
+                let periodo = "livre";
+                if (payload.filtros.data_inicio || payload.filtros.data_fim) {
+                    periodo = `${payload.filtros.data_inicio || "início livre"} até ${payload.filtros.data_fim || "fim livre"}`;
+                }
+                resumoPeriodo.textContent = periodo;
+            }
+
+            if (resumoTotal) {
+                resumoTotal.textContent = `${payload.total} lançamento(s)`;
+            }
+
+            if (linkExportar) {
+                const params = new URLSearchParams();
+                if (payload.filtros.obra) params.set("obra", payload.filtros.obra);
+                if (payload.filtros.data_inicio) params.set("data_inicio", payload.filtros.data_inicio);
+                if (payload.filtros.data_fim) params.set("data_fim", payload.filtros.data_fim);
+                linkExportar.href = `/custos/exportar?${params.toString()}`;
+            }
+        }
+
+        async function atualizarCustosParcial(manterFiltrosAbertos = true) {
+            const form = document.getElementById("formFiltrosCustos");
+            if (!form) return;
+
+            const formData = new FormData(form);
+            const params = new URLSearchParams();
+
+            for (const [chave, valor] of formData.entries()) {
+                if (valor) {
+                    params.set(chave, valor);
+                }
+            }
+
+            try {
+                const response = await fetch(`/custos/dados?${params.toString()}`, {
+                    headers: {
+                        "X-Requested-With": "fetch"
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error("Erro ao atualizar custos");
+                }
+
+                const payload = await response.json();
+
+                atualizarResumo(payload);
+                renderizarCards(payload.cards);
+                renderizarTabela(payload.custos, payload.pode_editar, payload.pode_excluir);
+
+                const novaUrl = `${window.location.pathname}${params.toString() ? "?" + params.toString() : ""}`;
+                window.history.replaceState({}, "", novaUrl);
+
+                if (manterFiltrosAbertos) {
+                    abrirFiltrosCusto();
+                } else {
+                    fecharFiltrosCusto();
+                }
+            } catch (erro) {
+                console.error("Erro ao atualizar custos:", erro);
+            }
+        }
+
+        window.addEventListener("click", function (event) {
+            const modalNovo = document.getElementById("modalCusto");
+            if (modalNovo && event.target === modalNovo) {
+                modalNovo.style.display = "none";
+            }
+
+            const modaisEditar = document.querySelectorAll("[id^='modalEditarCusto']");
+            modaisEditar.forEach(function (modal) {
+                if (event.target === modal) {
+                    modal.style.display = "none";
+                }
+            });
+        });
+
+        const toggleBtn = document.getElementById("toggleCustoFilter");
+        const btnLimpar = document.getElementById("btnLimparFiltrosCustos");
+        const formFiltros = document.getElementById("formFiltrosCustos");
+        const hasActiveFilters = "{{ 'true' if filtro_obra or data_inicio or data_fim else 'false' }}" === "true";
+
+        if (hasActiveFilters) {
+            abrirFiltrosCusto();
+        } else {
+            fecharFiltrosCusto();
+        }
+
+        if (toggleBtn) {
+            toggleBtn.onclick = function () {
+                const body = document.getElementById("custoFilterBody");
+                if (body && body.classList.contains("open")) {
+                    fecharFiltrosCusto();
+                } else {
+                    abrirFiltrosCusto();
+                }
+            };
+        }
+
+        if (formFiltros) {
+            formFiltros.onsubmit = async function (event) {
+                event.preventDefault();
+                await atualizarCustosParcial(true);
+            };
+        }
+
+        if (btnLimpar) {
+            btnLimpar.onclick = async function () {
+                document.getElementById("filtroCustoObra").value = "";
+                document.getElementById("filtroCustoDataInicio").value = "";
+                document.getElementById("filtroCustoDataFim").value = "";
+                await atualizarCustosParcial(false);
+            };
+        }
+
         filtrarCustos();
-    }
-
-    function destacarCardCategoria(categoria) {
-        const cards = document.querySelectorAll(".custos-kpi-card");
-
-        cards.forEach(function (card) {
-            card.classList.remove("ativo");
-            const categoriaCard = (card.dataset.categoriaCard || "").toLowerCase();
-            if (categoria !== "todas" && categoriaCard === categoria.toLowerCase()) {
-                card.classList.add("ativo");
-            }
-        });
-    }
-
-    function filtrarCustos() {
-        const input = document.getElementById("custoSearch");
-        const termo = input ? input.value.trim().toLowerCase() : "";
-        const linhas = document.querySelectorAll(".custo-row");
-        const emptyState = document.getElementById("custosSemResultado");
-
-        let visiveis = 0;
-
-        linhas.forEach(function (linha) {
-            const textoBusca = (linha.dataset.search || "").toLowerCase();
-            const categoriaLinha = (linha.dataset.categoria || "").toLowerCase();
-
-            const correspondeBusca = !termo || textoBusca.includes(termo);
-            const correspondeCategoria = filtroCategoriaAtual === "todas" || categoriaLinha === filtroCategoriaAtual.toLowerCase();
-
-            if (correspondeBusca && correspondeCategoria) {
-                linha.style.display = "";
-                visiveis++;
-            } else {
-                linha.style.display = "none";
-            }
-        });
-
-        if (emptyState) {
-            emptyState.style.display = visiveis === 0 && linhas.length > 0 ? "flex" : "none";
-        }
-    }
-
-    window.addEventListener("click", function (event) {
-        const modalNovo = document.getElementById("modalCusto");
-        if (modalNovo && event.target === modalNovo) {
-            modalNovo.style.display = "none";
-        }
-
-        const modaisEditar = document.querySelectorAll("[id^='modalEditarCusto']");
-        modaisEditar.forEach(function (modal) {
-            if (event.target === modal) {
-                modal.style.display = "none";
-            }
-        });
-    });
-
-    document.addEventListener("DOMContentLoaded", function () {
-        filtrarCustos();
-    });
+    })();
 </script>
 {% endblock %}
