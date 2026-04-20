@@ -1,11 +1,12 @@
 import re
 import pandas as pd
 from io import BytesIO
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, jsonify
 from database import query_one, query_all, execute
 from services.validators import parse_valor_monetario, valor_negativo, validar_intervalo_percentual
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 from services.log_service import registrar_log
+from utils import formatar_moeda, formatar_tipo_obra
 
 obras_bp = Blueprint("obras_bp", __name__)
 
@@ -28,19 +29,102 @@ def gerar_codigo_obra():
     return f"OBR-{proximo_numero:03d}"
 
 
+def obter_filtros_obras():
+    return {
+        "busca": request.args.get("busca", "").strip(),
+        "status": request.args.get("status", "").strip().lower(),
+    }
+
+
+def buscar_obras_filtradas(busca="", status=""):
+    lista_obras = query_all("SELECT * FROM obras ORDER BY id DESC")
+
+    if busca:
+        termo = busca.lower()
+        lista_obras = [
+            o for o in lista_obras
+            if termo in (
+                f"{o['codigo'] or ''} "
+                f"{o['nome'] or ''} "
+                f"{o['tipologia'] or ''} "
+                f"{o['endereco'] or ''} "
+                f"{o['tipo_obra'] or ''}"
+            ).lower()
+        ]
+
+    if status and status != "todas":
+        lista_obras = [
+            o for o in lista_obras
+            if (o["status"] or "").lower() == status
+        ]
+
+    return lista_obras
+
+
+def serializar_obras(lista_obras):
+    return [
+        {
+            "id": o["id"],
+            "codigo": o["codigo"] or "",
+            "nome": o["nome"] or "",
+            "tipo_obra": o["tipo_obra"] or "contrato",
+            "tipo_obra_formatado": formatar_tipo_obra(o["tipo_obra"]),
+            "tipologia": o["tipologia"] or "-",
+            "area_m2": o["area_m2"] or 0,
+            "orcamento": o["orcamento"] or 0,
+            "orcamento_formatado": formatar_moeda(o["orcamento"] or 0),
+            "receita_total": o["receita_total"] or 0,
+            "receita_total_formatado": formatar_moeda(o["receita_total"] or 0),
+            "progresso_percentual": o["progresso_percentual"] or 0,
+            "status": o["status"] or "",
+            "endereco": o["endereco"] or "",
+        }
+        for o in lista_obras
+    ]
+
+
 @obras_bp.route("/obras")
 def obras():
     if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
-    lista_obras = query_all("SELECT * FROM obras ORDER BY id DESC")
+    filtros = obter_filtros_obras()
+    lista_obras = buscar_obras_filtradas(
+        busca=filtros["busca"],
+        status=filtros["status"]
+    )
     proximo_codigo = gerar_codigo_obra()
 
     return render_template(
         "obras.html",
         obras=lista_obras,
-        proximo_codigo=proximo_codigo
+        proximo_codigo=proximo_codigo,
+        filtro_busca=filtros["busca"],
+        filtro_status=filtros["status"]
     )
+
+
+@obras_bp.route("/obras/dados")
+def obras_dados():
+    if not usuario_logado() or not eh_leitura():
+        return jsonify({"erro": "não autorizado"}), 401
+
+    filtros = obter_filtros_obras()
+    lista_obras = buscar_obras_filtradas(
+        busca=filtros["busca"],
+        status=filtros["status"]
+    )
+
+    return jsonify({
+        "filtros": {
+            "busca": filtros["busca"],
+            "status": filtros["status"] or "todas",
+        },
+        "total": len(lista_obras),
+        "obras": serializar_obras(lista_obras),
+        "pode_editar": eh_gestor(),
+        "pode_excluir": eh_admin(),
+    })
 
 
 @obras_bp.route("/obras/nova", methods=["POST"])
@@ -138,7 +222,11 @@ def obras_exportar():
     if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
-    obras = query_all("SELECT * FROM obras ORDER BY id DESC")
+    filtros = obter_filtros_obras()
+    obras = buscar_obras_filtradas(
+        busca=filtros["busca"],
+        status=filtros["status"]
+    )
 
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:

@@ -9,7 +9,11 @@
         <p>Cadastro completo com gestão de dados</p>
     </div>
     <div class="hdr-right" style="display:flex; gap:8px;">
-        <a href="{{ url_for('obras_bp.obras_exportar') }}" class="btn btn-success">Exportar Excel</a>
+        <a id="linkExportarObras"
+            href="{{ url_for('obras_bp.obras_exportar', busca=filtro_busca, status=filtro_status) }}"
+            class="btn btn-success">
+            Exportar Excel
+        </a>
         {% if eh_gestor() %}
         <button class="btn btn-primary" onclick="abrirModalObra()">Nova Obra</button>
         {% endif %}
@@ -20,31 +24,32 @@
     <div class="obras-search-wrap">
         <span class="obras-search-icon">⌕</span>
         <input type="text" id="obraSearch" class="obras-search-input" placeholder="Buscar obra..."
-            oninput="filtrarObras()">
+            value="{{ filtro_busca or '' }}">
     </div>
 
-    <div class="obras-status-chips">
-        <button type="button" class="obra-chip active" data-status="todas"
-            onclick="selecionarFiltroStatus('todas', this)">
+    <div class="obras-status-chips" id="obrasStatusChips">
+        <button type="button" class="obra-chip {% if not filtro_status or filtro_status == 'todas' %}active{% endif %}"
+            data-status="todas">
             Todas
         </button>
-        <button type="button" class="obra-chip" data-status="andamento"
-            onclick="selecionarFiltroStatus('andamento', this)">
+        <button type="button" class="obra-chip {% if filtro_status == 'andamento' %}active{% endif %}"
+            data-status="andamento">
             Em andamento
         </button>
-        <button type="button" class="obra-chip" data-status="concluida"
-            onclick="selecionarFiltroStatus('concluida', this)">
+        <button type="button" class="obra-chip {% if filtro_status == 'concluida' %}active{% endif %}"
+            data-status="concluida">
             Concluídas
         </button>
-        <button type="button" class="obra-chip" data-status="atrasada"
-            onclick="selecionarFiltroStatus('atrasada', this)">
+        <button type="button" class="obra-chip {% if filtro_status == 'atrasada' %}active{% endif %}"
+            data-status="atrasada">
             Atrasadas
         </button>
-        <button type="button" class="obra-chip" data-status="planejamento"
-            onclick="selecionarFiltroStatus('planejamento', this)">
+        <button type="button" class="obra-chip {% if filtro_status == 'planejamento' %}active{% endif %}"
+            data-status="planejamento">
             Planejamento
         </button>
-        <button type="button" class="obra-chip" data-status="vendida" onclick="selecionarFiltroStatus('vendida', this)">
+        <button type="button" class="obra-chip {% if filtro_status == 'vendida' %}active{% endif %}"
+            data-status="vendida">
             Vendidas
         </button>
     </div>
@@ -101,7 +106,6 @@
                                 Editar
                             </button>
                             {% endif %}
-
                             {% if eh_admin() %}
                             <form method="POST" action="{{ url_for('obras_bp.excluir_obra', obra_id=obra.id) }}"
                                 onsubmit="return confirm('Deseja realmente excluir esta obra?');">
@@ -111,7 +115,6 @@
                         </div>
                     </td>
                 </tr>
-
                 {% else %}
                 <tr id="linhaSemObrasOriginal">
                     <td colspan="10" class="muted">Nenhuma obra cadastrada ainda.</td>
@@ -371,105 +374,257 @@
 {% endif %}
 
 <script>
-    let filtroStatusAtual = "todas";
+    (function () {
+        let filtroStatusAtual = "{{ filtro_status if filtro_status else 'todas' }}";
+        let debounceBusca = null;
 
-    function abrirModalObra() {
-        const modal = document.getElementById("modalObra");
-        if (modal) modal.style.display = "flex";
-    }
-
-    function fecharModalObra() {
-        const modal = document.getElementById("modalObra");
-        if (modal) modal.style.display = "none";
-    }
-
-    function abrirModalEditarObra(id) {
-        const modal = document.getElementById("modalEditarObra" + id);
-        if (modal) modal.style.display = "flex";
-    }
-
-    function fecharModalEditarObra(id) {
-        const modal = document.getElementById("modalEditarObra" + id);
-        if (modal) modal.style.display = "none";
-    }
-
-    function atualizarAjudaTipoObraNova() {
-        const tipoSelecionado = document.querySelector('#modalObra input[name="tipo_obra"]:checked');
-        const ajuda = document.getElementById("ajudaTipoObraNova");
-        if (!tipoSelecionado || !ajuda) return;
-
-        if (tipoSelecionado.value === "venda") {
-            ajuda.textContent = "Nesta obra, a receita prevista representa o valor esperado de venda do imóvel.";
-        } else {
-            ajuda.textContent = "Nesta obra, a receita prevista representa o valor do contrato/serviço fechado com o cliente.";
+        function esc(texto) {
+            return String(texto ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
         }
-    }
 
-    function selecionarFiltroStatus(status, botao) {
-        filtroStatusAtual = status;
+        function aplicarBarrasExecucao() {
+            const barras = document.querySelectorAll(".progress-dinamica");
+            barras.forEach(function (barra) {
+                const valor = Number(barra.dataset.width || 0);
+                barra.style.width = `${valor}%`;
+            });
+        }
+
+        function atualizarChipsAtivos(statusAtual) {
+            document.querySelectorAll(".obra-chip").forEach(function (chip) {
+                chip.classList.remove("active");
+                const chipStatus = (chip.dataset.status || "").toLowerCase();
+                if ((statusAtual || "todas") === chipStatus) {
+                    chip.classList.add("active");
+                }
+            });
+        }
+
+        function abrirModalObra() {
+            const modal = document.getElementById("modalObra");
+            if (modal) modal.style.display = "flex";
+        }
+
+        function fecharModalObra() {
+            const modal = document.getElementById("modalObra");
+            if (modal) modal.style.display = "none";
+        }
+
+        function abrirModalEditarObra(id) {
+            const modal = document.getElementById("modalEditarObra" + id);
+            if (modal) modal.style.display = "flex";
+        }
+
+        function fecharModalEditarObra(id) {
+            const modal = document.getElementById("modalEditarObra" + id);
+            if (modal) modal.style.display = "none";
+        }
+
+        function atualizarAjudaTipoObraNova() {
+            const tipoSelecionado = document.querySelector('#modalObra input[name="tipo_obra"]:checked');
+            const ajuda = document.getElementById("ajudaTipoObraNova");
+            if (!tipoSelecionado || !ajuda) return;
+
+            if (tipoSelecionado.value === "venda") {
+                ajuda.textContent = "Nesta obra, a receita prevista representa o valor esperado de venda do imóvel.";
+            } else {
+                ajuda.textContent = "Nesta obra, a receita prevista representa o valor do contrato/serviço fechado com o cliente.";
+            }
+        }
+
+        window.abrirModalObra = abrirModalObra;
+        window.fecharModalObra = fecharModalObra;
+        window.abrirModalEditarObra = abrirModalEditarObra;
+        window.fecharModalEditarObra = fecharModalEditarObra;
+        window.atualizarAjudaTipoObraNova = atualizarAjudaTipoObraNova;
+
+        function filtrarObrasLocal() {
+            const input = document.getElementById("obraSearch");
+            const termo = input ? input.value.trim().toLowerCase() : "";
+            const linhas = document.querySelectorAll(".obra-row");
+            const emptyState = document.getElementById("obrasSemResultado");
+
+            let visiveis = 0;
+
+            linhas.forEach(function (linha) {
+                const textoBusca = (linha.dataset.search || "").toLowerCase();
+                const correspondeBusca = !termo || textoBusca.includes(termo);
+
+                if (correspondeBusca) {
+                    linha.style.display = "";
+                    visiveis++;
+                } else {
+                    linha.style.display = "none";
+                }
+            });
+
+            if (emptyState) {
+                emptyState.style.display = visiveis === 0 && linhas.length > 0 ? "flex" : "none";
+            }
+        }
+
+        window.filtrarObrasLocal = filtrarObrasLocal;
+
+        function renderizarTabelaObras(obras, podeEditar, podeExcluir) {
+            const tbody = document.getElementById("obrasTableBody");
+            const emptyState = document.getElementById("obrasSemResultado");
+
+            if (!tbody) return;
+
+            if (!obras || obras.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="muted">Nenhuma obra cadastrada ainda.</td></tr>`;
+                if (emptyState) emptyState.style.display = "none";
+                return;
+            }
+
+            tbody.innerHTML = obras.map(o => {
+                const search = [
+                    o.codigo,
+                    o.nome,
+                    o.tipologia,
+                    o.endereco,
+                    o.tipo_obra
+                ].map(v => (v || "").toLowerCase()).join(" ");
+
+                const acoes = `<div style="display:flex; gap:6px;">
+                ${podeEditar ? `<button class="btn btn-small" type="button" onclick="abrirModalEditarObra('${esc(String(o.id))}')">Editar</button>` : ""}
+                ${podeExcluir ? `<form method="POST" action="/obras/excluir/${esc(String(o.id))}" onsubmit="return confirm('Deseja realmente excluir esta obra?');"><button type="submit" class="btn btn-small btn-danger">Excluir</button></form>` : ""}
+            </div>`;
+
+                return `
+                <tr class="obra-row"
+                    data-status="${esc(o.status)}"
+                    data-search="${esc(search)}">
+                    <td class="td-mono">${esc(o.codigo)}</td>
+                    <td class="td-name">
+                        <a href="/obra/${encodeURIComponent(o.codigo)}" class="link-obra">${esc(o.nome)}</a>
+                    </td>
+                    <td>${esc(o.tipo_obra_formatado)}</td>
+                    <td>${esc(o.tipologia)}</td>
+                    <td>${esc(String(o.area_m2))} m²</td>
+                    <td>${esc(o.orcamento_formatado)}</td>
+                    <td>${esc(o.receita_total_formatado)}</td>
+                    <td>
+                        <div class="progress-wrap">
+                            <div class="progress-text">${Number(o.progresso_percentual || 0)}%</div>
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill progress-dinamica" data-width="${Number(o.progresso_percentual || 0)}"></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge ${esc(o.status)}">${esc(o.status)}</span>
+                    </td>
+                    <td>${acoes}</td>
+                </tr>
+            `;
+            }).join("");
+
+            aplicarBarrasExecucao();
+            filtrarObrasLocal();
+        }
+
+        function atualizarResumo(payload) {
+            const linkExportar = document.getElementById("linkExportarObras");
+            if (linkExportar) {
+                const params = new URLSearchParams();
+                if (payload.filtros.busca) params.set("busca", payload.filtros.busca);
+                if (payload.filtros.status && payload.filtros.status !== "todas") {
+                    params.set("status", payload.filtros.status);
+                }
+                linkExportar.href = `/obras/exportar?${params.toString()}`;
+            }
+
+            const inputBusca = document.getElementById("obraSearch");
+            if (inputBusca && inputBusca.value !== (payload.filtros.busca || "")) {
+                inputBusca.value = payload.filtros.busca || "";
+            }
+
+            filtroStatusAtual = payload.filtros.status || "todas";
+            atualizarChipsAtivos(filtroStatusAtual);
+        }
+
+        async function atualizarObrasParcial() {
+            const input = document.getElementById("obraSearch");
+            const busca = input ? input.value.trim() : "";
+
+            const params = new URLSearchParams();
+            if (busca) params.set("busca", busca);
+            if (filtroStatusAtual && filtroStatusAtual !== "todas") {
+                params.set("status", filtroStatusAtual);
+            }
+
+            try {
+                const response = await fetch(`/obras/dados?${params.toString()}`, {
+                    headers: {
+                        "X-Requested-With": "fetch"
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error("Erro ao atualizar obras");
+                }
+
+                const payload = await response.json();
+
+                renderizarTabelaObras(payload.obras, payload.pode_editar, payload.pode_excluir);
+                atualizarResumo(payload);
+
+                const novaUrl = `${window.location.pathname}${params.toString() ? "?" + params.toString() : ""}`;
+                window.history.replaceState({}, "", novaUrl);
+            } catch (erro) {
+                console.error("Erro ao atualizar obras:", erro);
+            }
+        }
+
+        function selecionarFiltroStatus(status) {
+            filtroStatusAtual = status || "todas";
+            atualizarChipsAtivos(filtroStatusAtual);
+            atualizarObrasParcial();
+        }
+
+        window.selecionarFiltroStatus = selecionarFiltroStatus;
 
         document.querySelectorAll(".obra-chip").forEach(function (chip) {
-            chip.classList.remove("active");
+            chip.addEventListener("click", function () {
+                const status = chip.dataset.status || "todas";
+                selecionarFiltroStatus(status);
+            });
         });
 
-        if (botao) {
-            botao.classList.add("active");
-        }
-
-        filtrarObras();
-    }
-
-    function filtrarObras() {
-        const input = document.getElementById("obraSearch");
-        const termo = input ? input.value.trim().toLowerCase() : "";
-        const linhas = document.querySelectorAll(".obra-row");
-        const emptyState = document.getElementById("obrasSemResultado");
-
-        let visiveis = 0;
-
-        linhas.forEach(function (linha) {
-            const textoBusca = (linha.dataset.search || "").toLowerCase();
-            const statusLinha = (linha.dataset.status || "").toLowerCase();
-
-            const correspondeBusca = !termo || textoBusca.includes(termo);
-            const correspondeStatus = filtroStatusAtual === "todas" || statusLinha === filtroStatusAtual;
-
-            if (correspondeBusca && correspondeStatus) {
-                linha.style.display = "";
-                visiveis++;
-            } else {
-                linha.style.display = "none";
+        window.addEventListener("click", function (event) {
+            const modalNova = document.getElementById("modalObra");
+            if (modalNova && event.target === modalNova) {
+                modalNova.style.display = "none";
             }
+
+            const modais = document.querySelectorAll("[id^='modalEditarObra']");
+            modais.forEach(function (modal) {
+                if (event.target === modal) {
+                    modal.style.display = "none";
+                }
+            });
         });
 
-        if (emptyState) {
-            emptyState.style.display = visiveis === 0 && linhas.length > 0 ? "flex" : "none";
+        const inputBusca = document.getElementById("obraSearch");
+        if (inputBusca) {
+            inputBusca.addEventListener("input", function () {
+                clearTimeout(debounceBusca);
+                debounceBusca = setTimeout(function () {
+                    atualizarObrasParcial();
+                }, 250);
+            });
         }
-    }
 
-    window.addEventListener("click", function (event) {
-        const modalNova = document.getElementById("modalObra");
-        if (modalNova && event.target === modalNova) {
-            modalNova.style.display = "none";
-        }
-
-        const modais = document.querySelectorAll("[id^='modalEditarObra']");
-        modais.forEach(function (modal) {
-            if (event.target === modal) {
-                modal.style.display = "none";
-            }
-        });
-    });
-
-    document.addEventListener("DOMContentLoaded", function () {
-        const barras = document.querySelectorAll(".progress-dinamica");
-        barras.forEach(function (barra) {
-            const valor = barra.dataset.width || 0;
-            barra.style.width = valor + "%";
-        });
-
+        aplicarBarrasExecucao();
         atualizarAjudaTipoObraNova();
-        filtrarObras();
-    });
+        atualizarChipsAtivos(filtroStatusAtual);
+        filtrarObrasLocal();
+    })();
 </script>
 {% endblock %}
