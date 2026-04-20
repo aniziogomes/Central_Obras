@@ -5,10 +5,10 @@
 {% block content %}
 <div class="hdr hdr-hero">
     <div>
-        <div class="page-kicker">Central de Obras</div>
         <h1>Dashboard Executivo</h1>
         <p>Visão Geral</p>
     </div>
+
     <div class="hdr-right">
         <a class="btn btn-success" id="btnExportarExcel"
             href="{{ url_for('dashboard_bp.dashboard_exportar', obra=filtro_obra, categoria=filtro_categoria, status=filtro_status, tipo_obra=filtro_tipo_obra, data_inicio=data_inicio, data_fim=data_fim) }}">

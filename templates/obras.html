@@ -8,127 +8,152 @@
         <h1>Obras</h1>
         <p>Cadastro completo com gestão de dados</p>
     </div>
-    <div class="hdr-right" style="display:flex; gap:8px;">
+    <div class="hdr-right">
         <a id="linkExportarObras"
             href="{{ url_for('obras_bp.obras_exportar', busca=filtro_busca, status=filtro_status) }}"
-            class="btn btn-success">
-            Exportar Excel
-        </a>
+            class="btn btn-success">Exportar Excel</a>
         {% if eh_gestor() %}
-        <button class="btn btn-primary" onclick="abrirModalObra()">Nova Obra</button>
+        <button class="btn btn-primary" onclick="abrirModalObra()">+ Nova Obra</button>
         {% endif %}
     </div>
 </div>
 
+<!-- Busca + chips de status -->
 <div class="obras-toolbar">
     <div class="obras-search-wrap">
         <span class="obras-search-icon">⌕</span>
-        <input type="text" id="obraSearch" class="obras-search-input" placeholder="Buscar obra..."
-            value="{{ filtro_busca or '' }}">
+        <input type="text" id="obraSearch" class="obras-search-input"
+            placeholder="Buscar obra por nome, código, tipologia..." value="{{ filtro_busca or '' }}">
     </div>
-
     <div class="obras-status-chips" id="obrasStatusChips">
         <button type="button" class="obra-chip {% if not filtro_status or filtro_status == 'todas' %}active{% endif %}"
-            data-status="todas">
-            Todas
-        </button>
+            data-status="todas">Todas</button>
         <button type="button" class="obra-chip {% if filtro_status == 'andamento' %}active{% endif %}"
-            data-status="andamento">
-            Em andamento
-        </button>
+            data-status="andamento">Em andamento</button>
         <button type="button" class="obra-chip {% if filtro_status == 'concluida' %}active{% endif %}"
-            data-status="concluida">
-            Concluídas
-        </button>
+            data-status="concluida">Concluídas</button>
         <button type="button" class="obra-chip {% if filtro_status == 'atrasada' %}active{% endif %}"
-            data-status="atrasada">
-            Atrasadas
-        </button>
+            data-status="atrasada">Atrasadas</button>
         <button type="button" class="obra-chip {% if filtro_status == 'planejamento' %}active{% endif %}"
-            data-status="planejamento">
-            Planejamento
-        </button>
+            data-status="planejamento">Planejamento</button>
         <button type="button" class="obra-chip {% if filtro_status == 'vendida' %}active{% endif %}"
-            data-status="vendida">
-            Vendidas
-        </button>
+            data-status="vendida">Vendidas</button>
     </div>
 </div>
 
-<div class="card">
-    <div class="tbl-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Nome</th>
-                    <th>Tipo da obra</th>
-                    <th>Tipologia</th>
-                    <th>Área</th>
-                    <th>Custo previsto</th>
-                    <th>Receita prevista</th>
-                    <th>Execução</th>
-                    <th>Status</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody id="obrasTableBody">
-                {% for obra in obras %}
-                <tr class="obra-row" data-status="{{ obra.status or '' }}"
-                    data-search="{{ (obra.codigo or '')|lower }} {{ (obra.nome or '')|lower }} {{ (obra.tipologia or '')|lower }} {{ (obra.endereco or '')|lower }} {{ (obra.tipo_obra or '')|lower }}">
-                    <td class="td-mono">{{ obra.codigo }}</td>
-                    <td class="td-name">
-                        <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra.codigo) }}" class="link-obra">
-                            {{ obra.nome }}
-                        </a>
-                    </td>
-                    <td>{{ formatar_tipo_obra(obra.tipo_obra) }}</td>
-                    <td>{{ obra.tipologia or "-" }}</td>
-                    <td>{{ obra.area_m2 or 0 }} m²</td>
-                    <td>{{ formatar_moeda(obra.orcamento) }}</td>
-                    <td>{{ formatar_moeda(obra.receita_total) }}</td>
-                    <td>
-                        <div class="progress-wrap">
-                            <div class="progress-text">{{ obra.progresso_percentual or 0 }}%</div>
-                            <div class="progress-bar-bg">
-                                <div class="progress-bar-fill progress-dinamica"
-                                    data-width="{{ obra.progresso_percentual or 0 }}"></div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>
-                        <span class="badge {{ obra.status }}">{{ obra.status }}</span>
-                    </td>
-                    <td>
-                        <div style="display:flex; gap:6px;">
-                            {% if eh_gestor() %}
-                            <button class="btn btn-small" type="button" onclick="abrirModalEditarObra('{{ obra.id }}')">
-                                Editar
-                            </button>
-                            {% endif %}
-                            {% if eh_admin() %}
-                            <form method="POST" action="{{ url_for('obras_bp.excluir_obra', obra_id=obra.id) }}"
-                                onsubmit="return confirm('Deseja realmente excluir esta obra?');">
-                                <button type="submit" class="btn btn-small btn-danger">Excluir</button>
-                            </form>
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
-                {% else %}
-                <tr id="linhaSemObrasOriginal">
-                    <td colspan="10" class="muted">Nenhuma obra cadastrada ainda.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<!-- Lista de obras em cards -->
+<div class="obras-cards" id="obrasCards">
+    {% for obra in obras %}
+    <div class="obra-card" data-status="{{ obra.status or '' }}"
+        data-search="{{ (obra.codigo or '')|lower }} {{ (obra.nome or '')|lower }} {{ (obra.tipologia or '')|lower }} {{ (obra.endereco or '')|lower }} {{ (obra.tipo_obra or '')|lower }}">
 
-        <div id="obrasSemResultado" class="obras-empty-state" style="display:none;">
-            Nenhuma obra encontrada com os filtros aplicados.
+        <!-- Linha principal -->
+        <div class="obra-card-main">
+            <div class="obra-card-identity">
+                <div class="obra-card-title-row">
+                    <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra.codigo) }}" class="obra-card-nome">
+                        {{ obra.nome }}
+                    </a>
+                    <span class="obra-card-codigo">{{ obra.codigo }}</span>
+                    <span class="badge {{ obra.status }}">{{ obra.status }}</span>
+                </div>
+                <div class="obra-card-subtitle">
+                    <span>{{ formatar_tipo_obra(obra.tipo_obra) }}</span>
+                    {% if obra.tipologia %}<span class="obra-card-dot">·</span><span>{{ obra.tipologia }}</span>{% endif
+                    %}
+                    {% if obra.area_m2 %}<span class="obra-card-dot">·</span><span>{{ obra.area_m2 }} m²</span>{% endif
+                    %}
+                </div>
+            </div>
+
+            <div class="obra-card-kpis">
+                <div class="obra-kv">
+                    <div class="obra-kv-label">Custo previsto</div>
+                    <div class="obra-kv-value">{{ formatar_moeda(obra.orcamento) }}</div>
+                </div>
+                <div class="obra-kv">
+                    <div class="obra-kv-label">Receita prevista</div>
+                    <div class="obra-kv-value">{{ formatar_moeda(obra.receita_total) }}</div>
+                </div>
+                <div class="obra-kv obra-kv--progress">
+                    <div class="obra-kv-label">Execução física</div>
+                    <div class="obra-kv-progress-row">
+                        <div class="progress-bar-bg" style="width:140px; margin-top:0; margin-right:8px;">
+                            <div class="progress-bar-fill progress-dinamica"
+                                data-width="{{ obra.progresso_percentual or 0 }}"></div>
+                        </div>
+                        <span class="obra-kv-pct">{{ obra.progresso_percentual or 0 }}%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="obra-card-actions">
+                <button type="button" class="obra-expand-btn" onclick="toggleObraCard(this)" title="Ver detalhes">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                </button>
+                {% if eh_gestor() %}
+                <button class="btn btn-small" type="button"
+                    onclick="abrirModalEditarObra('{{ obra.id }}')">Editar</button>
+                {% endif %}
+                {% if eh_admin() %}
+                <form method="POST" action="{{ url_for('obras_bp.excluir_obra', obra_id=obra.id) }}"
+                    onsubmit="return confirm('Deseja realmente excluir esta obra?');" style="margin:0;">
+                    <button type="submit" class="btn btn-small btn-danger">Excluir</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Linha expandida (oculta por padrão) -->
+        <div class="obra-card-details">
+            <div class="obra-detail-grid">
+                <div class="obra-detail-item">
+                    <div class="obra-detail-label">Endereço</div>
+                    <div class="obra-detail-value">{{ obra.endereco or "—" }}</div>
+                </div>
+                <div class="obra-detail-item">
+                    <div class="obra-detail-label">Data de início</div>
+                    <div class="obra-detail-value">{{ obra.data_inicio or "—" }}</div>
+                </div>
+                <div class="obra-detail-item">
+                    <div class="obra-detail-label">Prazo final previsto</div>
+                    <div class="obra-detail-value">{{ obra.data_fim_prevista or "—" }}</div>
+                </div>
+                <div class="obra-detail-item">
+                    <div class="obra-detail-label">Tipo de negócio</div>
+                    <div class="obra-detail-value">{{ formatar_tipo_obra(obra.tipo_obra) }}</div>
+                </div>
+                <div class="obra-detail-item">
+                    <div class="obra-detail-label">Margem prevista</div>
+                    <div
+                        class="obra-detail-value {% if (obra.receita_total or 0) - (obra.orcamento or 0) >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">
+                        {{ formatar_moeda((obra.receita_total or 0) - (obra.orcamento or 0)) }}
+                    </div>
+                </div>
+                <div class="obra-detail-item">
+                    <div class="obra-detail-label">Ver todos os detalhes</div>
+                    <div class="obra-detail-value">
+                        <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra.codigo) }}" class="obra-detail-link">
+                            Abrir ficha completa →
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+    {% else %}
+    <div class="obras-empty-state">Nenhuma obra cadastrada ainda.</div>
+    {% endfor %}
 </div>
 
+<div id="obrasSemResultado" class="obras-empty-state" style="display:none;">
+    Nenhuma obra encontrada com os filtros aplicados.
+</div>
+
+<!-- ======= MODAIS DE EDIÇÃO ======= -->
 {% if eh_gestor() %}
 {% for obra in obras %}
 <div id="modalEditarObra{{ obra.id }}" class="modal-overlay">
@@ -137,19 +162,16 @@
             <h3>Editar Obra</h3>
             <button type="button" class="modal-close" onclick="fecharModalEditarObra('{{ obra.id }}')">×</button>
         </div>
-
         <form method="POST" action="{{ url_for('obras_bp.editar_obra', obra_id=obra.id) }}">
             <div class="form-grid modal-form-grid">
                 <div class="form-group">
-                    <label>Nome da Obra</label>
+                    <label>Nome da Obra *</label>
                     <input type="text" name="nome" value="{{ obra.nome }}" required>
                 </div>
-
                 <div class="form-group">
                     <label>Endereço</label>
                     <input type="text" name="endereco" value="{{ obra.endereco or '' }}">
                 </div>
-
                 <div class="form-group full tipo-obra-field">
                     <label>Tipo da Obra</label>
                     <div class="tipo-obra-group">
@@ -164,7 +186,6 @@
                                 </div>
                             </div>
                         </label>
-
                         <label class="tipo-obra-option">
                             <input type="radio" name="tipo_obra" value="venda" {% if obra.tipo_obra=='venda' %}checked{%
                                 endif %}>
@@ -178,43 +199,35 @@
                         </label>
                     </div>
                 </div>
-
                 <div class="form-group">
                     <label>Tipologia</label>
                     <input type="text" name="tipologia" value="{{ obra.tipologia or '' }}">
                 </div>
-
                 <div class="form-group">
                     <label>Área m²</label>
                     <input type="number" step="0.01" name="area_m2" value="{{ obra.area_m2 or 0 }}">
                 </div>
-
                 <div class="form-group">
                     <label>Data Início</label>
                     <input type="date" name="data_inicio" value="{{ obra.data_inicio or '' }}">
                 </div>
-
                 <div class="form-group">
                     <label>Data Fim Prevista</label>
                     <input type="date" name="data_fim_prevista" value="{{ obra.data_fim_prevista or '' }}">
                 </div>
-
                 <div class="form-group">
-                    <label>Custo previsto</label>
+                    <label>Custo previsto (R$)</label>
                     <input type="number" step="0.01" name="orcamento" value="{{ obra.orcamento or 0 }}">
                 </div>
-
                 <div class="form-group">
-                    <label>Receita prevista</label>
+                    <label>Receita prevista (R$)</label>
                     <input type="number" step="0.01" name="receita_total" value="{{ obra.receita_total or 0 }}">
                 </div>
-
                 <div class="form-group">
                     <label>Execução (%)</label>
                     <input type="number" step="0.01" name="progresso_percentual"
                         value="{{ obra.progresso_percentual or 0 }}">
                 </div>
-
                 <div class="form-group">
                     <label>Status</label>
                     <select name="status">
@@ -229,17 +242,13 @@
                     </select>
                 </div>
             </div>
-
-            <div class="card modal-info-card">
-                <p class="muted" style="margin:0;">
-                    {% if (obra.tipo_obra or 'contrato') == 'venda' %}
-                    Nesta obra, a receita prevista representa o valor esperado de venda do imóvel.
-                    {% else %}
-                    Nesta obra, a receita prevista representa o valor do contrato/serviço fechado com o cliente.
-                    {% endif %}
-                </p>
+            <div class="modal-info-card">
+                {% if (obra.tipo_obra or 'contrato') == 'venda' %}
+                Receita prevista = valor esperado de venda do imóvel.
+                {% else %}
+                Receita prevista = valor do contrato/serviço fechado com o cliente.
+                {% endif %}
             </div>
-
             <div class="modal-footer">
                 <button type="button" class="btn" onclick="fecharModalEditarObra('{{ obra.id }}')">Cancelar</button>
                 <button type="submit" class="btn btn-primary">Salvar Alterações</button>
@@ -249,30 +258,27 @@
 </div>
 {% endfor %}
 
+<!-- Modal nova obra -->
 <div id="modalObra" class="modal-overlay">
     <div class="modal-box">
         <div class="modal-header">
             <h3>Nova Obra</h3>
             <button type="button" class="modal-close" onclick="fecharModalObra()">×</button>
         </div>
-
         <form method="POST" action="{{ url_for('obras_bp.nova_obra') }}">
             <div class="form-grid modal-form-grid">
                 <div class="form-group">
                     <label>ID da Obra *</label>
                     <input type="text" name="codigo" value="{{ proximo_codigo }}" placeholder="OBR-001" required>
                 </div>
-
                 <div class="form-group">
                     <label>Nome da Obra *</label>
                     <input type="text" name="nome" placeholder="Residência Silva" required>
                 </div>
-
                 <div class="form-group full">
                     <label>Endereço</label>
                     <input type="text" name="endereco" placeholder="Rua das Flores, 123">
                 </div>
-
                 <div class="form-group full tipo-obra-field">
                     <label>Tipo da Obra *</label>
                     <div class="tipo-obra-group">
@@ -287,7 +293,6 @@
                                 </div>
                             </div>
                         </label>
-
                         <label class="tipo-obra-option">
                             <input type="radio" name="tipo_obra" id="tipoObraNovaVenda" value="venda"
                                 onchange="atualizarAjudaTipoObraNova()">
@@ -301,7 +306,6 @@
                         </label>
                     </div>
                 </div>
-
                 <div class="form-group">
                     <label>Tipologia *</label>
                     <select name="tipologia" required>
@@ -314,37 +318,30 @@
                         <option value="Reforma">Reforma</option>
                     </select>
                 </div>
-
                 <div class="form-group">
                     <label>Área (m²)</label>
                     <input type="number" step="0.01" name="area_m2" placeholder="120">
                 </div>
-
                 <div class="form-group">
                     <label>Data Início</label>
                     <input type="date" name="data_inicio">
                 </div>
-
                 <div class="form-group">
                     <label>Data Fim Prevista</label>
                     <input type="date" name="data_fim_prevista">
                 </div>
-
                 <div class="form-group">
-                    <label>Custo previsto da obra (R$)</label>
+                    <label>Custo previsto (R$)</label>
                     <input type="number" step="0.01" name="orcamento" placeholder="280000">
                 </div>
-
                 <div class="form-group">
                     <label>Receita prevista (R$)</label>
                     <input type="number" step="0.01" name="receita_total" placeholder="320000">
                 </div>
-
                 <div class="form-group">
                     <label>% Execução Física</label>
                     <input type="number" step="0.01" name="progresso_percentual" placeholder="0">
                 </div>
-
                 <div class="form-group">
                     <label>Status *</label>
                     <select name="status" required>
@@ -357,13 +354,9 @@
                     </select>
                 </div>
             </div>
-
-            <div class="card modal-info-card">
-                <p class="muted" id="ajudaTipoObraNova" style="margin:0;">
-                    Nesta obra, a receita prevista representa o valor do contrato/serviço fechado com o cliente.
-                </p>
+            <div class="modal-info-card" id="ajudaTipoObraNova">
+                Receita prevista = valor do contrato/serviço fechado com o cliente.
             </div>
-
             <div class="modal-footer">
                 <button type="button" class="btn" onclick="fecharModalObra()">Cancelar</button>
                 <button type="submit" class="btn btn-primary">Salvar Obra</button>
@@ -378,63 +371,194 @@
         let filtroStatusAtual = "{{ filtro_status if filtro_status else 'todas' }}";
         let debounceBusca = null;
 
-        function esc(texto) {
-            return String(texto ?? "")
-                .replaceAll("&", "&amp;")
-                .replaceAll("<", "&lt;")
-                .replaceAll(">", "&gt;")
-                .replaceAll('"', "&quot;")
-                .replaceAll("'", "&#039;");
+        function esc(t) {
+            return String(t ?? "")
+                .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
         }
 
-        function aplicarBarrasExecucao() {
-            const barras = document.querySelectorAll(".progress-dinamica");
-            barras.forEach(function (barra) {
-                const valor = Number(barra.dataset.width || 0);
-                barra.style.width = `${valor}%`;
+        /* ---------- barras de progresso ---------- */
+        function aplicarBarras(root) {
+            (root || document).querySelectorAll(".progress-dinamica").forEach(el => {
+                el.style.width = (el.dataset.width || 0) + "%";
             });
         }
 
-        function atualizarChipsAtivos(statusAtual) {
-            document.querySelectorAll(".obra-chip").forEach(function (chip) {
-                chip.classList.remove("active");
-                const chipStatus = (chip.dataset.status || "").toLowerCase();
-                if ((statusAtual || "todas") === chipStatus) {
-                    chip.classList.add("active");
-                }
+        /* ---------- expand / collapse de card ---------- */
+        window.toggleObraCard = function (btn) {
+            const card = btn.closest(".obra-card");
+            const details = card.querySelector(".obra-card-details");
+            const isOpen = details.classList.contains("open");
+
+            details.classList.toggle("open", !isOpen);
+            btn.classList.toggle("expanded", !isOpen);
+        };
+
+        /* ---------- chips de status ---------- */
+        function atualizarChips(status) {
+            document.querySelectorAll(".obra-chip").forEach(c => {
+                c.classList.toggle("active", (c.dataset.status || "todas") === (status || "todas"));
             });
         }
 
-        function abrirModalObra() {
-            const modal = document.getElementById("modalObra");
-            if (modal) modal.style.display = "flex";
+        /* ---------- filtro local (client-side, sem fetch) ---------- */
+        function filtrarCardsLocal() {
+            const input = document.getElementById("obraSearch");
+            const termo = input ? input.value.trim().toLowerCase() : "";
+            const cards = document.querySelectorAll(".obra-card");
+            const empty = document.getElementById("obrasSemResultado");
+            let visiveis = 0;
+
+            cards.forEach(card => {
+                const busca = (card.dataset.search || "").toLowerCase();
+                const status = (card.dataset.status || "").toLowerCase();
+                const okBusca = !termo || busca.includes(termo);
+                const okStatus = filtroStatusAtual === "todas" || status === filtroStatusAtual;
+
+                card.style.display = (okBusca && okStatus) ? "" : "none";
+                if (okBusca && okStatus) visiveis++;
+            });
+
+            if (empty) empty.style.display = (visiveis === 0 && cards.length > 0) ? "flex" : "none";
         }
 
-        function fecharModalObra() {
-            const modal = document.getElementById("modalObra");
-            if (modal) modal.style.display = "none";
+        /* ---------- renderiza cards via API ---------- */
+        function renderizarCards(obras, podeEditar, podeExcluir) {
+            const container = document.getElementById("obrasCards");
+            const empty = document.getElementById("obrasSemResultado");
+
+            if (!container) return;
+
+            if (!obras || obras.length === 0) {
+                container.innerHTML = "";
+                if (empty) empty.style.display = "flex";
+                return;
+            }
+
+            if (empty) empty.style.display = "none";
+
+            container.innerHTML = obras.map(o => {
+                const margem = (o.receita_total || 0) - (o.orcamento || 0);
+                const margemClass = margem >= 0 ? "valor-positivo" : "valor-negativo";
+                const search = [o.codigo, o.nome, o.tipologia, o.endereco, o.tipo_obra]
+                    .map(v => (v || "").toLowerCase()).join(" ");
+
+                const acoes = `
+                <button type="button" class="obra-expand-btn" onclick="toggleObraCard(this)" title="Ver detalhes">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                </button>
+                ${podeEditar ? `<button class="btn btn-small" type="button" onclick="abrirModalEditarObra('${esc(String(o.id))}')">Editar</button>` : ""}
+                ${podeExcluir ? `<form method="POST" action="/obras/excluir/${esc(String(o.id))}" onsubmit="return confirm('Deseja realmente excluir esta obra?');" style="margin:0;"><button type="submit" class="btn btn-small btn-danger">Excluir</button></form>` : ""}
+            `;
+
+                return `
+            <div class="obra-card" data-status="${esc(o.status)}" data-search="${esc(search)}">
+                <div class="obra-card-main">
+                    <div class="obra-card-identity">
+                        <div class="obra-card-title-row">
+                            <a href="/obra/${encodeURIComponent(o.codigo)}" class="obra-card-nome">${esc(o.nome)}</a>
+                            <span class="obra-card-codigo">${esc(o.codigo)}</span>
+                            <span class="badge ${esc(o.status)}">${esc(o.status)}</span>
+                        </div>
+                        <div class="obra-card-subtitle">
+                            <span>${esc(o.tipo_obra_formatado)}</span>
+                            ${o.tipologia ? `<span class="obra-card-dot">·</span><span>${esc(o.tipologia)}</span>` : ""}
+                            ${o.area_m2 ? `<span class="obra-card-dot">·</span><span>${esc(String(o.area_m2))} m²</span>` : ""}
+                        </div>
+                    </div>
+                    <div class="obra-card-kpis">
+                        <div class="obra-kv">
+                            <div class="obra-kv-label">Custo previsto</div>
+                            <div class="obra-kv-value">${esc(o.orcamento_formatado)}</div>
+                        </div>
+                        <div class="obra-kv">
+                            <div class="obra-kv-label">Receita prevista</div>
+                            <div class="obra-kv-value">${esc(o.receita_total_formatado)}</div>
+                        </div>
+                        <div class="obra-kv obra-kv--progress">
+                            <div class="obra-kv-label">Execução física</div>
+                            <div class="obra-kv-progress-row">
+                                <div class="progress-bar-bg" style="width:140px; margin-top:0; margin-right:8px;">
+                                    <div class="progress-bar-fill" style="width:${Number(o.progresso_percentual || 0)}%"></div>
+                                </div>
+                                <span class="obra-kv-pct">${Number(o.progresso_percentual || 0)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="obra-card-actions">${acoes}</div>
+                </div>
+                <div class="obra-card-details">
+                    <div class="obra-detail-grid">
+                        <div class="obra-detail-item">
+                            <div class="obra-detail-label">Endereço</div>
+                            <div class="obra-detail-value">${esc(o.endereco || "—")}</div>
+                        </div>
+                        <div class="obra-detail-item">
+                            <div class="obra-detail-label">Tipo de negócio</div>
+                            <div class="obra-detail-value">${esc(o.tipo_obra_formatado)}</div>
+                        </div>
+                        <div class="obra-detail-item">
+                            <div class="obra-detail-label">Margem prevista</div>
+                            <div class="obra-detail-value ${margemClass}">${esc(String(margem.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })))}</div>
+                        </div>
+                        <div class="obra-detail-item">
+                            <div class="obra-detail-label">Ver ficha completa</div>
+                            <div class="obra-detail-value"><a href="/obra/${encodeURIComponent(o.codigo)}" class="obra-detail-link">Abrir →</a></div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+            }).join("");
+
+            aplicarBarras(container);
         }
 
-        function abrirModalEditarObra(id) {
-            const modal = document.getElementById("modalEditarObra" + id);
-            if (modal) modal.style.display = "flex";
+        /* ---------- busca via API ---------- */
+        async function atualizarObrasParcial() {
+            const input = document.getElementById("obraSearch");
+            const busca = input ? input.value.trim() : "";
+            const params = new URLSearchParams();
+
+            if (busca) params.set("busca", busca);
+            if (filtroStatusAtual && filtroStatusAtual !== "todas") params.set("status", filtroStatusAtual);
+
+            try {
+                const res = await fetch(`/obras/dados?${params.toString()}`, {
+                    headers: { "X-Requested-With": "fetch" }
+                });
+                if (!res.ok) throw new Error("Erro");
+                const payload = await res.json();
+
+                renderizarCards(payload.obras, payload.pode_editar, payload.pode_excluir);
+
+                const link = document.getElementById("linkExportarObras");
+                if (link) link.href = `/obras/exportar?${params.toString()}`;
+
+                filtroStatusAtual = payload.filtros.status || "todas";
+                atualizarChips(filtroStatusAtual);
+
+                window.history.replaceState({}, "", `${location.pathname}${params.toString() ? "?" + params.toString() : ""}`);
+            } catch (e) {
+                console.error("Erro ao buscar obras:", e);
+                filtrarCardsLocal();
+            }
         }
 
-        function fecharModalEditarObra(id) {
-            const modal = document.getElementById("modalEditarObra" + id);
-            if (modal) modal.style.display = "none";
-        }
+        /* ---------- modais ---------- */
+        function abrirModalObra() { const m = document.getElementById("modalObra"); if (m) m.style.display = "flex"; }
+        function fecharModalObra() { const m = document.getElementById("modalObra"); if (m) m.style.display = "none"; }
+        function abrirModalEditarObra(id) { const m = document.getElementById("modalEditarObra" + id); if (m) m.style.display = "flex"; }
+        function fecharModalEditarObra(id) { const m = document.getElementById("modalEditarObra" + id); if (m) m.style.display = "none"; }
 
         function atualizarAjudaTipoObraNova() {
-            const tipoSelecionado = document.querySelector('#modalObra input[name="tipo_obra"]:checked');
-            const ajuda = document.getElementById("ajudaTipoObraNova");
-            if (!tipoSelecionado || !ajuda) return;
-
-            if (tipoSelecionado.value === "venda") {
-                ajuda.textContent = "Nesta obra, a receita prevista representa o valor esperado de venda do imóvel.";
-            } else {
-                ajuda.textContent = "Nesta obra, a receita prevista representa o valor do contrato/serviço fechado com o cliente.";
-            }
+            const sel = document.querySelector('#modalObra input[name="tipo_obra"]:checked');
+            const info = document.getElementById("ajudaTipoObraNova");
+            if (!sel || !info) return;
+            info.textContent = sel.value === "venda"
+                ? "Receita prevista = valor esperado de venda do imóvel."
+                : "Receita prevista = valor do contrato/serviço fechado com o cliente.";
         }
 
         window.abrirModalObra = abrirModalObra;
@@ -443,188 +567,38 @@
         window.fecharModalEditarObra = fecharModalEditarObra;
         window.atualizarAjudaTipoObraNova = atualizarAjudaTipoObraNova;
 
-        function filtrarObrasLocal() {
-            const input = document.getElementById("obraSearch");
-            const termo = input ? input.value.trim().toLowerCase() : "";
-            const linhas = document.querySelectorAll(".obra-row");
-            const emptyState = document.getElementById("obrasSemResultado");
-
-            let visiveis = 0;
-
-            linhas.forEach(function (linha) {
-                const textoBusca = (linha.dataset.search || "").toLowerCase();
-                const correspondeBusca = !termo || textoBusca.includes(termo);
-
-                if (correspondeBusca) {
-                    linha.style.display = "";
-                    visiveis++;
-                } else {
-                    linha.style.display = "none";
-                }
+        /* ---------- fechar modal clicando fora ---------- */
+        window.addEventListener("click", e => {
+            ["modalObra"].forEach(id => {
+                const m = document.getElementById(id);
+                if (m && e.target === m) m.style.display = "none";
             });
-
-            if (emptyState) {
-                emptyState.style.display = visiveis === 0 && linhas.length > 0 ? "flex" : "none";
-            }
-        }
-
-        window.filtrarObrasLocal = filtrarObrasLocal;
-
-        function renderizarTabelaObras(obras, podeEditar, podeExcluir) {
-            const tbody = document.getElementById("obrasTableBody");
-            const emptyState = document.getElementById("obrasSemResultado");
-
-            if (!tbody) return;
-
-            if (!obras || obras.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="10" class="muted">Nenhuma obra cadastrada ainda.</td></tr>`;
-                if (emptyState) emptyState.style.display = "none";
-                return;
-            }
-
-            tbody.innerHTML = obras.map(o => {
-                const search = [
-                    o.codigo,
-                    o.nome,
-                    o.tipologia,
-                    o.endereco,
-                    o.tipo_obra
-                ].map(v => (v || "").toLowerCase()).join(" ");
-
-                const acoes = `<div style="display:flex; gap:6px;">
-                ${podeEditar ? `<button class="btn btn-small" type="button" onclick="abrirModalEditarObra('${esc(String(o.id))}')">Editar</button>` : ""}
-                ${podeExcluir ? `<form method="POST" action="/obras/excluir/${esc(String(o.id))}" onsubmit="return confirm('Deseja realmente excluir esta obra?');"><button type="submit" class="btn btn-small btn-danger">Excluir</button></form>` : ""}
-            </div>`;
-
-                return `
-                <tr class="obra-row"
-                    data-status="${esc(o.status)}"
-                    data-search="${esc(search)}">
-                    <td class="td-mono">${esc(o.codigo)}</td>
-                    <td class="td-name">
-                        <a href="/obra/${encodeURIComponent(o.codigo)}" class="link-obra">${esc(o.nome)}</a>
-                    </td>
-                    <td>${esc(o.tipo_obra_formatado)}</td>
-                    <td>${esc(o.tipologia)}</td>
-                    <td>${esc(String(o.area_m2))} m²</td>
-                    <td>${esc(o.orcamento_formatado)}</td>
-                    <td>${esc(o.receita_total_formatado)}</td>
-                    <td>
-                        <div class="progress-wrap">
-                            <div class="progress-text">${Number(o.progresso_percentual || 0)}%</div>
-                            <div class="progress-bar-bg">
-                                <div class="progress-bar-fill progress-dinamica" data-width="${Number(o.progresso_percentual || 0)}"></div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>
-                        <span class="badge ${esc(o.status)}">${esc(o.status)}</span>
-                    </td>
-                    <td>${acoes}</td>
-                </tr>
-            `;
-            }).join("");
-
-            aplicarBarrasExecucao();
-            filtrarObrasLocal();
-        }
-
-        function atualizarResumo(payload) {
-            const linkExportar = document.getElementById("linkExportarObras");
-            if (linkExportar) {
-                const params = new URLSearchParams();
-                if (payload.filtros.busca) params.set("busca", payload.filtros.busca);
-                if (payload.filtros.status && payload.filtros.status !== "todas") {
-                    params.set("status", payload.filtros.status);
-                }
-                linkExportar.href = `/obras/exportar?${params.toString()}`;
-            }
-
-            const inputBusca = document.getElementById("obraSearch");
-            if (inputBusca && inputBusca.value !== (payload.filtros.busca || "")) {
-                inputBusca.value = payload.filtros.busca || "";
-            }
-
-            filtroStatusAtual = payload.filtros.status || "todas";
-            atualizarChipsAtivos(filtroStatusAtual);
-        }
-
-        async function atualizarObrasParcial() {
-            const input = document.getElementById("obraSearch");
-            const busca = input ? input.value.trim() : "";
-
-            const params = new URLSearchParams();
-            if (busca) params.set("busca", busca);
-            if (filtroStatusAtual && filtroStatusAtual !== "todas") {
-                params.set("status", filtroStatusAtual);
-            }
-
-            try {
-                const response = await fetch(`/obras/dados?${params.toString()}`, {
-                    headers: {
-                        "X-Requested-With": "fetch"
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error("Erro ao atualizar obras");
-                }
-
-                const payload = await response.json();
-
-                renderizarTabelaObras(payload.obras, payload.pode_editar, payload.pode_excluir);
-                atualizarResumo(payload);
-
-                const novaUrl = `${window.location.pathname}${params.toString() ? "?" + params.toString() : ""}`;
-                window.history.replaceState({}, "", novaUrl);
-            } catch (erro) {
-                console.error("Erro ao atualizar obras:", erro);
-            }
-        }
-
-        function selecionarFiltroStatus(status) {
-            filtroStatusAtual = status || "todas";
-            atualizarChipsAtivos(filtroStatusAtual);
-            atualizarObrasParcial();
-        }
-
-        window.selecionarFiltroStatus = selecionarFiltroStatus;
-
-        document.querySelectorAll(".obra-chip").forEach(function (chip) {
-            chip.addEventListener("click", function () {
-                const status = chip.dataset.status || "todas";
-                selecionarFiltroStatus(status);
+            document.querySelectorAll("[id^='modalEditarObra']").forEach(m => {
+                if (e.target === m) m.style.display = "none";
             });
         });
 
-        window.addEventListener("click", function (event) {
-            const modalNova = document.getElementById("modalObra");
-            if (modalNova && event.target === modalNova) {
-                modalNova.style.display = "none";
-            }
-
-            const modais = document.querySelectorAll("[id^='modalEditarObra']");
-            modais.forEach(function (modal) {
-                if (event.target === modal) {
-                    modal.style.display = "none";
-                }
+        /* ---------- chips ---------- */
+        document.querySelectorAll(".obra-chip").forEach(chip => {
+            chip.addEventListener("click", () => {
+                filtroStatusAtual = chip.dataset.status || "todas";
+                atualizarObrasParcial();
             });
         });
 
+        /* ---------- busca com debounce ---------- */
         const inputBusca = document.getElementById("obraSearch");
         if (inputBusca) {
-            inputBusca.addEventListener("input", function () {
+            inputBusca.addEventListener("input", () => {
                 clearTimeout(debounceBusca);
-                debounceBusca = setTimeout(function () {
-                    atualizarObrasParcial();
-                }, 250);
+                debounceBusca = setTimeout(atualizarObrasParcial, 280);
             });
         }
 
-        aplicarBarrasExecucao();
+        /* ---------- init ---------- */
+        aplicarBarras();
+        atualizarChips(filtroStatusAtual);
         atualizarAjudaTipoObraNova();
-        atualizarChipsAtivos(filtroStatusAtual);
-        filtrarObrasLocal();
     })();
 </script>
 {% endblock %}
