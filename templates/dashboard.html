@@ -3,10 +3,10 @@
 {% block title %}Dashboard - Central de Obras{% endblock %}
 
 {% block content %}
-<div class="hdr hdr-hero">
+<div class="hdr hdr-hero dashboard-page-header">
     <div>
         <h1>Dashboard Executivo</h1>
-        <p>Visão Geral</p>
+        <p>Visão geral das obras, resultados, custos e pontos de atenção</p>
     </div>
 
     <div class="hdr-right">
@@ -17,16 +17,16 @@
     </div>
 </div>
 
-<!-- FILTROS -->
-<div class="dashboard-filter-shell">
+<div class="dashboard-filter-shell dashboard-filter-shell--executive">
     <div class="dashboard-filter-card dashboard-filter-card--clean">
         <div class="dashboard-filter-top">
-            <div class="dashboard-filter-left">
+            <div class="dashboard-filter-left dashboard-filter-left--executive">
                 <div class="dashboard-filter-chip dashboard-filter-chip--soft">
                     <span>Filtros</span>
                     <strong id="filtroResumoQuantidade">{{ obras|length }} obra(s)</strong>
                 </div>
-                <div class="dashboard-filter-summary dashboard-filter-summary--soft">
+                <div
+                    class="dashboard-filter-summary dashboard-filter-summary--soft dashboard-filter-summary--executive">
                     <span>Obra: <strong id="resumoObra">{{ filtro_obra if filtro_obra else "Todas" }}</strong></span>
                     <span>Tipo: <strong id="resumoTipo">{{ filtro_tipo_obra if filtro_tipo_obra else "Todos"
                             }}</strong></span>
@@ -121,105 +121,126 @@
     </div>
 </div>
 
-<!-- QUICK STRIP -->
-<div class="quick-strip">
-    <div class="quick-item">
-        <div class="quick-label">Obras filtradas</div>
-        <div class="quick-value" id="quickObrasFiltradas">{{ obras|length }}</div>
+<div class="dashboard-main-kpis">
+    <div class="dashboard-main-kpi dashboard-main-kpi--neutral">
+        <div class="dashboard-main-kpi-label">Obras filtradas</div>
+        <div class="dashboard-main-kpi-value" id="kpiObrasFiltradas">{{ obras|length }}</div>
+        <div class="dashboard-main-kpi-sub">Base atual considerada no painel</div>
     </div>
-    <div class="quick-item">
-        <div class="quick-label">Execução média</div>
-        <div class="quick-value" id="quickExecucaoMedia">{{ '%.1f'|format(execucao_media) }}%</div>
+
+    <div class="dashboard-main-kpi dashboard-main-kpi--blue">
+        <div class="dashboard-main-kpi-label">Receita prevista</div>
+        <div class="dashboard-main-kpi-value" id="kpiReceita">{{ formatar_moeda(total_receita) }}</div>
+        <div class="dashboard-main-kpi-sub"><span id="kpiReceitaObras">{{ obras|length }} obras</span> <span
+                class="dashboard-main-kpi-sep">•</span> <span id="kpiReceitaMedicoes">{{ total_medicoes }}
+                medições</span></div>
     </div>
-    <div class="quick-item">
-        <div class="quick-label">Custo / Receita</div>
-        <div class="quick-value" id="quickCustoReceita">{{ '%.1f'|format(custo_percentual_receita) }}%</div>
+
+    <div class="dashboard-main-kpi dashboard-main-kpi--green">
+        <div class="dashboard-main-kpi-label">Resultado atual</div>
+        <div class="dashboard-main-kpi-value" id="kpiMargem">{{ formatar_moeda(margem) }}</div>
+        <div class="dashboard-main-kpi-sub" id="kpiMargemPercentual">{{ '%.1f'|format(margem_percentual) }}% da receita
+        </div>
     </div>
-    <div class="quick-item">
-        <div class="quick-label">Alertas ativos</div>
-        <div class="quick-value" id="quickAlertasAtivos">{{ alertas|length }}</div>
+
+    <div class="dashboard-main-kpi dashboard-main-kpi--red">
+        <div class="dashboard-main-kpi-label">Obras em atenção</div>
+        <div class="dashboard-main-kpi-value" id="kpiAlertas">{{ alertas|length }}</div>
+        <div class="dashboard-main-kpi-sub"><span id="kpiObrasAtrasadas">{{ obras_atrasadas }} atrasadas</span> <span
+                class="dashboard-main-kpi-sep">•</span> <span id="kpiObrasAtivas">{{ obras_ativas }} ativas</span></div>
     </div>
 </div>
 
-<!-- KPIs -->
-<div class="kpi-grid">
-    <div class="kpi or">
-        <div class="kpi-lbl">Receita Prevista</div>
-        <div class="kpi-val" id="kpiReceita">{{ formatar_moeda(total_receita) }}</div>
-        <div class="kpi-sub">
-            <span class="tag up" id="kpiReceitaObras">{{ obras|length }} obras</span>
-            <span class="tag wn" id="kpiReceitaMedicoes">{{ total_medicoes }} medições</span>
+<div class="dashboard-secondary-strip">
+    <div class="dashboard-secondary-item">
+        <div class="dashboard-secondary-label">Execução média</div>
+        <div class="dashboard-secondary-value" id="quickExecucaoMedia">{{ '%.1f'|format(execucao_media) }}%</div>
+    </div>
+    <div class="dashboard-secondary-item">
+        <div class="dashboard-secondary-label">Custo / receita</div>
+        <div class="dashboard-secondary-value" id="quickCustoReceita">{{ '%.1f'|format(custo_percentual_receita) }}%
         </div>
     </div>
-    <div class="kpi gr">
-        <div class="kpi-lbl">Resultado Atual</div>
-        <div class="kpi-val" id="kpiMargem">{{ formatar_moeda(margem) }}</div>
-        <div class="kpi-sub">
-            <span class="tag up" id="kpiMargemPercentual">{{ '%.1f'|format(margem_percentual) }}% da receita</span>
-        </div>
+    <div class="dashboard-secondary-item">
+        <div class="dashboard-secondary-label">Custo realizado</div>
+        <div class="dashboard-secondary-value" id="kpiCusto">{{ formatar_moeda(total_custo) }}</div>
+        <div class="dashboard-secondary-sub"><span id="kpiCustosLancados">{{ custos|length }} lançamentos</span></div>
     </div>
-    <div class="kpi bl">
-        <div class="kpi-lbl">Custo Total Realizado</div>
-        <div class="kpi-val" id="kpiCusto">{{ formatar_moeda(total_custo) }}</div>
-        <div class="kpi-sub">
-            <span class="tag wn" id="kpiCustosLancados">{{ custos|length }} lançamentos</span>
-            <span class="tag dn" id="kpiCustoPercentual">{{ '%.1f'|format(custo_percentual_receita) }}% da
-                receita</span>
-        </div>
-    </div>
-    <div class="kpi rd">
-        <div class="kpi-lbl">Obras em Atenção</div>
-        <div class="kpi-val" id="kpiAlertas">{{ alertas|length }}</div>
-        <div class="kpi-sub">
-            <span class="tag dn" id="kpiObrasAtrasadas">{{ obras_atrasadas }} atrasadas</span>
-            <span class="tag up" id="kpiObrasAtivas">{{ obras_ativas }} ativas</span>
-        </div>
+    <div class="dashboard-secondary-item">
+        <div class="dashboard-secondary-label">Alertas ativos</div>
+        <div class="dashboard-secondary-value" id="quickAlertasAtivos">{{ alertas|length }}</div>
+        <div class="dashboard-secondary-sub">Painel de acompanhamento</div>
     </div>
 </div>
 
-<!-- ALERTAS -->
-<div id="alertasContainer">
+<div class="dashboard-alerts-card" id="alertasContainer">
     {% if alertas and alertas|length > 0 %}
-    <div class="card" style="margin-bottom:12px;">
-        <div class="card-hdr">
-            <div class="card-title">Alertas Prioritários</div>
+    <div class="card dashboard-card-block">
+        <div class="card-hdr dashboard-card-hdr-inline">
+            <div>
+                <div class="card-title">Alertas prioritários</div>
+                <p class="dashboard-card-subtitle">O que precisa de atenção agora</p>
+            </div>
+            <a href="{{ url_for('dashboard_bp.alertas') }}" class="dashboard-inline-link">Ver todos</a>
         </div>
-        {% for alerta in alertas[:3] %}
-        <div class="alert-inline {{ alerta.tipo }}">
-            <strong>{{ alerta.codigo }}</strong> — {{ alerta.mensagem }}
+        <div class="dashboard-alerts-list">
+            {% for alerta in alertas[:3] %}
+            <div class="dashboard-alert-item dashboard-alert-item--{{ alerta.tipo }}">
+                <div class="dashboard-alert-badge">{{ 'Crítico' if alerta.tipo == 'danger' else 'Atenção' }}</div>
+                <div class="dashboard-alert-content">
+                    <div class="dashboard-alert-title"><strong>{{ alerta.codigo }}</strong> — {{ alerta.mensagem }}
+                    </div>
+                    <div class="dashboard-alert-sub">Revise cronograma, execução física e pendências ligadas a esta
+                        obra.</div>
+                </div>
+            </div>
+            {% endfor %}
         </div>
-        {% endfor %}
     </div>
     {% endif %}
 </div>
 
-<!-- LINHA 1 -->
-<div class="g2" style="margin-bottom:12px;">
-    <div class="card chart-card">
-        <div class="card-hdr">
-            <div class="card-title">Margem por obra (R$)</div>
+<div class="dashboard-chart-grid dashboard-chart-grid--top">
+    <div class="card chart-card dashboard-card-block">
+        <div class="card-hdr dashboard-card-hdr-inline">
+            <div>
+                <div class="card-title">Margem por obra</div>
+                <p class="dashboard-card-subtitle">Comparativo de resultado atual entre as obras filtradas</p>
+            </div>
         </div>
-        <div class="chart-box"><canvas id="graficoMargem"></canvas></div>
+        <div class="chart-box dashboard-chart-box"><canvas id="graficoMargem"></canvas></div>
     </div>
-    <div class="card chart-card">
-        <div class="card-hdr">
-            <div class="card-title">Obras por tipologia</div>
+
+    <div class="card chart-card dashboard-card-block">
+        <div class="card-hdr dashboard-card-hdr-inline">
+            <div>
+                <div class="card-title">Obras por tipologia</div>
+                <p class="dashboard-card-subtitle">Distribuição atual da carteira</p>
+            </div>
         </div>
-        <div class="chart-box chart-box--tipologia"><canvas id="graficoTipologia"></canvas></div>
+        <div class="chart-box dashboard-chart-box dashboard-chart-box--tipologia"><canvas
+                id="graficoTipologia"></canvas></div>
     </div>
 </div>
 
-<!-- LINHA 2 -->
-<div class="g2" style="margin-bottom:12px;">
-    <div class="card chart-card">
-        <div class="card-hdr">
-            <div class="card-title">Custo por categoria</div>
+<div class="dashboard-chart-grid dashboard-chart-grid--bottom">
+    <div class="card chart-card dashboard-card-block">
+        <div class="card-hdr dashboard-card-hdr-inline">
+            <div>
+                <div class="card-title">Custo por categoria</div>
+                <p class="dashboard-card-subtitle">Onde o custo está mais concentrado</p>
+            </div>
         </div>
-        <div class="chart-box chart-box--horizontal"><canvas id="graficoCustoCategoria"></canvas></div>
+        <div class="chart-box dashboard-chart-box dashboard-chart-box--horizontal"><canvas
+                id="graficoCustoCategoria"></canvas></div>
     </div>
-    <div class="card">
-        <div class="card-hdr">
-            <div class="card-title">Ranking fornecedores</div>
+
+    <div class="card dashboard-card-block">
+        <div class="card-hdr dashboard-card-hdr-inline">
+            <div>
+                <div class="card-title">Ranking fornecedores</div>
+                <p class="dashboard-card-subtitle">Melhores médias de desempenho</p>
+            </div>
         </div>
         <div id="rankingFornecedoresContainer">
             {% if ranking_fornecedores %}
@@ -240,56 +261,57 @@
     </div>
 </div>
 
-<!-- TABELA -->
-<div class="card">
-    <div class="card-hdr">
-        <div class="card-title">Resumo de obras</div>
+<div class="card dashboard-card-block dashboard-summary-section">
+    <div class="card-hdr dashboard-card-hdr-inline">
+        <div>
+            <div class="card-title">Resumo de obras</div>
+            <p class="dashboard-card-subtitle">Visão rápida das obras com status, execução e resultado</p>
+        </div>
     </div>
-    <div class="tbl-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Nome</th>
-                    <th>Tipo</th>
-                    <th>Tipologia</th>
-                    <th>Status</th>
-                    <th>Execução</th>
-                    <th>Lucro Previsto</th>
-                    <th>Resultado Atual</th>
-                </tr>
-            </thead>
-            <tbody id="resumoObrasBody">
-                {% for obra in margem_por_obra %}
-                <tr>
-                    <td class="td-mono">{{ obra.codigo }}</td>
-                    <td class="td-name">{{ obra.nome }}</td>
-                    <td>{{ "Para venda" if obra.tipo_obra == "venda" else "Por contrato" }}</td>
-                    <td>{{ obra.tipologia or "-" }}</td>
-                    <td><span class="badge {{ obra.status }}">{{ obra.status }}</span></td>
-                    <td>
-                        <div class="progress-wrap">
-                            <div class="progress-text">{{ obra.execucao or 0 }}%</div>
-                            <div class="progress-bar-bg">
-                                <div class="progress-bar-fill progress-dinamica" data-width="{{ obra.execucao or 0 }}">
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>{{ formatar_moeda(obra.lucro_previsto) }}</td>
-                    <td>{{ formatar_moeda(obra.margem_valor) }}</td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="8" class="muted">Nenhuma obra cadastrada.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+
+    <div class="dashboard-summary-grid" id="resumoObrasBody">
+        {% for obra in margem_por_obra %}
+        <a href="/obra/{{ obra.codigo }}" class="dashboard-summary-card">
+            <div class="dashboard-summary-top">
+                <div>
+                    <div class="dashboard-summary-code">{{ obra.codigo }}</div>
+                    <div class="dashboard-summary-name">{{ obra.nome }}</div>
+                    <div class="dashboard-summary-meta">
+                        <span>{{ "Para venda" if obra.tipo_obra == "venda" else "Por contrato" }}</span>
+                        <span class="dashboard-summary-dot">•</span>
+                        <span>{{ obra.tipologia or "-" }}</span>
+                    </div>
+                </div>
+                <span class="badge {{ obra.status }}">{{ obra.status }}</span>
+            </div>
+
+            <div class="dashboard-summary-progress">
+                <div class="dashboard-summary-progress-top">
+                    <span>Execução</span>
+                    <strong>{{ obra.execucao or 0 }}%</strong>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill progress-dinamica" data-width="{{ obra.execucao or 0 }}"></div>
+                </div>
+            </div>
+
+            <div class="dashboard-summary-metrics">
+                <div class="dashboard-summary-metric">
+                    <span class="dashboard-summary-metric-label">Lucro previsto</span>
+                    <strong>{{ formatar_moeda(obra.lucro_previsto) }}</strong>
+                </div>
+                <div class="dashboard-summary-metric">
+                    <span class="dashboard-summary-metric-label">Resultado atual</span>
+                    <strong>{{ formatar_moeda(obra.margem_valor) }}</strong>
+                </div>
+            </div>
+        </a>
+        {% else %}
+        <div class="dashboard-summary-empty">Nenhuma obra cadastrada.</div>
+        {% endfor %}
     </div>
 </div>
 
-<!-- DATA STORE -->
 <div id="dashboard-data" data-margem-labels='{{ chart_margem_labels | default([], true) | tojson | safe }}'
     data-margem-valores='{{ chart_margem_valores | default([], true) | tojson | safe }}'
     data-tipologia-labels='{{ chart_tipologia_labels | default([], true) | tojson | safe }}'
@@ -300,41 +322,13 @@
     style="display:none;">
 </div>
 
-<style>
-    .chart-box--tipologia {
-        height: 340px;
-    }
-
-    .chart-box--horizontal {
-        height: 300px;
-    }
-
-    @media (max-width: 980px) {
-
-        .chart-box--tipologia,
-        .chart-box--horizontal {
-            height: 240px;
-        }
-    }
-</style>
-
 <script>
-    /* =====================================================================
-       DASHBOARD — funciona em AMBOS os cenários:
-       ✅ Reload normal (F5): Chart.js ainda não carregou quando este
-          script roda → aguarda com polling até Chart estar disponível.
-       ✅ Navegação SPA: Chart.js já está carregado → inicializa direto.
-       ===================================================================== */
-
     (function initDashboard() {
-
-        /* ---- aguarda Chart.js ficar disponível ---- */
         function esperarChart(callback) {
             if (typeof Chart !== 'undefined') {
-                callback();          // SPA: já disponível
+                callback();
                 return;
             }
-            // Reload normal: Chart.js ainda não carregou — polling a cada 20ms
             const intervalo = setInterval(function () {
                 if (typeof Chart !== 'undefined') {
                     clearInterval(intervalo);
@@ -343,13 +337,12 @@
             }, 20);
         }
 
-        /* ---- helpers ---- */
         let instMargem = null, instTipologia = null, instCustoCat = null;
 
         const CORES = [
-            "#f07030", "#4080f0", "#34c77b", "#f0b030",
-            "#8060e0", "#f05060", "#ff8c4b", "#4f46e5",
-            "#16a34a", "#eab308"
+            "#e8621a", "#1654B0", "#28b56a", "#d99b1a",
+            "#7252cc", "#e8424e", "#f07535", "#2468cc",
+            "#34c77b", "#eab33e"
         ];
 
         function fmt(v) {
@@ -358,12 +351,20 @@
 
         function esc(t) {
             return String(t ?? "")
-                .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
-                .replaceAll(">", "&gt;").replaceAll('"', "&quot;")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
                 .replaceAll("'", "&#039;");
         }
 
-        /* ---- gráficos ---- */
+        function aplicarBarrasResumo() {
+            document.querySelectorAll(".progress-dinamica").forEach(function (el) {
+                const w = parseFloat(el.dataset.width || 0);
+                el.style.width = w + "%";
+            });
+        }
+
         function construirGraficos(payload) {
             const charts = payload.charts;
             const txtClaro = "#f0f0f0";
@@ -383,19 +384,30 @@
                             label: "Margem (R$)",
                             data: charts.margem_valores,
                             backgroundColor: charts.margem_valores.map(v => v >= 0
-                                ? "rgba(240,112,48,0.80)" : "rgba(240,80,96,0.80)"),
+                                ? "rgba(232,98,26,0.82)" : "rgba(232,66,78,0.82)"),
                             borderColor: charts.margem_valores.map(v => v >= 0
-                                ? "rgba(240,112,48,1)" : "rgba(240,80,96,1)"),
-                            borderWidth: 1, borderRadius: 6
+                                ? "rgba(232,98,26,1)" : "rgba(232,66,78,1)"),
+                            borderWidth: 1,
+                            borderRadius: 8
                         }]
                     },
                     options: {
-                        responsive: true, maintainAspectRatio: false,
-                        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } } },
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } }
+                        },
                         scales: {
-                            x: { ticks: { color: txtCinza, maxRotation: 30 }, grid: { color: "rgba(255,255,255,0.04)" } },
+                            x: {
+                                ticks: { color: txtCinza, maxRotation: 20, minRotation: 0 },
+                                grid: { color: "rgba(255,255,255,0.04)" }
+                            },
                             y: {
-                                ticks: { color: txtCinza, callback: v => Math.abs(v) >= 1000 ? "R$" + (v / 1000).toFixed(0) + "K" : "R$" + v },
+                                ticks: {
+                                    color: txtCinza,
+                                    callback: v => Math.abs(v) >= 1000 ? "R$" + (v / 1000).toFixed(0) + "K" : "R$" + v
+                                },
                                 grid: { color: "rgba(255,255,255,0.05)" }
                             }
                         }
@@ -408,14 +420,29 @@
                 instTipologia = new Chart(cTip, {
                     type: "doughnut",
                     data: {
-                        labels: charts.tipologia_labels.map((l, i) =>
-                            `${l} · ${charts.tipologia_valores[i]} obra${charts.tipologia_valores[i] > 1 ? "s" : ""}`),
-                        datasets: [{ data: charts.tipologia_valores, backgroundColor: CORES, borderWidth: 0, hoverOffset: 6 }]
+                        labels: charts.tipologia_labels.map((l, i) => `${l} · ${charts.tipologia_valores[i]} obra${charts.tipologia_valores[i] > 1 ? "s" : ""}`),
+                        datasets: [{
+                            data: charts.tipologia_valores,
+                            backgroundColor: CORES,
+                            borderWidth: 0,
+                            hoverOffset: 6
+                        }]
                     },
                     options: {
-                        responsive: true, maintainAspectRatio: false, cutout: "62%",
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: "62%",
                         plugins: {
-                            legend: { position: "bottom", labels: { color: txtClaro, padding: 14, font: { size: 12 }, boxWidth: 12, boxHeight: 12 } },
+                            legend: {
+                                position: "bottom",
+                                labels: {
+                                    color: txtClaro,
+                                    padding: 14,
+                                    font: { size: 12 },
+                                    boxWidth: 12,
+                                    boxHeight: 12
+                                }
+                            },
                             tooltip: { callbacks: { label: ctx => ` ${ctx.label}` } }
                         }
                     }
@@ -428,24 +455,40 @@
                     type: "bar",
                     data: {
                         labels: charts.custo_cat_labels,
-                        datasets: [{ label: "Custo", data: charts.custo_cat_valores, backgroundColor: CORES, borderWidth: 0, borderRadius: 5 }]
+                        datasets: [{
+                            label: "Custo",
+                            data: charts.custo_cat_valores,
+                            backgroundColor: CORES,
+                            borderWidth: 0,
+                            borderRadius: 6
+                        }]
                     },
                     options: {
-                        indexAxis: "y", responsive: true, maintainAspectRatio: false,
-                        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } } },
+                        indexAxis: "y",
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } }
+                        },
                         scales: {
                             x: {
-                                ticks: { color: txtCinza, callback: v => Math.abs(v) >= 1000 ? "R$" + (v / 1000).toFixed(0) + "K" : "R$" + v },
+                                ticks: {
+                                    color: txtCinza,
+                                    callback: v => Math.abs(v) >= 1000 ? "R$" + (v / 1000).toFixed(0) + "K" : "R$" + v
+                                },
                                 grid: { color: "rgba(255,255,255,0.05)" }
                             },
-                            y: { ticks: { color: txtClaro }, grid: { color: "rgba(255,255,255,0.04)" } }
+                            y: {
+                                ticks: { color: txtClaro },
+                                grid: { color: "rgba(255,255,255,0.04)" }
+                            }
                         }
                     }
                 });
             }
         }
 
-        /* ---- atualização parcial via API ---- */
         function atualizarResumoFiltros(p) {
             document.getElementById("filtroResumoQuantidade").textContent = `${p.quick_strip.obras_filtradas} obra(s)`;
             document.getElementById("resumoObra").textContent = p.filtros.obra || "Todas";
@@ -453,19 +496,14 @@
             document.getElementById("resumoCategoria").textContent = p.filtros.categoria || "Todas";
             document.getElementById("resumoStatus").textContent = p.filtros.status || "Todos";
             let periodo = "livre";
-            if (p.filtros.data_inicio || p.filtros.data_fim)
+            if (p.filtros.data_inicio || p.filtros.data_fim) {
                 periodo = `${p.filtros.data_inicio || "início livre"} até ${p.filtros.data_fim || "fim livre"}`;
+            }
             document.getElementById("resumoPeriodo").textContent = periodo;
         }
 
-        function atualizarQuickStrip(p) {
-            document.getElementById("quickObrasFiltradas").textContent = p.quick_strip.obras_filtradas;
-            document.getElementById("quickExecucaoMedia").textContent = `${p.quick_strip.execucao_media.toFixed(1)}%`;
-            document.getElementById("quickCustoReceita").textContent = `${p.quick_strip.custo_percentual_receita.toFixed(1)}%`;
-            document.getElementById("quickAlertasAtivos").textContent = p.quick_strip.alertas_ativos;
-        }
-
         function atualizarKpis(p) {
+            document.getElementById("kpiObrasFiltradas").textContent = p.quick_strip.obras_filtradas;
             document.getElementById("kpiReceita").textContent = p.kpis.total_receita_formatado;
             document.getElementById("kpiReceitaObras").textContent = `${p.kpis.total_obras} obras`;
             document.getElementById("kpiReceitaMedicoes").textContent = `${p.kpis.total_medicoes} medições`;
@@ -473,62 +511,103 @@
             document.getElementById("kpiMargemPercentual").textContent = `${p.kpis.margem_percentual.toFixed(1)}% da receita`;
             document.getElementById("kpiCusto").textContent = p.kpis.total_custo_formatado;
             document.getElementById("kpiCustosLancados").textContent = `${p.kpis.total_custos_lancados} lançamentos`;
-            document.getElementById("kpiCustoPercentual").textContent = `${p.quick_strip.custo_percentual_receita.toFixed(1)}% da receita`;
             document.getElementById("kpiAlertas").textContent = p.kpis.total_alertas;
             document.getElementById("kpiObrasAtrasadas").textContent = `${p.kpis.obras_atrasadas} atrasadas`;
             document.getElementById("kpiObrasAtivas").textContent = `${p.kpis.obras_ativas} ativas`;
+
+            document.getElementById("quickExecucaoMedia").textContent = `${p.quick_strip.execucao_media.toFixed(1)}%`;
+            document.getElementById("quickCustoReceita").textContent = `${p.quick_strip.custo_percentual_receita.toFixed(1)}%`;
+            document.getElementById("quickAlertasAtivos").textContent = p.quick_strip.alertas_ativos;
         }
 
         function atualizarAlertas(p) {
             const c = document.getElementById("alertasContainer");
-            if (!p.alertas || !p.alertas.length) { c.innerHTML = ""; return; }
-            c.innerHTML = `<div class="card" style="margin-bottom:12px;">
-            <div class="card-hdr"><div class="card-title">Alertas Prioritários</div></div>
-            ${p.alertas.slice(0, 3).map(a =>
-                `<div class="alert-inline ${esc(a.tipo)}"><strong>${esc(a.codigo)}</strong> — ${esc(a.mensagem)}</div>`
-            ).join("")}
-        </div>`;
+            if (!p.alertas || !p.alertas.length) {
+                c.innerHTML = "";
+                return;
+            }
+            c.innerHTML = `
+            <div class="card dashboard-card-block">
+                <div class="card-hdr dashboard-card-hdr-inline">
+                    <div>
+                        <div class="card-title">Alertas prioritários</div>
+                        <p class="dashboard-card-subtitle">O que precisa de atenção agora</p>
+                    </div>
+                    <a href="/alertas" class="dashboard-inline-link">Ver todos</a>
+                </div>
+                <div class="dashboard-alerts-list">
+                    ${p.alertas.slice(0, 3).map(a => `
+                        <div class="dashboard-alert-item dashboard-alert-item--${esc(a.tipo)}">
+                            <div class="dashboard-alert-badge">${a.tipo === 'danger' ? 'Crítico' : 'Atenção'}</div>
+                            <div class="dashboard-alert-content">
+                                <div class="dashboard-alert-title"><strong>${esc(a.codigo)}</strong> — ${esc(a.mensagem)}</div>
+                                <div class="dashboard-alert-sub">Revise cronograma, execução física e pendências ligadas a esta obra.</div>
+                            </div>
+                        </div>`).join("")}
+                </div>
+            </div>`;
         }
 
         function atualizarRanking(p) {
             const c = document.getElementById("rankingFornecedoresContainer");
             if (!p.ranking_fornecedores || !p.ranking_fornecedores.length) {
-                c.innerHTML = `<p class="muted">Sem fornecedores cadastrados.</p>`; return;
+                c.innerHTML = `<p class="muted">Sem fornecedores cadastrados.</p>`;
+                return;
             }
             c.innerHTML = p.ranking_fornecedores.map((f, i) => `
             <div class="rank-item">
-                <div class="rank-n ${i <= 1 ? "top" : ""}">${i + 1}</div>
+                <div class="rank-n ${i <= 1 ? 'top' : ''}">${i + 1}</div>
                 <div class="rank-info">
                     <div class="rank-name">${esc(f.nome)}</div>
-                    <div class="rank-cat">${esc(f.categoria || "")}</div>
+                    <div class="rank-cat">${esc(f.categoria || '')}</div>
                 </div>
                 <div class="rank-score">${esc(String(f.media))}</div>
             </div>`).join("");
         }
 
-        function atualizarTabela(p) {
+        function atualizarResumoObras(p) {
             const b = document.getElementById("resumoObrasBody");
             if (!p.margem_por_obra || !p.margem_por_obra.length) {
-                b.innerHTML = `<tr><td colspan="8" class="muted">Nenhuma obra cadastrada.</td></tr>`; return;
+                b.innerHTML = `<div class="dashboard-summary-empty">Nenhuma obra cadastrada.</div>`;
+                return;
             }
             b.innerHTML = p.margem_por_obra.map(o => `
-            <tr>
-                <td class="td-mono">${esc(o.codigo)}</td>
-                <td class="td-name">${esc(o.nome)}</td>
-                <td>${o.tipo_obra === "venda" ? "Para venda" : "Por contrato"}</td>
-                <td>${esc(o.tipologia || "-")}</td>
-                <td><span class="badge ${esc(o.status)}">${esc(o.status)}</span></td>
-                <td>
-                    <div class="progress-wrap">
-                        <div class="progress-text">${Number(o.execucao || 0).toFixed(1)}%</div>
-                        <div class="progress-bar-bg">
-                            <div class="progress-bar-fill" style="width:${Number(o.execucao || 0)}%"></div>
+            <a href="/obra/${encodeURIComponent(o.codigo)}" class="dashboard-summary-card">
+                <div class="dashboard-summary-top">
+                    <div>
+                        <div class="dashboard-summary-code">${esc(o.codigo)}</div>
+                        <div class="dashboard-summary-name">${esc(o.nome)}</div>
+                        <div class="dashboard-summary-meta">
+                            <span>${o.tipo_obra === 'venda' ? 'Para venda' : 'Por contrato'}</span>
+                            <span class="dashboard-summary-dot">•</span>
+                            <span>${esc(o.tipologia || '-')}</span>
                         </div>
                     </div>
-                </td>
-                <td>${esc(o.lucro_previsto_formatado)}</td>
-                <td>${esc(o.margem_valor_formatado)}</td>
-            </tr>`).join("");
+                    <span class="badge ${esc(o.status)}">${esc(o.status)}</span>
+                </div>
+
+                <div class="dashboard-summary-progress">
+                    <div class="dashboard-summary-progress-top">
+                        <span>Execução</span>
+                        <strong>${Number(o.execucao || 0).toFixed(1)}%</strong>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill progress-dinamica" data-width="${Number(o.execucao || 0)}"></div>
+                    </div>
+                </div>
+
+                <div class="dashboard-summary-metrics">
+                    <div class="dashboard-summary-metric">
+                        <span class="dashboard-summary-metric-label">Lucro previsto</span>
+                        <strong>${esc(o.lucro_previsto_formatado)}</strong>
+                    </div>
+                    <div class="dashboard-summary-metric">
+                        <span class="dashboard-summary-metric-label">Resultado atual</span>
+                        <strong>${esc(o.margem_valor_formatado)}</strong>
+                    </div>
+                </div>
+            </a>`).join("");
+            aplicarBarrasResumo();
         }
 
         function atualizarLinkExcel(p) {
@@ -546,14 +625,19 @@
         function atualizarUrl() {
             const form = document.getElementById("formFiltrosDashboard");
             const params = new URLSearchParams();
-            for (const [k, v] of new FormData(form).entries()) { if (v) params.set(k, v); }
+            for (const [k, v] of new FormData(form).entries()) {
+                if (v) params.set(k, v);
+            }
             window.history.replaceState({}, "", `${window.location.pathname}${params.toString() ? "?" + params.toString() : ""}`);
         }
 
         async function atualizarDashboard(manterFiltrosAbertos) {
             const form = document.getElementById("formFiltrosDashboard");
             const params = new URLSearchParams();
-            for (const [k, v] of new FormData(form).entries()) { if (v) params.set(k, v); }
+            for (const [k, v] of new FormData(form).entries()) {
+                if (v) params.set(k, v);
+            }
+
             try {
                 const res = await fetch(`/dashboard/dados?${params.toString()}`, {
                     headers: { "X-Requested-With": "fetch" }
@@ -561,11 +645,10 @@
                 if (!res.ok) throw new Error("Erro ao buscar dados");
                 const payload = await res.json();
                 atualizarResumoFiltros(payload);
-                atualizarQuickStrip(payload);
                 atualizarKpis(payload);
                 atualizarAlertas(payload);
                 atualizarRanking(payload);
-                atualizarTabela(payload);
+                atualizarResumoObras(payload);
                 construirGraficos(payload);
                 atualizarLinkExcel(payload);
                 atualizarUrl();
@@ -575,12 +658,18 @@
             }
         }
 
-        /* ---- filtros toggle ---- */
         const filterToggle = document.getElementById("toggleDashboardFilter");
         const filterBody = document.getElementById("dashboardFilterBody");
 
-        function abrirFiltros() { filterBody.classList.add("open"); filterToggle.textContent = "Ocultar filtros"; }
-        function fecharFiltros() { filterBody.classList.remove("open"); filterToggle.textContent = "Mostrar filtros"; }
+        function abrirFiltros() {
+            filterBody.classList.add("open");
+            filterToggle.textContent = "Ocultar filtros";
+        }
+
+        function fecharFiltros() {
+            filterBody.classList.remove("open");
+            filterToggle.textContent = "Mostrar filtros";
+        }
 
         filterToggle.addEventListener("click", () =>
             filterBody.classList.contains("open") ? fecharFiltros() : abrirFiltros()
@@ -593,7 +682,10 @@
 
         document.getElementById("btnLimparFiltros").addEventListener("click", async function () {
             ["filtroObra", "filtroTipoObra", "filtroCategoria", "filtroStatus", "filtroDataInicio", "filtroDataFim"]
-                .forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+                .forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = "";
+                });
             await atualizarDashboard(false);
             fecharFiltros();
         });
@@ -604,19 +696,12 @@
 
         window.atualizarDashboardParcial = atualizarDashboard;
 
-        /* ---- inicialização: aguarda Chart.js e executa ---- */
         const dashData = document.getElementById("dashboard-data");
         const hasActiveFilters = dashData && dashData.dataset.hasActiveFilters === "true";
-
         hasActiveFilters ? abrirFiltros() : fecharFiltros();
 
-        /* Barras de progresso (não dependem do Chart.js) */
-        document.querySelectorAll(".progress-dinamica").forEach(el => {
-            const w = parseFloat(el.dataset.width || 0);
-            setTimeout(() => { el.style.width = w + "%"; }, 80);
-        });
+        aplicarBarrasResumo();
 
-        /* Gráficos: só executa quando Chart.js estiver disponível */
         esperarChart(function () {
             construirGraficos({
                 charts: {
@@ -625,11 +710,10 @@
                     tipologia_labels: JSON.parse(dashData.dataset.tipologiaLabels || "[]"),
                     tipologia_valores: JSON.parse(dashData.dataset.tipologiaValores || "[]"),
                     custo_cat_labels: JSON.parse(dashData.dataset.custoCatLabels || "[]"),
-                    custo_cat_valores: JSON.parse(dashData.dataset.custoCatValores || "[]"),
+                    custo_cat_valores: JSON.parse(dashData.dataset.custoCatValores || "[]")
                 }
             });
         });
-
     })();
 </script>
 {% endblock %}

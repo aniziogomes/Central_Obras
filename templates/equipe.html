@@ -3,6 +3,14 @@
 {% block title %}Equipe - Central de Obras{% endblock %}
 
 {% block content %}
+{% set total_profissionais = equipe|length %}
+{% set total_contratado = equipe|sum(attribute='valor_contratado') or 0 %}
+{% set total_pago = equipe|sum(attribute='valor_pago') or 0 %}
+{% set saldo_pendente = total_contratado - total_pago %}
+{% set qtd_pendentes = equipe|selectattr('status_pagamento', 'equalto', 'Pendente')|list|length %}
+{% set qtd_parciais = equipe|selectattr('status_pagamento', 'equalto', 'Parcial')|list|length %}
+{% set qtd_pagos = equipe|selectattr('status_pagamento', 'equalto', 'Pago')|list|length %}
+
 <div class="hdr">
     <div>
         <h1>Equipe</h1>
@@ -16,62 +24,236 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="tbl-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID Obra</th>
-                    <th>Obra</th>
-                    <th>Profissional</th>
-                    <th>Função</th>
-                    <th>Contrato</th>
-                    <th>Dt Início</th>
-                    <th>Vlr Contrat.</th>
-                    <th>Vlr Pago</th>
-                    <th>Pagamento</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in equipe %}
-                <tr>
-                    <td class="td-mono">{{ item.codigo_obra }}</td>
-                    <td class="td-name">{{ item.nome_obra }}</td>
-                    <td>{{ item.nome }}</td>
-                    <td>{{ item.funcao or "-" }}</td>
-                    <td>{{ item.contrato or "-" }}</td>
-                    <td>{{ item.data_inicio or "-" }}</td>
-                    <td>{{ formatar_moeda(item.valor_contratado) }}</td>
-                    <td>{{ formatar_moeda(item.valor_pago) }}</td>
-                    <td>{{ item.status_pagamento or "-" }}</td>
-                    <td>
-                        <div style="display:flex; gap:6px;">
-                            {% if eh_gestor() %}
-                            <button class="btn btn-small" type="button"
-                                onclick="abrirModalEditarEquipe('{{ item.id }}')">
-                                Editar
-                            </button>
-                            {% endif %}
-
-                            {% if eh_admin() %}
-                            <form method="POST" action="{{ url_for('equipe_bp.excluir_equipe', equipe_id=item.id) }}"
-                                onsubmit="return confirm('Deseja realmente excluir este profissional?');">
-                                <button type="submit" class="btn btn-small btn-danger">Excluir</button>
-                            </form>
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
-
-                {% else %}
-                <tr>
-                    <td colspan="10" class="muted">Nenhum profissional cadastrado ainda.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<div class="quick-strip equipe-quick-strip">
+    <div class="quick-item">
+        <div class="quick-label">Total de profissionais</div>
+        <div class="quick-value">{{ total_profissionais }}</div>
     </div>
+    <div class="quick-item">
+        <div class="quick-label">Total contratado</div>
+        <div class="quick-value">{{ formatar_moeda(total_contratado) }}</div>
+    </div>
+    <div class="quick-item">
+        <div class="quick-label">Total pago</div>
+        <div class="quick-value">{{ formatar_moeda(total_pago) }}</div>
+    </div>
+    <div class="quick-item">
+        <div class="quick-label">Saldo pendente</div>
+        <div class="quick-value">{{ formatar_moeda(saldo_pendente) }}</div>
+    </div>
+</div>
+
+<div class="equipe-toolbar">
+    <div class="equipe-search-wrap">
+        <span class="equipe-search-icon">⌕</span>
+        <input type="text" id="equipeSearch" class="equipe-search-input"
+            placeholder="Buscar obra, profissional, função ou contrato...">
+    </div>
+
+    <div class="equipe-status-chips">
+        <button type="button" class="equipe-chip active" data-status="todas">Todas</button>
+        <button type="button" class="equipe-chip" data-status="pago">Pago</button>
+        <button type="button" class="equipe-chip" data-status="parcial">Parcial</button>
+        <button type="button" class="equipe-chip" data-status="pendente">Pendente</button>
+    </div>
+</div>
+
+<div class="equipe-obras-list" id="equipeObrasList">
+    {% for grupo in equipe|groupby('codigo_obra') %}
+    {% set obra_codigo = grupo.grouper %}
+    {% set itens = grupo.list %}
+    {% set primeira = itens[0] %}
+    {% set soma_contratado = itens|sum(attribute='valor_contratado') or 0 %}
+    {% set soma_pago = itens|sum(attribute='valor_pago') or 0 %}
+    {% set saldo_obra = soma_contratado - soma_pago %}
+    {% set total_obra = itens|length %}
+    {% set pendentes_obra = itens|selectattr('status_pagamento', 'equalto', 'Pendente')|list|length %}
+    {% set parciais_obra = itens|selectattr('status_pagamento', 'equalto', 'Parcial')|list|length %}
+    {% set pagos_obra = itens|selectattr('status_pagamento', 'equalto', 'Pago')|list|length %}
+
+    {% if pendentes_obra > 0 %}
+    {% set status_obra = 'Pendente' %}
+    {% set status_classe = 'pendente' %}
+    {% elif parciais_obra > 0 %}
+    {% set status_obra = 'Parcial' %}
+    {% set status_classe = 'parcial' %}
+    {% else %}
+    {% set status_obra = 'Pago' %}
+    {% set status_classe = 'pago' %}
+    {% endif %}
+
+    {% set ultima_data = namespace(valor='-') %}
+    {% for item in itens %}
+    {% if item.data_inicio %}
+    {% set ultima_data.valor = item.data_inicio %}
+    {% endif %}
+    {% endfor %}
+
+    <div class="equipe-obra-card"
+        data-search="{% for item in itens %}{{ (item.codigo_obra or '')|lower }} {{ (item.nome_obra or '')|lower }} {{ (item.nome or '')|lower }} {{ (item.funcao or '')|lower }} {{ (item.contrato or '')|lower }} {{ (item.status_pagamento or '')|lower }} {% endfor %}"
+        data-status="{{ status_classe }}">
+
+        <div class="equipe-obra-main">
+            <div class="equipe-obra-identity">
+                <div class="equipe-obra-title-row">
+                    <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra_codigo) }}" class="equipe-obra-nome">
+                        {{ primeira.nome_obra }}
+                    </a>
+                    <span class="equipe-obra-codigo">{{ obra_codigo }}</span>
+                    <span class="equipe-obra-count">{{ total_obra }} profissional{{ '' if total_obra == 1 else 'is'
+                        }}</span>
+                </div>
+
+                <div class="equipe-obra-subtitle">
+                    <span>Pago: <strong>{{ formatar_moeda(soma_pago) }}</strong></span>
+                    <span class="equipe-obra-dot">•</span>
+                    <span>Saldo: <strong>{{ formatar_moeda(saldo_obra) }}</strong></span>
+                    <span class="equipe-obra-dot">•</span>
+                    <span>Último início: <strong>{{ ultima_data.valor }}</strong></span>
+                </div>
+            </div>
+
+            <div class="equipe-obra-kpis">
+                <div class="equipe-kv">
+                    <span class="equipe-kv-label">Contratado</span>
+                    <span class="equipe-kv-value">{{ formatar_moeda(soma_contratado) }}</span>
+                </div>
+                <div class="equipe-kv">
+                    <span class="equipe-kv-label">Pago</span>
+                    <span class="equipe-kv-value">{{ formatar_moeda(soma_pago) }}</span>
+                </div>
+                <div class="equipe-kv">
+                    <span class="equipe-kv-label">Saldo</span>
+                    <span class="equipe-kv-value">{{ formatar_moeda(saldo_obra) }}</span>
+                </div>
+            </div>
+
+            <div class="equipe-obra-actions">
+                <span class="equipe-saldo-pill equipe-saldo-pill--{{ status_classe }}">{{ status_obra }}</span>
+                <button type="button" class="equipe-expand-btn" data-target="equipeDetalhes{{ loop.index }}"
+                    aria-label="Expandir equipe da obra">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="equipe-obra-details" id="equipeDetalhes{{ loop.index }}">
+            <div class="equipe-detail-grid">
+                <div class="equipe-detail-item">
+                    <span class="equipe-detail-label">Obra</span>
+                    <span class="equipe-detail-value">{{ primeira.nome_obra }}</span>
+                </div>
+                <div class="equipe-detail-item">
+                    <span class="equipe-detail-label">Profissionais</span>
+                    <span class="equipe-detail-value">{{ total_obra }}</span>
+                </div>
+                <div class="equipe-detail-item">
+                    <span class="equipe-detail-label">Status predominante</span>
+                    <span class="equipe-detail-value">{{ status_obra }}</span>
+                </div>
+                <div class="equipe-detail-item">
+                    <span class="equipe-detail-label">Profissionais pagos</span>
+                    <span class="equipe-detail-value">{{ pagos_obra }}</span>
+                </div>
+                <div class="equipe-detail-item">
+                    <span class="equipe-detail-label">Profissionais parciais</span>
+                    <span class="equipe-detail-value">{{ parciais_obra }}</span>
+                </div>
+                <div class="equipe-detail-item">
+                    <span class="equipe-detail-label">Profissionais pendentes</span>
+                    <span class="equipe-detail-value">{{ pendentes_obra }}</span>
+                </div>
+                <div class="equipe-detail-item">
+                    <span class="equipe-detail-label">Total contratado</span>
+                    <span class="equipe-detail-value">{{ formatar_moeda(soma_contratado) }}</span>
+                </div>
+                <div class="equipe-detail-item">
+                    <span class="equipe-detail-label">Total pago</span>
+                    <span class="equipe-detail-value">{{ formatar_moeda(soma_pago) }}</span>
+                </div>
+                <div class="equipe-detail-item">
+                    <span class="equipe-detail-label">Saldo pendente</span>
+                    <span class="equipe-detail-value">{{ formatar_moeda(saldo_obra) }}</span>
+                </div>
+                <div class="equipe-detail-item">
+                    <span class="equipe-detail-label">Abrir obra</span>
+                    <a class="equipe-detail-link" href="{{ url_for('obras_bp.obra_detalhe', codigo=obra_codigo) }}">
+                        Ver todos os detalhes
+                    </a>
+                </div>
+            </div>
+
+            <div class="equipe-table-wrap">
+                <table class="equipe-inner-table">
+                    <thead>
+                        <tr>
+                            <th>Profissional</th>
+                            <th>Função</th>
+                            <th>Contrato</th>
+                            <th>Data início</th>
+                            <th>Valor contratado</th>
+                            <th>Valor pago</th>
+                            <th>Saldo</th>
+                            <th>Pagamento</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in itens %}
+                        {% set saldo_item = (item.valor_contratado or 0) - (item.valor_pago or 0) %}
+                        {% set status_item = (item.status_pagamento or '-') %}
+                        {% if status_item == 'Pago' %}
+                        {% set status_item_classe = 'equipe-pago' %}
+                        {% elif status_item == 'Parcial' %}
+                        {% set status_item_classe = 'equipe-parcial' %}
+                        {% elif status_item == 'Pendente' %}
+                        {% set status_item_classe = 'equipe-pendente' %}
+                        {% else %}
+                        {% set status_item_classe = 'equipe-neutro' %}
+                        {% endif %}
+                        <tr>
+                            <td class="td-name">{{ item.nome }}</td>
+                            <td>{{ item.funcao or '-' }}</td>
+                            <td>{{ item.contrato or '-' }}</td>
+                            <td>{{ item.data_inicio or '-' }}</td>
+                            <td>{{ formatar_moeda(item.valor_contratado) }}</td>
+                            <td>{{ formatar_moeda(item.valor_pago) }}</td>
+                            <td>{{ formatar_moeda(saldo_item) }}</td>
+                            <td><span class="badge {{ status_item_classe }}">{{ status_item }}</span></td>
+                            <td>
+                                <div style="display:flex; gap:6px;">
+                                    {% if eh_gestor() %}
+                                    <button class="btn btn-small" type="button"
+                                        onclick="abrirModalEditarEquipe('{{ item.id }}')">
+                                        Editar
+                                    </button>
+                                    {% endif %}
+                                    {% if eh_admin() %}
+                                    <form method="POST"
+                                        action="{{ url_for('equipe_bp.excluir_equipe', equipe_id=item.id) }}"
+                                        onsubmit="return confirm('Deseja realmente excluir este profissional?');">
+                                        <button type="submit" class="btn btn-small btn-danger">Excluir</button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="equipe-empty-state">Nenhum profissional cadastrado ainda.</div>
+    {% endfor %}
+</div>
+
+<div id="equipeSemResultado" class="equipe-empty-state" style="display:none;">
+    Nenhum profissional encontrado com os filtros aplicados.
 </div>
 
 {% if eh_gestor() %}
@@ -228,38 +410,107 @@
 {% endif %}
 
 <script>
-    function abrirModalEquipe() {
-        const modal = document.getElementById("modalEquipe");
-        if (modal) modal.style.display = "flex";
-    }
+    (function () {
+        let statusEquipeAtual = "todas";
 
-    function fecharModalEquipe() {
-        const modal = document.getElementById("modalEquipe");
-        if (modal) modal.style.display = "none";
-    }
-
-    function abrirModalEditarEquipe(id) {
-        const modal = document.getElementById("modalEditarEquipe" + id);
-        if (modal) modal.style.display = "flex";
-    }
-
-    function fecharModalEditarEquipe(id) {
-        const modal = document.getElementById("modalEditarEquipe" + id);
-        if (modal) modal.style.display = "none";
-    }
-
-    window.addEventListener("click", function (event) {
-        const modalNovo = document.getElementById("modalEquipe");
-        if (modalNovo && event.target === modalNovo) {
-            modalNovo.style.display = "none";
+        function abrirModalEquipe() {
+            const modal = document.getElementById("modalEquipe");
+            if (modal) modal.style.display = "flex";
         }
 
-        const modaisEditar = document.querySelectorAll("[id^='modalEditarEquipe']");
-        modaisEditar.forEach(function (modal) {
-            if (event.target === modal) {
-                modal.style.display = "none";
+        function fecharModalEquipe() {
+            const modal = document.getElementById("modalEquipe");
+            if (modal) modal.style.display = "none";
+        }
+
+        function abrirModalEditarEquipe(id) {
+            const modal = document.getElementById("modalEditarEquipe" + id);
+            if (modal) modal.style.display = "flex";
+        }
+
+        function fecharModalEditarEquipe(id) {
+            const modal = document.getElementById("modalEditarEquipe" + id);
+            if (modal) modal.style.display = "none";
+        }
+
+        window.abrirModalEquipe = abrirModalEquipe;
+        window.fecharModalEquipe = fecharModalEquipe;
+        window.abrirModalEditarEquipe = abrirModalEditarEquipe;
+        window.fecharModalEditarEquipe = fecharModalEditarEquipe;
+
+        function filtrarEquipe() {
+            const input = document.getElementById("equipeSearch");
+            const termo = input ? input.value.trim().toLowerCase() : "";
+            const cards = document.querySelectorAll(".equipe-obra-card");
+            const emptyState = document.getElementById("equipeSemResultado");
+
+            let visiveis = 0;
+
+            cards.forEach(function (card) {
+                const textoBusca = (card.dataset.search || "").toLowerCase();
+                const status = (card.dataset.status || "").toLowerCase();
+
+                const correspondeBusca = !termo || textoBusca.includes(termo);
+                const correspondeStatus = statusEquipeAtual === "todas" || status === statusEquipeAtual;
+
+                if (correspondeBusca && correspondeStatus) {
+                    card.style.display = "";
+                    visiveis++;
+                } else {
+                    card.style.display = "none";
+                }
+            });
+
+            if (emptyState) {
+                emptyState.style.display = visiveis === 0 && cards.length > 0 ? "flex" : "none";
             }
+        }
+
+        function atualizarChipsEquipe(botaoAtivo) {
+            document.querySelectorAll(".equipe-chip").forEach(function (chip) {
+                chip.classList.remove("active");
+            });
+            if (botaoAtivo) botaoAtivo.classList.add("active");
+        }
+
+        document.querySelectorAll(".equipe-chip").forEach(function (chip) {
+            chip.addEventListener("click", function () {
+                statusEquipeAtual = (chip.dataset.status || "todas").toLowerCase();
+                atualizarChipsEquipe(chip);
+                filtrarEquipe();
+            });
         });
-    });
+
+        const inputBusca = document.getElementById("equipeSearch");
+        if (inputBusca) {
+            inputBusca.addEventListener("input", filtrarEquipe);
+        }
+
+        document.querySelectorAll(".equipe-expand-btn").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                const painel = document.getElementById(btn.dataset.target);
+                if (!painel) return;
+                const aberto = painel.classList.contains("open");
+                painel.classList.toggle("open", !aberto);
+                btn.classList.toggle("expanded", !aberto);
+            });
+        });
+
+        window.addEventListener("click", function (event) {
+            const modalNovo = document.getElementById("modalEquipe");
+            if (modalNovo && event.target === modalNovo) {
+                modalNovo.style.display = "none";
+            }
+
+            const modaisEditar = document.querySelectorAll("[id^='modalEditarEquipe']");
+            modaisEditar.forEach(function (modal) {
+                if (event.target === modal) {
+                    modal.style.display = "none";
+                }
+            });
+        });
+
+        filtrarEquipe();
+    })();
 </script>
 {% endblock %}
