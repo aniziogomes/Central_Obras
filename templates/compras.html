@@ -3,6 +3,21 @@
 {% block title %}Compras - Central de Obras{% endblock %}
 
 {% block content %}
+{% set resumo = namespace(total=compras|length, aguardando=0, no_prazo=0, atraso=0, cancelado=0, valor_total=0) %}
+{% for compra in compras %}
+{% set status_compra = (compra.status or '') %}
+{% if status_compra == 'Aguardando' %}
+{% set resumo.aguardando = resumo.aguardando + 1 %}
+{% elif status_compra == 'Entregue no Prazo' %}
+{% set resumo.no_prazo = resumo.no_prazo + 1 %}
+{% elif status_compra == 'Entregue com Atraso' %}
+{% set resumo.atraso = resumo.atraso + 1 %}
+{% elif status_compra == 'Cancelado' %}
+{% set resumo.cancelado = resumo.cancelado + 1 %}
+{% endif %}
+{% set resumo.valor_total = resumo.valor_total + ((compra.quantidade or 0) * (compra.valor_unitario or 0)) %}
+{% endfor %}
+
 <div class="hdr">
     <div>
         <h1>Compras</h1>
@@ -16,62 +31,233 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="tbl-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID Obra</th>
-                    <th>Obra</th>
-                    <th>Fornecedor</th>
-                    <th>Material</th>
-                    <th>Dt Pedido</th>
-                    <th>Dt Entrega</th>
-                    <th>Qtd</th>
-                    <th>Vlr Unit.</th>
-                    <th>Status</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for compra in compras %}
-                <tr>
-                    <td class="td-mono">{{ compra.codigo_obra }}</td>
-                    <td class="td-name">{{ compra.nome_obra }}</td>
-                    <td>{{ compra.nome_fornecedor or "-" }}</td>
-                    <td>{{ compra.material }}</td>
-                    <td>{{ compra.data_pedido or "-" }}</td>
-                    <td>{{ compra.data_entrega_prevista or "-" }}</td>
-                    <td>{{ compra.quantidade or 0 }}</td>
-                    <td>{{ formatar_moeda(compra.valor_unitario) }}</td>
-                    <td>{{ compra.status or "-" }}</td>
-                    <td>
-                        <div style="display:flex; gap:6px;">
-                            {% if eh_gestor() %}
-                            <button class="btn btn-small" type="button"
-                                onclick="abrirModalEditarCompra('{{ compra.id }}')">
-                                Editar
-                            </button>
-                            {% endif %}
-
-                            {% if eh_admin() %}
-                            <form method="POST" action="{{ url_for('compras_bp.excluir_compra', compra_id=compra.id) }}"
-                                onsubmit="return confirm('Deseja realmente excluir esta compra?');">
-                                <button type="submit" class="btn btn-small btn-danger">Excluir</button>
-                            </form>
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
-
-                {% else %}
-                <tr>
-                    <td colspan="10" class="muted">Nenhuma compra cadastrada ainda.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<div class="quick-strip compras-quick-strip">
+    <div class="quick-item">
+        <div class="quick-label">Total de compras</div>
+        <div class="quick-value">{{ resumo.total }}</div>
     </div>
+    <div class="quick-item">
+        <div class="quick-label">Aguardando</div>
+        <div class="quick-value">{{ resumo.aguardando }}</div>
+    </div>
+    <div class="quick-item">
+        <div class="quick-label">Com atraso</div>
+        <div class="quick-value">{{ resumo.atraso }}</div>
+    </div>
+    <div class="quick-item">
+        <div class="quick-label">Valor previsto</div>
+        <div class="quick-value">{{ formatar_moeda(resumo.valor_total) }}</div>
+    </div>
+</div>
+
+<div class="compras-toolbar">
+    <div class="compras-search-wrap">
+        <span class="compras-search-icon">⌕</span>
+        <input type="text" id="compraSearch" class="compras-search-input"
+            placeholder="Buscar obra, fornecedor, material ou status...">
+    </div>
+
+    <div class="compras-status-chips">
+        <button type="button" class="compra-chip active" data-status="todas">Todas</button>
+        <button type="button" class="compra-chip" data-status="aguardando">Aguardando</button>
+        <button type="button" class="compra-chip" data-status="entregue no prazo">Entregue no Prazo</button>
+        <button type="button" class="compra-chip" data-status="entregue com atraso">Entregue com Atraso</button>
+        <button type="button" class="compra-chip" data-status="cancelado">Cancelado</button>
+    </div>
+</div>
+
+<div class="compras-obras-list" id="comprasObrasList">
+    {% for grupo in compras|groupby('codigo_obra') %}
+    {% set itens = grupo.list %}
+    {% set cab = itens[0] %}
+    {% set obra = namespace(valor_previsto=0, ultima_data='', fornecedor_principal='-', status_text='',
+    tem_aguardando=false, tem_atraso=false, tem_cancelado=false, tem_no_prazo=false) %}
+
+    {% for item in itens %}
+    {% set obra.valor_previsto = obra.valor_previsto + ((item.quantidade or 0) * (item.valor_unitario or 0)) %}
+    {% if not obra.fornecedor_principal or obra.fornecedor_principal == '-' %}
+    {% set obra.fornecedor_principal = item.nome_fornecedor or '-' %}
+    {% endif %}
+    {% if item.data_pedido and (obra.ultima_data == '' or item.data_pedido > obra.ultima_data) %}
+    {% set obra.ultima_data = item.data_pedido %}
+    {% endif %}
+
+    {% if (item.status or '') == 'Aguardando' %}
+    {% set obra.tem_aguardando = true %}
+    {% elif (item.status or '') == 'Entregue com Atraso' %}
+    {% set obra.tem_atraso = true %}
+    {% elif (item.status or '') == 'Cancelado' %}
+    {% set obra.tem_cancelado = true %}
+    {% elif (item.status or '') == 'Entregue no Prazo' %}
+    {% set obra.tem_no_prazo = true %}
+    {% endif %}
+
+    {% set obra.status_text = obra.status_text ~ ' ' ~ ((item.status or '')|lower) %}
+    {% endfor %}
+
+    {% if obra.tem_aguardando %}
+    {% set status_resumo = 'Aguardando' %}
+    {% set status_classe = 'compra-aguardando' %}
+    {% elif obra.tem_atraso %}
+    {% set status_resumo = 'Entregue com Atraso' %}
+    {% set status_classe = 'compra-atraso' %}
+    {% elif obra.tem_cancelado %}
+    {% set status_resumo = 'Cancelado' %}
+    {% set status_classe = 'compra-cancelado' %}
+    {% elif obra.tem_no_prazo %}
+    {% set status_resumo = 'Entregue no Prazo' %}
+    {% set status_classe = 'compra-no-prazo' %}
+    {% else %}
+    {% set status_resumo = 'Sem status' %}
+    {% set status_classe = 'compra-neutro' %}
+    {% endif %}
+
+    {% set busca_card = namespace(texto='') %}
+    {% for item in itens %}
+    {% set busca_card.texto = busca_card.texto ~ ' ' ~ ((item.nome_obra or '')|lower) ~ ' ' ~ ((item.codigo_obra or
+    '')|lower) ~ ' ' ~ ((item.nome_fornecedor or '')|lower) ~ ' ' ~ ((item.material or '')|lower) ~ ' ' ~ ((item.status
+    or '')|lower) ~ ' ' ~ ((item.observacao or '')|lower) %}
+    {% endfor %}
+
+    <div class="compra-obra-card" data-search="{{ busca_card.texto|trim }}" data-statuses="{{ obra.status_text|trim }}"
+        data-obra="{{ (cab.nome_obra or '')|lower }}" data-codigo="{{ (cab.codigo_obra or '')|lower }}">
+
+        <div class="compra-obra-main">
+            <div class="compra-obra-identity">
+                <div class="compra-obra-title-row">
+                    <a href="{{ url_for('obras_bp.obra_detalhe', codigo=cab.codigo_obra) }}" class="compra-obra-nome">
+                        {{ cab.nome_obra }}
+                    </a>
+                    <span class="compra-obra-codigo">{{ cab.codigo_obra }}</span>
+                    <span class="compra-obra-count">{{ itens|length }} compra{% if itens|length != 1 %}s{% endif
+                        %}</span>
+                </div>
+
+                <div class="compra-obra-subtitle">
+                    <span>Fornecedor principal: <strong>{{ obra.fornecedor_principal }}</strong></span>
+                    <span class="compra-obra-dot">•</span>
+                    <span>Último pedido: <strong>{{ obra.ultima_data or '-' }}</strong></span>
+                    <span class="compra-obra-dot">•</span>
+                    <span>Status geral:</span>
+                    <span class="badge {{ status_classe }}">{{ status_resumo }}</span>
+                </div>
+            </div>
+
+            <div class="compra-obra-kpis">
+                <div class="compra-kv">
+                    <span class="compra-kv-label">Valor previsto</span>
+                    <span class="compra-kv-value">{{ formatar_moeda(obra.valor_previsto) }}</span>
+                </div>
+                <div class="compra-kv">
+                    <span class="compra-kv-label">Itens</span>
+                    <span class="compra-kv-value">{{ itens|length }}</span>
+                </div>
+                <div class="compra-kv">
+                    <span class="compra-kv-label">Fornecedor</span>
+                    <span class="compra-kv-value">{{ obra.fornecedor_principal }}</span>
+                </div>
+            </div>
+
+            <div class="compra-obra-actions">
+                <button type="button" class="compra-expand-btn" data-target="compraDetalhes{{ loop.index }}"
+                    aria-label="Expandir compras da obra">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="compra-obra-details" id="compraDetalhes{{ loop.index }}">
+            <div class="compra-detail-grid">
+                <div class="compra-detail-item">
+                    <span class="compra-detail-label">ID da obra</span>
+                    <span class="compra-detail-value">{{ cab.codigo_obra }}</span>
+                </div>
+                <div class="compra-detail-item">
+                    <span class="compra-detail-label">Valor total previsto</span>
+                    <span class="compra-detail-value">{{ formatar_moeda(obra.valor_previsto) }}</span>
+                </div>
+                <div class="compra-detail-item">
+                    <span class="compra-detail-label">Abrir obra</span>
+                    <a href="{{ url_for('obras_bp.obra_detalhe', codigo=cab.codigo_obra) }}"
+                        class="compra-detail-link">Ver detalhes completos da obra</a>
+                </div>
+            </div>
+
+            <div class="compra-table-wrap">
+                <table class="compra-inner-table">
+                    <thead>
+                        <tr>
+                            <th>Fornecedor</th>
+                            <th>Material</th>
+                            <th>Dt Pedido</th>
+                            <th>Dt Entrega</th>
+                            <th>Qtd</th>
+                            <th>Vlr Unit.</th>
+                            <th>Valor Total</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for compra in itens %}
+                        {% set status_item = (compra.status or '') %}
+                        {% if status_item == 'Aguardando' %}
+                        {% set status_item_classe = 'compra-aguardando' %}
+                        {% elif status_item == 'Entregue no Prazo' %}
+                        {% set status_item_classe = 'compra-no-prazo' %}
+                        {% elif status_item == 'Entregue com Atraso' %}
+                        {% set status_item_classe = 'compra-atraso' %}
+                        {% elif status_item == 'Cancelado' %}
+                        {% set status_item_classe = 'compra-cancelado' %}
+                        {% else %}
+                        {% set status_item_classe = 'compra-neutro' %}
+                        {% endif %}
+                        <tr>
+                            <td>{{ compra.nome_fornecedor or '-' }}</td>
+                            <td>{{ compra.material }}</td>
+                            <td>{{ compra.data_pedido or '-' }}</td>
+                            <td>{{ compra.data_entrega_prevista or '-' }}</td>
+                            <td>{{ compra.quantidade or 0 }}</td>
+                            <td>{{ formatar_moeda(compra.valor_unitario) }}</td>
+                            <td>{{ formatar_moeda((compra.quantidade or 0) * (compra.valor_unitario or 0)) }}</td>
+                            <td><span class="badge {{ status_item_classe }}">{{ compra.status or '-' }}</span></td>
+                            <td>
+                                <div style="display:flex; gap:6px;">
+                                    {% if eh_gestor() %}
+                                    <button class="btn btn-small" type="button"
+                                        onclick="abrirModalEditarCompra('{{ compra.id }}')">
+                                        Editar
+                                    </button>
+                                    {% endif %}
+
+                                    {% if eh_admin() %}
+                                    <form method="POST"
+                                        action="{{ url_for('compras_bp.excluir_compra', compra_id=compra.id) }}"
+                                        onsubmit="return confirm('Deseja realmente excluir esta compra?');">
+                                        <button type="submit" class="btn btn-small btn-danger">Excluir</button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="compras-empty-state" id="comprasSemResultado">
+        Nenhuma compra cadastrada ainda.
+    </div>
+    {% endfor %}
+</div>
+
+<div id="comprasSemResultadoBusca" class="compras-empty-state" style="display:none;">
+    Nenhuma compra encontrada com os filtros aplicados.
 </div>
 
 {% if eh_gestor() %}
@@ -220,38 +406,112 @@
 {% endif %}
 
 <script>
-    function abrirModalCompra() {
-        const modal = document.getElementById("modalCompra");
-        if (modal) modal.style.display = "flex";
-    }
+    (function () {
+        let statusCompraAtual = "todas";
 
-    function fecharModalCompra() {
-        const modal = document.getElementById("modalCompra");
-        if (modal) modal.style.display = "none";
-    }
-
-    function abrirModalEditarCompra(id) {
-        const modal = document.getElementById("modalEditarCompra" + id);
-        if (modal) modal.style.display = "flex";
-    }
-
-    function fecharModalEditarCompra(id) {
-        const modal = document.getElementById("modalEditarCompra" + id);
-        if (modal) modal.style.display = "none";
-    }
-
-    window.addEventListener("click", function (event) {
-        const modalNovo = document.getElementById("modalCompra");
-        if (modalNovo && event.target === modalNovo) {
-            modalNovo.style.display = "none";
+        function abrirModalCompra() {
+            const modal = document.getElementById("modalCompra");
+            if (modal) modal.style.display = "flex";
         }
 
-        const modaisEditar = document.querySelectorAll("[id^='modalEditarCompra']");
-        modaisEditar.forEach(function (modal) {
-            if (event.target === modal) {
-                modal.style.display = "none";
+        function fecharModalCompra() {
+            const modal = document.getElementById("modalCompra");
+            if (modal) modal.style.display = "none";
+        }
+
+        function abrirModalEditarCompra(id) {
+            const modal = document.getElementById("modalEditarCompra" + id);
+            if (modal) modal.style.display = "flex";
+        }
+
+        function fecharModalEditarCompra(id) {
+            const modal = document.getElementById("modalEditarCompra" + id);
+            if (modal) modal.style.display = "none";
+        }
+
+        window.abrirModalCompra = abrirModalCompra;
+        window.fecharModalCompra = fecharModalCompra;
+        window.abrirModalEditarCompra = abrirModalEditarCompra;
+        window.fecharModalEditarCompra = fecharModalEditarCompra;
+
+        function filtrarCompras() {
+            const input = document.getElementById("compraSearch");
+            const termo = input ? input.value.trim().toLowerCase() : "";
+            const cards = document.querySelectorAll(".compra-obra-card");
+            const emptyStateBusca = document.getElementById("comprasSemResultadoBusca");
+
+            let visiveis = 0;
+
+            cards.forEach(function (card) {
+                const textoBusca = (card.dataset.search || "").toLowerCase();
+                const statuses = (card.dataset.statuses || "").toLowerCase();
+
+                const correspondeBusca = !termo || textoBusca.includes(termo);
+                const correspondeStatus = statusCompraAtual === "todas" || statuses.includes(statusCompraAtual);
+
+                if (correspondeBusca && correspondeStatus) {
+                    card.style.display = "";
+                    visiveis++;
+                } else {
+                    card.style.display = "none";
+                }
+            });
+
+            if (emptyStateBusca) {
+                emptyStateBusca.style.display = visiveis === 0 && cards.length > 0 ? "flex" : "none";
             }
+        }
+
+        function atualizarChipsCompra(botaoAtivo) {
+            document.querySelectorAll(".compra-chip").forEach(function (chip) {
+                chip.classList.remove("active");
+            });
+
+            if (botaoAtivo) {
+                botaoAtivo.classList.add("active");
+            }
+        }
+
+        document.querySelectorAll(".compra-chip").forEach(function (chip) {
+            chip.addEventListener("click", function () {
+                statusCompraAtual = (chip.dataset.status || "todas").toLowerCase();
+                atualizarChipsCompra(chip);
+                filtrarCompras();
+            });
         });
-    });
+
+        const inputBusca = document.getElementById("compraSearch");
+        if (inputBusca) {
+            inputBusca.addEventListener("input", filtrarCompras);
+        }
+
+        document.querySelectorAll(".compra-expand-btn").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                const targetId = btn.dataset.target;
+                const painel = document.getElementById(targetId);
+                if (!painel) return;
+
+                const aberto = painel.classList.contains("open");
+                painel.classList.toggle("open", !aberto);
+                btn.classList.toggle("expanded", !aberto);
+            });
+        });
+
+        window.addEventListener("click", function (event) {
+            const modalNovo = document.getElementById("modalCompra");
+            if (modalNovo && event.target === modalNovo) {
+                modalNovo.style.display = "none";
+            }
+
+            const modaisEditar = document.querySelectorAll("[id^='modalEditarCompra']");
+            modaisEditar.forEach(function (modal) {
+                if (event.target === modal) {
+                    modal.style.display = "none";
+                }
+            });
+        });
+
+        filtrarCompras();
+    })();
 </script>
 {% endblock %}

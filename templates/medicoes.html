@@ -16,63 +16,152 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="tbl-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID Obra</th>
-                    <th>Obra</th>
-                    <th>Mês</th>
-                    <th>Medição</th>
-                    <th>Etapa</th>
-                    <th>%</th>
-                    <th>% Acum.</th>
-                    <th>Valor Realizado</th>
-                    <th>Data</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for medicao in medicoes %}
-                <tr>
-                    <td class="td-mono">{{ medicao.codigo_obra }}</td>
-                    <td class="td-name">{{ medicao.nome_obra }}</td>
-                    <td>{{ medicao.mes or "-" }}</td>
-                    <td>{{ medicao.medicao_nome }}</td>
-                    <td>{{ medicao.etapa }}</td>
-                    <td>{{ medicao.percentual or 0 }}%</td>
-                    <td>{{ medicao.percentual_acumulado or 0 }}%</td>
-                    <td>{{ formatar_moeda(medicao.valor_realizado) }}</td>
-                    <td>{{ medicao.data_medicao or "-" }}</td>
-                    <td>
-                        <div style="display:flex; gap:6px;">
-                            {% if eh_gestor() %}
-                            <button class="btn btn-small" type="button"
-                                onclick="abrirModalEditarMedicao('{{ medicao.id }}')">
-                                Editar
-                            </button>
-                            {% endif %}
-
-                            {% if eh_admin() %}
-                            <form method="POST"
-                                action="{{ url_for('medicoes_bp.excluir_medicao', medicao_id=medicao.id) }}"
-                                onsubmit="return confirm('Deseja realmente excluir esta medição?');">
-                                <button type="submit" class="btn btn-small btn-danger">Excluir</button>
-                            </form>
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
-
-                {% else %}
-                <tr>
-                    <td colspan="10" class="muted">Nenhuma medição cadastrada ainda.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<div class="medicoes-toolbar">
+    <div class="medicoes-search-wrap">
+        <span class="medicoes-search-icon">⌕</span>
+        <input type="text" id="medicaoSearch" class="medicoes-search-input"
+            placeholder="Buscar por obra, código, mês, etapa ou medição..." oninput="filtrarMedicoesCards()">
     </div>
+</div>
+
+<div class="medicoes-cards" id="medicoesCards">
+    {% for grupo in medicoes|groupby("codigo_obra") %}
+    {% set lista = grupo.list %}
+    {% set primeira = lista[0] %}
+    {% set total_medicoes = lista|length %}
+    {% set valor_total = lista|sum(attribute='valor_realizado') %}
+    {% set ultimo_percentual = primeira.percentual_acumulado or 0 %}
+    <div class="medicao-obra-card"
+        data-search="{{ (primeira.codigo_obra or '')|lower }} {{ (primeira.nome_obra or '')|lower }} {% for item in lista %}{{ (item.mes or '')|lower }} {{ (item.medicao_nome or '')|lower }} {{ (item.etapa or '')|lower }} {% endfor %}">
+
+        <div class="medicao-card-main">
+            <div class="medicao-card-identity">
+                <div class="medicao-card-title-row">
+                    <a href="{{ url_for('obras_bp.obra_detalhe', codigo=primeira.codigo_obra) }}"
+                        class="medicao-card-nome">
+                        {{ primeira.nome_obra }}
+                    </a>
+                    <span class="medicao-card-codigo">{{ primeira.codigo_obra }}</span>
+                    <span class="medicao-card-count">{{ total_medicoes }} medição{% if total_medicoes != 1 %}es{% endif
+                        %}</span>
+                </div>
+
+                <div class="medicao-card-subtitle">
+                    <span>Última referência: {{ primeira.mes or "—" }}</span>
+                    <span class="medicao-card-dot">·</span>
+                    <span>{{ primeira.medicao_nome or "—" }}</span>
+                    {% if primeira.etapa %}
+                    <span class="medicao-card-dot">·</span>
+                    <span>{{ primeira.etapa }}</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="medicao-card-kpis">
+                <div class="medicao-kv">
+                    <div class="medicao-kv-label">Qtd. medições</div>
+                    <div class="medicao-kv-value">{{ total_medicoes }}</div>
+                </div>
+
+                <div class="medicao-kv">
+                    <div class="medicao-kv-label">Acumulado atual</div>
+                    <div class="medicao-kv-value">{{ ultimo_percentual }}%</div>
+                </div>
+
+                <div class="medicao-kv">
+                    <div class="medicao-kv-label">Valor realizado</div>
+                    <div class="medicao-kv-value">{{ formatar_moeda(valor_total) }}</div>
+                </div>
+            </div>
+
+            <div class="medicao-card-actions">
+                <button type="button" class="medicao-expand-btn" onclick="toggleMedicaoCard(this)" title="Ver detalhes">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="medicao-card-details">
+            <div class="medicao-detail-grid">
+                <div class="medicao-detail-item">
+                    <div class="medicao-detail-label">ID da obra</div>
+                    <div class="medicao-detail-value">{{ primeira.codigo_obra }}</div>
+                </div>
+                <div class="medicao-detail-item">
+                    <div class="medicao-detail-label">Obra</div>
+                    <div class="medicao-detail-value">{{ primeira.nome_obra }}</div>
+                </div>
+                <div class="medicao-detail-item">
+                    <div class="medicao-detail-label">Ficha completa</div>
+                    <div class="medicao-detail-value">
+                        <a href="{{ url_for('obras_bp.obra_detalhe', codigo=primeira.codigo_obra) }}"
+                            class="medicao-detail-link">
+                            Abrir obra →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="medicao-table-wrap">
+                <table class="medicao-inner-table">
+                    <thead>
+                        <tr>
+                            <th>Mês</th>
+                            <th>Medição</th>
+                            <th>Etapa</th>
+                            <th>%</th>
+                            <th>% Acum.</th>
+                            <th>Valor realizado</th>
+                            <th>Data</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for medicao in lista %}
+                        <tr>
+                            <td>{{ medicao.mes or "-" }}</td>
+                            <td>{{ medicao.medicao_nome }}</td>
+                            <td>{{ medicao.etapa }}</td>
+                            <td>{{ medicao.percentual or 0 }}%</td>
+                            <td>{{ medicao.percentual_acumulado or 0 }}%</td>
+                            <td>{{ formatar_moeda(medicao.valor_realizado) }}</td>
+                            <td>{{ medicao.data_medicao or "-" }}</td>
+                            <td>
+                                <div style="display:flex; gap:6px;">
+                                    {% if eh_gestor() %}
+                                    <button class="btn btn-small" type="button"
+                                        onclick="abrirModalEditarMedicao('{{ medicao.id }}')">
+                                        Editar
+                                    </button>
+                                    {% endif %}
+
+                                    {% if eh_admin() %}
+                                    <form method="POST"
+                                        action="{{ url_for('medicoes_bp.excluir_medicao', medicao_id=medicao.id) }}"
+                                        onsubmit="return confirm('Deseja realmente excluir esta medição?');"
+                                        style="margin:0;">
+                                        <button type="submit" class="btn btn-small btn-danger">Excluir</button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="medicoes-empty-state">Nenhuma medição cadastrada ainda.</div>
+    {% endfor %}
+</div>
+
+<div id="medicoesSemResultado" class="medicoes-empty-state" style="display:none;">
+    Nenhuma obra encontrada com os filtros aplicados.
 </div>
 
 {% if eh_gestor() %}
@@ -85,7 +174,7 @@
         </div>
 
         <form method="POST" action="{{ url_for('medicoes_bp.editar_medicao', medicao_id=medicao.id) }}">
-            <div class="form-grid">
+            <div class="form-grid modal-form-grid">
                 <div class="form-group">
                     <label>Mês</label>
                     <input type="text" name="mes" value="{{ medicao.mes or '' }}">
@@ -146,7 +235,7 @@
         </div>
 
         <form method="POST" action="{{ url_for('medicoes_bp.nova_medicao') }}">
-            <div class="form-grid">
+            <div class="form-grid modal-form-grid">
                 <div class="form-group">
                     <label>Obra *</label>
                     <select name="obra_id" required>
@@ -226,6 +315,36 @@
     function fecharModalEditarMedicao(id) {
         const modal = document.getElementById("modalEditarMedicao" + id);
         if (modal) modal.style.display = "none";
+    }
+
+    function toggleMedicaoCard(btn) {
+        const card = btn.closest(".medicao-obra-card");
+        const details = card.querySelector(".medicao-card-details");
+        const isOpen = details.classList.contains("open");
+
+        details.classList.toggle("open", !isOpen);
+        btn.classList.toggle("expanded", !isOpen);
+    }
+
+    function filtrarMedicoesCards() {
+        const input = document.getElementById("medicaoSearch");
+        const termo = input ? input.value.trim().toLowerCase() : "";
+        const cards = document.querySelectorAll(".medicao-obra-card");
+        const emptyState = document.getElementById("medicoesSemResultado");
+
+        let visiveis = 0;
+
+        cards.forEach(function (card) {
+            const textoBusca = (card.dataset.search || "").toLowerCase();
+            const mostrar = !termo || textoBusca.includes(termo);
+
+            card.style.display = mostrar ? "" : "none";
+            if (mostrar) visiveis++;
+        });
+
+        if (emptyState) {
+            emptyState.style.display = visiveis === 0 && cards.length > 0 ? "flex" : "none";
+        }
     }
 
     window.addEventListener("click", function (event) {

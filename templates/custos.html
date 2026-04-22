@@ -112,63 +112,136 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="tbl-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID Obra</th>
-                    <th>Obra</th>
-                    <th>Descrição</th>
-                    <th>Categoria</th>
-                    <th>Fornecedor</th>
-                    <th>Data</th>
-                    <th>Valor</th>
-                    <th>NF</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody id="custosTableBody">
-                {% for custo in custos %}
-                <tr class="custo-row" data-categoria="{{ custo.categoria or '' }}"
-                    data-search="{{ (custo.codigo_obra or '')|lower }} {{ (custo.nome_obra or '')|lower }} {{ (custo.descricao or '')|lower }} {{ (custo.categoria or '')|lower }} {{ (custo.fornecedor or '')|lower }} {{ (custo.nota_fiscal or '')|lower }}">
-                    <td class="td-mono">{{ custo.codigo_obra }}</td>
-                    <td class="td-name">{{ custo.nome_obra }}</td>
-                    <td>{{ custo.descricao }}</td>
-                    <td>{{ custo.categoria }}</td>
-                    <td>{{ custo.fornecedor or "-" }}</td>
-                    <td>{{ custo.data_lancamento or "-" }}</td>
-                    <td>{{ formatar_moeda(custo.valor_total) }}</td>
-                    <td>{{ custo.nota_fiscal or "-" }}</td>
-                    <td>
-                        <div style="display:flex; gap:6px;">
-                            {% if eh_gestor() %}
-                            <button class="btn btn-small" type="button"
-                                onclick="abrirModalEditarCusto('{{ custo.id }}')">
-                                Editar
-                            </button>
-                            {% endif %}
-                            {% if eh_admin() %}
-                            <form method="POST" action="{{ url_for('custos_bp.excluir_custo', custo_id=custo.id) }}"
-                                onsubmit="return confirm('Deseja realmente excluir este custo?');">
-                                <button type="submit" class="btn btn-small btn-danger">Excluir</button>
-                            </form>
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
-                {% else %}
-                <tr id="linhaSemCustosOriginal">
-                    <td colspan="9" class="muted">Nenhum custo lançado ainda.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<div id="custosCardsWrap" class="custos-obras-list">
+    {% for grupo in custos|groupby('codigo_obra') %}
+    {% set ns = namespace(total=0, count=0, ultimo='-') %}
+    {% for item in grupo.list %}
+    {% set ns.total = ns.total + (item.valor_total or 0) %}
+    {% set ns.count = ns.count + 1 %}
+    {% if item.data_lancamento %}
+    {% set ns.ultimo = item.data_lancamento %}
+    {% endif %}
+    {% endfor %}
+    {% set obra_ref = grupo.list[0] %}
+    <div class="custo-obra-card custo-obra-group"
+        data-categoria="{{ (grupo.list|map(attribute='categoria')|join(' ')|lower) }}"
+        data-search="{{ ((obra_ref.codigo_obra or '') ~ ' ' ~ (obra_ref.nome_obra or '') ~ ' ' ~ (grupo.list|map(attribute='descricao')|join(' ')) ~ ' ' ~ (grupo.list|map(attribute='categoria')|join(' ')) ~ ' ' ~ (grupo.list|map(attribute='fornecedor')|join(' ')) ~ ' ' ~ (grupo.list|map(attribute='nota_fiscal')|join(' ')))|lower }}"
+        data-categorias="{{ (grupo.list|map(attribute='categoria')|join('|')|lower) }}">
+        <div class="custo-obra-main">
+            <div class="custo-obra-identity">
+                <div class="custo-obra-title-row">
+                    <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra_ref.codigo_obra) }}"
+                        class="custo-obra-nome">
+                        {{ obra_ref.nome_obra }}
+                    </a>
+                    <span class="custo-obra-codigo">{{ obra_ref.codigo_obra }}</span>
+                    <span class="custo-obra-count">{{ ns.count }} lançamento{% if ns.count != 1 %}s{% endif %}</span>
+                </div>
+                <div class="custo-obra-subtitle">
+                    <span>Total lançado: <strong>{{ formatar_moeda(ns.total) }}</strong></span>
+                    <span class="custo-obra-dot">•</span>
+                    <span>Último lançamento: <strong>{{ ns.ultimo }}</strong></span>
+                </div>
+            </div>
 
-        <div id="custosSemResultado" class="custos-empty-state" style="display:none;">
-            Nenhum custo encontrado com os filtros aplicados.
+            <div class="custo-obra-kpis">
+                <div class="custo-kv">
+                    <span class="custo-kv-label">Total lançado</span>
+                    <span class="custo-kv-value">{{ formatar_moeda(ns.total) }}</span>
+                </div>
+                <div class="custo-kv">
+                    <span class="custo-kv-label">Lançamentos</span>
+                    <span class="custo-kv-value">{{ ns.count }}</span>
+                </div>
+                <div class="custo-kv">
+                    <span class="custo-kv-label">Abrir obra</span>
+                    <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra_ref.codigo_obra) }}"
+                        class="custo-detail-link">Ver ficha completa</a>
+                </div>
+            </div>
+
+            <div class="custo-obra-actions">
+                <button type="button" class="custo-expand-btn" onclick="toggleDetalhesCusto(this)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="custo-obra-details">
+            <div class="custo-detail-grid">
+                <div class="custo-detail-item">
+                    <span class="custo-detail-label">ID da obra</span>
+                    <span class="custo-detail-value">{{ obra_ref.codigo_obra }}</span>
+                </div>
+                <div class="custo-detail-item">
+                    <span class="custo-detail-label">Nome da obra</span>
+                    <span class="custo-detail-value">{{ obra_ref.nome_obra }}</span>
+                </div>
+                <div class="custo-detail-item">
+                    <span class="custo-detail-label">Ações rápidas</span>
+                    <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra_ref.codigo_obra) }}"
+                        class="custo-detail-link">Abrir detalhes da obra</a>
+                </div>
+            </div>
+
+            <div class="custo-table-wrap">
+                <table class="custo-inner-table">
+                    <thead>
+                        <tr>
+                            <th>Descrição</th>
+                            <th>Categoria</th>
+                            <th>Fornecedor</th>
+                            <th>Data</th>
+                            <th>Valor</th>
+                            <th>NF</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for custo in grupo.list %}
+                        <tr class="custo-detail-row" data-categoria="{{ (custo.categoria or '')|lower }}">
+                            <td>{{ custo.descricao }}</td>
+                            <td>{{ custo.categoria }}</td>
+                            <td>{{ custo.fornecedor or "-" }}</td>
+                            <td>{{ custo.data_lancamento or "-" }}</td>
+                            <td>{{ formatar_moeda(custo.valor_total) }}</td>
+                            <td>{{ custo.nota_fiscal or "-" }}</td>
+                            <td>
+                                <div style="display:flex; gap:6px;">
+                                    {% if eh_gestor() %}
+                                    <button class="btn btn-small" type="button"
+                                        onclick="abrirModalEditarCusto('{{ custo.id }}')">
+                                        Editar
+                                    </button>
+                                    {% endif %}
+                                    {% if eh_admin() %}
+                                    <form method="POST"
+                                        action="{{ url_for('custos_bp.excluir_custo', custo_id=custo.id) }}"
+                                        onsubmit="return confirm('Deseja realmente excluir este custo?');">
+                                        <button type="submit" class="btn btn-small btn-danger">Excluir</button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
+    {% else %}
+    <div class="custos-empty-state" id="linhaSemCustosOriginal">
+        Nenhum custo lançado ainda.
+    </div>
+    {% endfor %}
+</div>
+
+<div id="custosSemResultado" class="custos-empty-state" style="display:none;">
+    Nenhum custo encontrado com os filtros aplicados.
 </div>
 
 {% if eh_gestor() %}
@@ -350,10 +423,20 @@
             if (modal) modal.style.display = "none";
         }
 
+        function toggleDetalhesCusto(botao) {
+            const card = botao.closest(".custo-obra-card");
+            if (!card) return;
+            const details = card.querySelector(".custo-obra-details");
+            if (!details) return;
+            details.classList.toggle("open");
+            botao.classList.toggle("expanded");
+        }
+
         window.abrirModalCusto = abrirModalCusto;
         window.fecharModalCusto = fecharModalCusto;
         window.abrirModalEditarCusto = abrirModalEditarCusto;
         window.fecharModalEditarCusto = fecharModalEditarCusto;
+        window.toggleDetalhesCusto = toggleDetalhesCusto;
 
         function selecionarFiltroCategoria(categoria, botao) {
             filtroCategoriaAtual = categoria;
@@ -382,32 +465,58 @@
         function filtrarCustos() {
             const input = document.getElementById("custoSearch");
             const termo = input ? input.value.trim().toLowerCase() : "";
-            const linhas = document.querySelectorAll(".custo-row");
+            const grupos = document.querySelectorAll(".custo-obra-group");
             const emptyState = document.getElementById("custosSemResultado");
 
             let visiveis = 0;
 
-            linhas.forEach(function (linha) {
-                const textoBusca = (linha.dataset.search || "").toLowerCase();
-                const categoriaLinha = (linha.dataset.categoria || "").toLowerCase();
-
+            grupos.forEach(function (grupo) {
+                const textoBusca = (grupo.dataset.search || "").toLowerCase();
+                const categorias = (grupo.dataset.categorias || "").toLowerCase();
                 const correspondeBusca = !termo || textoBusca.includes(termo);
-                const correspondeCategoria = filtroCategoriaAtual === "todas" || categoriaLinha === filtroCategoriaAtual.toLowerCase();
+                const correspondeCategoria = filtroCategoriaAtual === "todas" || categorias.includes(filtroCategoriaAtual.toLowerCase());
 
                 if (correspondeBusca && correspondeCategoria) {
-                    linha.style.display = "";
+                    grupo.style.display = "";
                     visiveis++;
                 } else {
-                    linha.style.display = "none";
+                    grupo.style.display = "none";
                 }
             });
 
             if (emptyState) {
-                emptyState.style.display = visiveis === 0 && linhas.length > 0 ? "flex" : "none";
+                emptyState.style.display = visiveis === 0 ? "flex" : "none";
             }
         }
 
         window.filtrarCustos = filtrarCustos;
+
+        function agruparCustosPorObra(custos) {
+            const mapa = new Map();
+
+            custos.forEach(function (c) {
+                const codigo = c.codigo_obra || "SEM-CODIGO";
+                if (!mapa.has(codigo)) {
+                    mapa.set(codigo, {
+                        codigo_obra: c.codigo_obra || "",
+                        nome_obra: c.nome_obra || "Obra sem nome",
+                        itens: [],
+                        total: 0,
+                        ultimo: "-"
+                    });
+                }
+
+                const grupo = mapa.get(codigo);
+                grupo.itens.push(c);
+                grupo.total += Number(c.valor_total || 0);
+
+                if (c.data_lancamento && c.data_lancamento !== "-") {
+                    grupo.ultimo = c.data_lancamento;
+                }
+            });
+
+            return Array.from(mapa.values()).sort((a, b) => a.nome_obra.localeCompare(b.nome_obra));
+        }
 
         function renderizarCards(cards) {
             const grid = document.getElementById("custosKpiGrid");
@@ -422,47 +531,129 @@
         `).join("");
         }
 
-        function renderizarTabela(custos, podeEditar, podeExcluir) {
-            const tbody = document.getElementById("custosTableBody");
+        function renderizarCustosAgrupados(custos, podeEditar, podeExcluir) {
+            const wrap = document.getElementById("custosCardsWrap");
             const emptyState = document.getElementById("custosSemResultado");
 
-            if (!tbody) return;
+            if (!wrap) return;
 
             if (!custos || custos.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="muted">Nenhum custo lançado ainda.</td></tr>`;
+                wrap.innerHTML = `<div class="custos-empty-state">Nenhum custo lançado ainda.</div>`;
                 if (emptyState) emptyState.style.display = "none";
                 return;
             }
 
-            tbody.innerHTML = custos.map(c => {
-                const search = [
-                    c.codigo_obra,
-                    c.nome_obra,
-                    c.descricao,
-                    c.categoria,
-                    c.fornecedor,
-                    c.nota_fiscal
-                ].map(v => (v || "").toLowerCase()).join(" ");
+            const grupos = agruparCustosPorObra(custos);
 
-                const acoes = `<div style="display:flex; gap:6px;">
-                ${podeEditar ? `<button class="btn btn-small" type="button" onclick="abrirModalEditarCusto('${esc(String(c.id))}')">Editar</button>` : ""}
-                ${podeExcluir ? `<form method="POST" action="/custos/excluir/${esc(String(c.id))}" onsubmit="return confirm('Deseja realmente excluir este custo?');"><button type="submit" class="btn btn-small btn-danger">Excluir</button></form>` : ""}
-            </div>`;
+            wrap.innerHTML = grupos.map(grupo => {
+                const categorias = grupo.itens.map(i => (i.categoria || "").toLowerCase()).join("|");
+                const search = [
+                    grupo.codigo_obra,
+                    grupo.nome_obra,
+                    ...grupo.itens.map(i => i.descricao || ""),
+                    ...grupo.itens.map(i => i.categoria || ""),
+                    ...grupo.itens.map(i => i.fornecedor || ""),
+                    ...grupo.itens.map(i => i.nota_fiscal || "")
+                ].join(" ").toLowerCase();
+
+                const linhas = grupo.itens.map(c => {
+                    const acoes = `<div style="display:flex; gap:6px;">
+                    ${podeEditar ? `<button class="btn btn-small" type="button" onclick="abrirModalEditarCusto('${esc(String(c.id))}')">Editar</button>` : ""}
+                    ${podeExcluir ? `<form method="POST" action="/custos/excluir/${esc(String(c.id))}" onsubmit="return confirm('Deseja realmente excluir este custo?');"><button type="submit" class="btn btn-small btn-danger">Excluir</button></form>` : ""}
+                </div>`;
+
+                    return `
+                    <tr class="custo-detail-row" data-categoria="${esc((c.categoria || '').toLowerCase())}">
+                        <td>${esc(c.descricao)}</td>
+                        <td>${esc(c.categoria)}</td>
+                        <td>${esc(c.fornecedor || "-")}</td>
+                        <td>${esc(c.data_lancamento || "-")}</td>
+                        <td>${esc(c.valor_formatado)}</td>
+                        <td>${esc(c.nota_fiscal || "-")}</td>
+                        <td>${acoes}</td>
+                    </tr>
+                `;
+                }).join("");
 
                 return `
-                <tr class="custo-row"
-                    data-categoria="${esc(c.categoria)}"
-                    data-search="${esc(search)}">
-                    <td class="td-mono">${esc(c.codigo_obra)}</td>
-                    <td class="td-name">${esc(c.nome_obra)}</td>
-                    <td>${esc(c.descricao)}</td>
-                    <td>${esc(c.categoria)}</td>
-                    <td>${esc(c.fornecedor)}</td>
-                    <td>${esc(c.data_lancamento)}</td>
-                    <td>${esc(c.valor_formatado)}</td>
-                    <td>${esc(c.nota_fiscal)}</td>
-                    <td>${acoes}</td>
-                </tr>
+                <div class="custo-obra-card custo-obra-group"
+                    data-search="${esc(search)}"
+                    data-categorias="${esc(categorias)}">
+                    <div class="custo-obra-main">
+                        <div class="custo-obra-identity">
+                            <div class="custo-obra-title-row">
+                                <a href="/obra/${encodeURIComponent(grupo.codigo_obra)}" class="custo-obra-nome">${esc(grupo.nome_obra)}</a>
+                                <span class="custo-obra-codigo">${esc(grupo.codigo_obra)}</span>
+                                <span class="custo-obra-count">${grupo.itens.length} lançamento${grupo.itens.length !== 1 ? "s" : ""}</span>
+                            </div>
+                            <div class="custo-obra-subtitle">
+                                <span>Total lançado: <strong>${esc(new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(grupo.total || 0))}</strong></span>
+                                <span class="custo-obra-dot">•</span>
+                                <span>Último lançamento: <strong>${esc(grupo.ultimo || "-")}</strong></span>
+                            </div>
+                        </div>
+
+                        <div class="custo-obra-kpis">
+                            <div class="custo-kv">
+                                <span class="custo-kv-label">Total lançado</span>
+                                <span class="custo-kv-value">${esc(new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(grupo.total || 0))}</span>
+                            </div>
+                            <div class="custo-kv">
+                                <span class="custo-kv-label">Lançamentos</span>
+                                <span class="custo-kv-value">${grupo.itens.length}</span>
+                            </div>
+                            <div class="custo-kv">
+                                <span class="custo-kv-label">Abrir obra</span>
+                                <a href="/obra/${encodeURIComponent(grupo.codigo_obra)}" class="custo-detail-link">Ver ficha completa</a>
+                            </div>
+                        </div>
+
+                        <div class="custo-obra-actions">
+                            <button type="button" class="custo-expand-btn" onclick="toggleDetalhesCusto(this)">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                    <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="custo-obra-details">
+                        <div class="custo-detail-grid">
+                            <div class="custo-detail-item">
+                                <span class="custo-detail-label">ID da obra</span>
+                                <span class="custo-detail-value">${esc(grupo.codigo_obra)}</span>
+                            </div>
+                            <div class="custo-detail-item">
+                                <span class="custo-detail-label">Nome da obra</span>
+                                <span class="custo-detail-value">${esc(grupo.nome_obra)}</span>
+                            </div>
+                            <div class="custo-detail-item">
+                                <span class="custo-detail-label">Ações rápidas</span>
+                                <a href="/obra/${encodeURIComponent(grupo.codigo_obra)}" class="custo-detail-link">Abrir detalhes da obra</a>
+                            </div>
+                        </div>
+
+                        <div class="custo-table-wrap">
+                            <table class="custo-inner-table">
+                                <thead>
+                                    <tr>
+                                        <th>Descrição</th>
+                                        <th>Categoria</th>
+                                        <th>Fornecedor</th>
+                                        <th>Data</th>
+                                        <th>Valor</th>
+                                        <th>NF</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${linhas}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             `;
             }).join("");
 
@@ -528,7 +719,7 @@
 
                 atualizarResumo(payload);
                 renderizarCards(payload.cards);
-                renderizarTabela(payload.custos, payload.pode_editar, payload.pode_excluir);
+                renderizarCustosAgrupados(payload.custos, payload.pode_editar, payload.pode_excluir);
 
                 const novaUrl = `${window.location.pathname}${params.toString() ? "?" + params.toString() : ""}`;
                 window.history.replaceState({}, "", novaUrl);
