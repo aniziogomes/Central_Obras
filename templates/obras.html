@@ -86,14 +86,14 @@
     {% set fase_atual = obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else 'Não definida' %}
     {% set observacao_canteiro = obra.observacao_responsavel if obra.observacao_responsavel is defined and
     obra.observacao_responsavel else '' %}
-    {% set foto_capa = obra.foto_capa if obra.foto_capa is defined and obra.foto_capa else '' %}
+    {% set portal_ativo = obra.token_publico if obra.token_publico is defined and obra.token_publico else '' %}
     <div class="obra-card" data-status="{{ obra.status or '' }}"
         data-search="{{ (obra.codigo or '')|lower }} {{ (obra.nome or '')|lower }} {{ (obra.tipologia or '')|lower }} {{ (obra.endereco or '')|lower }} {{ (obra.tipo_obra or '')|lower }} {{ (fase_atual or '')|lower }} {{ (observacao_canteiro or '')|lower }}">
 
         <div class="obra-card-main">
             <div class="obra-card-identity">
                 <div class="obra-card-title-row">
-                    <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra.codigo) }}" class="obra-card-nome">
+                    <a href="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}" class="obra-card-nome">
                         {{ obra.nome }}
                     </a>
                     <span class="obra-card-codigo">{{ obra.codigo }}</span>
@@ -109,15 +109,17 @@
                     %}
                 </div>
 
+                <div class="obra-card-timeline">
+                    {{ obra.data_inicio or "Início livre" }} → {{ obra.data_fim_prevista or "Fim livre" }}
+                </div>
+
                 <div class="obra-card-canteiro-meta">
                     <div class="obra-canteiro-mini">
-                        <span class="obra-canteiro-mini-label">Linha do tempo</span>
-                        <strong>{{ obra.data_inicio or "início livre" }} → {{ obra.data_fim_prevista or "fim livre"
-                            }}</strong>
-                    </div>
-                    <div class="obra-canteiro-mini">
-                        <span class="obra-canteiro-mini-label">Visão do canteiro</span>
-                        <strong>{% if foto_capa %}Com foto{% else %}Sem foto{% endif %}</strong>
+                        <span class="obra-canteiro-mini-label">Visão do Canteiro</span>
+                        <strong
+                            class="obra-portal-status {% if portal_ativo %}obra-portal-status--active{% else %}obra-portal-status--empty{% endif %}">
+                            {% if portal_ativo %}Link ativo{% else %}Sem link{% endif %}
+                        </strong>
                     </div>
                 </div>
             </div>
@@ -144,10 +146,8 @@
             </div>
 
             <div class="obra-card-actions">
-                <a href="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}"
-                    class="btn btn-small btn-ghost">Detalhes da obra</a>
                 <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra.codigo) }}" class="btn btn-small btn-ghost">
-                    Atualizar canteiro
+                    Abrir canteiro
                 </a>
                 {% if eh_gestor() %}
                 <button class="btn btn-small" type="button"
@@ -474,13 +474,12 @@
                 const margemClass = margem >= 0 ? "valor-positivo" : "valor-negativo";
                 const fase = o.fase_obra || "Não definida";
                 const observacao = o.observacao_responsavel || "";
-                const foto = o.foto_capa || "";
+                const portalAtivo = Boolean(o.token_publico);
                 const search = [o.codigo, o.nome, o.tipologia, o.endereco, o.tipo_obra, fase, observacao]
                     .map(v => (v || "").toLowerCase()).join(" ");
 
                 const acoes = `
-                <a href="/obra/${encodeURIComponent(o.codigo)}/detalhes" class="btn btn-small btn-ghost">Detalhes da obra</a>
-                <a href="/obra/${encodeURIComponent(o.codigo)}" class="btn btn-small btn-ghost">Atualizar canteiro</a>
+                <a href="/obra/${encodeURIComponent(o.codigo)}" class="btn btn-small btn-ghost">Abrir canteiro</a>
                 ${podeEditar ? `<button class="btn btn-small" type="button" onclick="abrirModalEditarObra('${esc(String(o.id))}')">Editar</button>` : ""}
                 ${podeExcluir ? `<form method="POST" action="/obras/excluir/${esc(String(o.id))}" onsubmit="return confirm('Deseja realmente excluir esta obra?');" style="margin:0;"><button type="submit" class="btn btn-small btn-danger">Excluir</button></form>` : ""}
             `;
@@ -490,7 +489,7 @@
                 <div class="obra-card-main">
                     <div class="obra-card-identity">
                         <div class="obra-card-title-row">
-                            <a href="/obra/${encodeURIComponent(o.codigo)}" class="obra-card-nome">${esc(o.nome)}</a>
+                            <a href="/obra/${encodeURIComponent(o.codigo)}/detalhes" class="obra-card-nome">${esc(o.nome)}</a>
                             <span class="obra-card-codigo">${esc(o.codigo)}</span>
                             <span class="badge ${esc(o.status)}">${esc(o.status)}</span>
                             <span class="obra-fase-pill">${esc(fase)}</span>
@@ -500,14 +499,13 @@
                             ${o.tipologia ? `<span class="obra-card-dot">·</span><span>${esc(o.tipologia)}</span>` : ""}
                             ${o.area_m2 ? `<span class="obra-card-dot">·</span><span>${esc(String(o.area_m2))} m²</span>` : ""}
                         </div>
+                        <div class="obra-card-timeline">
+                            ${esc(o.data_inicio || "Início livre")} → ${esc(o.data_fim_prevista || "Fim livre")}
+                        </div>
                         <div class="obra-card-canteiro-meta">
                             <div class="obra-canteiro-mini">
-                                <span class="obra-canteiro-mini-label">Linha do tempo</span>
-                                <strong>${esc(o.data_inicio || "início livre")} → ${esc(o.data_fim_prevista || "fim livre")}</strong>
-                            </div>
-                            <div class="obra-canteiro-mini">
-                                <span class="obra-canteiro-mini-label">Visão do canteiro</span>
-                                <strong>${foto ? "Com foto" : "Sem foto"}</strong>
+                                <span class="obra-canteiro-mini-label">Portal do cliente</span>
+                                <strong class="obra-portal-status ${portalAtivo ? "obra-portal-status--active" : "obra-portal-status--empty"}">${portalAtivo ? "Link ativo" : "Sem link"}</strong>
                             </div>
                         </div>
                     </div>

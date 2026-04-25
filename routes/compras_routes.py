@@ -35,9 +35,10 @@ def compras():
 
 @compras_bp.route("/compras/nova", methods=["POST"])
 def nova_compra():
+    redirect_to = request.form.get("redirect_to") or url_for("compras_bp.compras")
     if not usuario_logado() or not eh_gestor():
         flash("Você não tem permissão para cadastrar compras.", "erro")
-        return redirect(url_for("compras_bp.compras"))
+        return redirect(redirect_to)
 
     obra_id = request.form.get("obra_id", "").strip()
     fornecedor_id = request.form.get("fornecedor_id", "").strip()
@@ -51,7 +52,7 @@ def nova_compra():
 
     if not obra_id or not material:
         flash("Preencha os campos obrigatórios da compra.", "erro")
-        return redirect(url_for("compras_bp.compras"))
+        return redirect(redirect_to)
 
     try:
         quantidade_float = parse_valor_monetario(quantidade)
@@ -64,7 +65,7 @@ def nova_compra():
             raise ValueError("Valor unitário não pode ser negativo.")
     except ValueError as e:
         flash(str(e), "erro")
-        return redirect(url_for("compras_bp.compras"))
+        return redirect(redirect_to)
 
     execute(
         """
@@ -89,7 +90,7 @@ def nova_compra():
     )
 
     flash("Compra cadastrada com sucesso.", "sucesso")
-    return redirect(url_for("compras_bp.compras"))
+    return redirect(redirect_to)
 
 
 @compras_bp.route("/compras/editar/<int:compra_id>", methods=["POST"])

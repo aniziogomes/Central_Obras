@@ -169,9 +169,10 @@ def custos_dados():
 
 @custos_bp.route("/custos/novo", methods=["POST"])
 def novo_custo():
+    redirect_to = request.form.get("redirect_to") or url_for("custos_bp.custos")
     if not usuario_logado() or not eh_gestor():
         flash("Você não tem permissão para cadastrar custos.", "erro")
-        return redirect(url_for("custos_bp.custos"))
+        return redirect(redirect_to)
 
     obra_id = request.form.get("obra_id", "").strip()
     descricao = request.form.get("descricao", "").strip()
@@ -184,7 +185,7 @@ def novo_custo():
 
     if not obra_id or not descricao or not categoria or not valor_total:
         flash("Preencha os campos obrigatórios do custo.", "erro")
-        return redirect(url_for("custos_bp.custos"))
+        return redirect(redirect_to)
 
     try:
         validar_categoria_custo(categoria)
@@ -193,7 +194,7 @@ def novo_custo():
             raise ValueError("Valor do custo não pode ser negativo.")
     except ValueError as e:
         flash(str(e), "erro")
-        return redirect(url_for("custos_bp.custos"))
+        return redirect(redirect_to)
 
     custo_id = execute(
         """
@@ -222,7 +223,7 @@ def novo_custo():
     )
 
     flash("Custo lançado com sucesso.", "sucesso")
-    return redirect(url_for("custos_bp.custos"))
+    return redirect(redirect_to)
 
 
 @custos_bp.route("/custos/editar/<int:custo_id>", methods=["POST"])

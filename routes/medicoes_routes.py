@@ -27,9 +27,10 @@ def medicoes():
 
 @medicoes_bp.route("/medicoes/nova", methods=["POST"])
 def nova_medicao():
+    redirect_to = request.form.get("redirect_to") or url_for("medicoes_bp.medicoes")
     if not usuario_logado() or not eh_gestor():
         flash("Você não tem permissão para cadastrar medições.", "erro")
-        return redirect(url_for("medicoes_bp.medicoes"))
+        return redirect(redirect_to)
 
     obra_id = request.form.get("obra_id", "").strip()
     mes = request.form.get("mes", "").strip()
@@ -43,7 +44,7 @@ def nova_medicao():
 
     if not obra_id or not medicao_nome or not etapa:
         flash("Preencha os campos obrigatórios da medição.", "erro")
-        return redirect(url_for("medicoes_bp.medicoes"))
+        return redirect(redirect_to)
 
     try:
         percentual_float = parse_valor_monetario(percentual)
@@ -57,7 +58,7 @@ def nova_medicao():
             raise ValueError("Valor realizado não pode ser negativo.")
     except ValueError as e:
         flash(str(e), "erro")
-        return redirect(url_for("medicoes_bp.medicoes"))
+        return redirect(redirect_to)
 
     medicao_id = execute(
         """
@@ -88,7 +89,7 @@ def nova_medicao():
     )
 
     flash("Medição cadastrada com sucesso.", "sucesso")
-    return redirect(url_for("medicoes_bp.medicoes"))
+    return redirect(redirect_to)
 
 
 @medicoes_bp.route("/medicoes/editar/<int:medicao_id>", methods=["POST"])

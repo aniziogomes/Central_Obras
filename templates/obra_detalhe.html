@@ -9,20 +9,18 @@ obra.observacao_responsavel else '' %}
 {% set foto_capa = obra.foto_capa if obra.foto_capa is defined and obra.foto_capa else '' %}
 {% set galeria = fotos_obra if fotos_obra is defined else [] %}
 
-<div class="obra-view-page obra-canteiro-page">
+<div class="obra-view-page obra-canteiro-page obra-canteiro-page--saas">
     <div class="obra-view-header obra-canteiro-header">
         <div>
-            <div class="obra-view-kicker">Ficha da obra</div>
+            <div class="obra-view-kicker">Visão do Canteiro</div>
             <h1>{{ obra.nome }}</h1>
             <div class="obra-view-subtitle">
                 <span class="obra-view-code">{{ obra.codigo }}</span>
-                <span class="obra-view-dot">•</span>
+                <span class="obra-view-dot">-</span>
                 <span>{{ "Para venda" if obra.tipo_obra == "venda" else "Por contrato / reforma" }}</span>
-                <span class="obra-view-dot">•</span>
+                <span class="obra-view-dot">-</span>
                 <span>{{ obra.tipologia or "-" }}</span>
-                <span class="obra-view-dot">•</span>
                 <span class="badge {{ obra.status }}">{{ obra.status or "-" }}</span>
-                <span class="obra-view-dot">•</span>
                 <span class="obra-fase-pill">{{ fase_atual }}</span>
             </div>
         </div>
@@ -38,220 +36,149 @@ obra.observacao_responsavel else '' %}
         </div>
     </div>
 
-    <div class="obra-canteiro-hero">
-        <div class="obra-canteiro-cover">
-            {% if foto_capa %}
-            <img src="{{ foto_capa }}" alt="Foto principal da obra {{ obra.nome }}">
-            {% else %}
-            <div class="obra-canteiro-cover-empty">
-                <span>Sem foto principal</span>
-                <small>Adicione uma foto da obra para valorizar a Visão do Canteiro.</small>
-            </div>
-            {% endif %}
-        </div>
-
-        <div class="obra-canteiro-hero-content">
-            <div class="obra-canteiro-tag">Visão do Canteiro</div>
-            <h2>{{ obra.nome }}</h2>
-            <p>Esta área concentra o que será importante para o cliente acompanhar: fase atual, progresso visual, linha
-                do tempo, observações do responsável e status de conclusão.</p>
-
-            <div class="obra-canteiro-status-grid">
-                <div class="obra-canteiro-status-card"><span>Fase de execução</span><strong>{{ fase_atual }}</strong>
+    <section class="card obra-canteiro-summary">
+        <div class="obra-canteiro-summary-main">
+            <div>
+                <div class="obra-canteiro-tag">Resumo operacional</div>
+                <h2>{{ obra.nome }}</h2>
+                <div class="obra-canteiro-observacao-destaque">
+                    <span>Observação para o cliente</span>
+                    <strong>{{ observacao_canteiro or "Atualize a observação do responsável para orientar cliente e
+                        equipe sobre o andamento da obra." }}</strong>
                 </div>
-                <div class="obra-canteiro-status-card"><span>Status de conclusão</span><strong>{{
-                        (obra.progresso_percentual or 0)|round(1) }}%</strong></div>
-                <div class="obra-canteiro-status-card"><span>Data inicial</span><strong>{{ obra.data_inicio or "Não
-                        informada" }}</strong></div>
-                <div class="obra-canteiro-status-card"><span>Entrega prevista</span><strong>{{ obra.data_fim_prevista or
-                        "Não informada" }}</strong></div>
             </div>
-
-            <div class="obra-canteiro-progress-block">
-                <div class="obra-canteiro-progress-top"><span>Progresso global da obra</span><strong>{{
-                        (obra.progresso_percentual or 0)|round(1) }}%</strong></div>
+            <div class="obra-canteiro-progress-block obra-canteiro-progress-block--summary">
+                <div class="obra-canteiro-progress-top">
+                    <span>Progresso global</span>
+                    <strong>{{ (obra.progresso_percentual or 0)|round(1) }}%</strong>
+                </div>
                 <div class="progress-bar-bg">
                     <div class="progress-bar-fill progress-dinamica" data-width="{{ obra.progresso_percentual or 0 }}">
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    {% if eh_gestor() %}
-    <div class="obra-canteiro-actions-panel">
-        <div class="card obra-canteiro-action-card">
-            <div class="card-hdr obra-canteiro-action-hdr">
-                <div>
-                    <div class="card-title">Avanço rápido da obra</div>
-                    <div class="obra-card-subtitle">Atualize fase, porcentagem e observação sem abrir o formulário
-                        completo de edição.</div>
-                </div>
-                <span class="obra-portal-pill">Controle interno</span>
-            </div>
-
-            <form method="POST" action="{{ url_for('obras_bp.editar_obra', obra_id=obra.id) }}"
-                class="obra-avanco-form">
-                <input type="hidden" name="nome" value="{{ obra.nome }}">
-                <input type="hidden" name="endereco" value="{{ obra.endereco or '' }}">
-                <input type="hidden" name="tipo_obra" value="{{ obra.tipo_obra or 'contrato' }}">
-                <input type="hidden" name="tipologia" value="{{ obra.tipologia or '' }}">
-                <input type="hidden" name="area_m2" value="{{ obra.area_m2 or 0 }}">
-                <input type="hidden" name="data_inicio" value="{{ obra.data_inicio or '' }}">
-                <input type="hidden" name="data_fim_prevista" value="{{ obra.data_fim_prevista or '' }}">
-                <input type="hidden" name="orcamento" value="{{ obra.orcamento or 0 }}">
-                <input type="hidden" name="receita_total" value="{{ obra.receita_total or 0 }}">
-                <input type="hidden" name="status" value="{{ obra.status or 'andamento' }}">
-                <input type="hidden" name="foto_capa" value="{{ foto_capa }}">
-
-                <div class="form-grid obra-avanco-grid">
-                    <div class="form-group">
-                        <label>Fase da obra</label>
-                        <select name="fase_obra">
-                            <option value="" {% if not fase_atual or fase_atual=='Não definida' %}selected{% endif %}>
-                                Selecione...</option>
-                            {% for fase in ['Planejamento', 'Fundação', 'Estrutura', 'Alvenaria', 'Telhado',
-                            'Instalações', 'Revestimento', 'Acabamento', 'Vistoria', 'Concluída'] %}
-                            <option value="{{ fase }}" {% if fase_atual==fase %}selected{% endif %}>{{ fase }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Status de conclusão (%)</label>
-                        <input type="number" step="0.01" min="0" max="100" name="progresso_percentual"
-                            value="{{ obra.progresso_percentual or 0 }}">
-                    </div>
-                    <div class="form-group full">
-                        <label>Observações do responsável</label>
-                        <textarea name="observacao_responsavel"
-                            placeholder="Ex: alvenaria finalizada, próxima etapa será telhado. Houve atraso por chuva...">{{ observacao_canteiro }}</textarea>
-                    </div>
-                </div>
-                <div class="modal-footer obra-avanco-footer"><button type="submit" class="btn btn-primary">Salvar
-                        avanço</button></div>
-            </form>
+        <div class="obra-canteiro-kpi-grid">
+            <div class="obra-canteiro-status-card"><span>Fase atual</span><strong>{{ fase_atual }}</strong></div>
+            <div class="obra-canteiro-status-card"><span>Status</span><strong>{{ obra.status or "-" }}</strong></div>
+            <div class="obra-canteiro-status-card"><span>Data inicial</span><strong>{{ obra.data_inicio or "Não
+                    informada" }}</strong></div>
+            <div class="obra-canteiro-status-card"><span>Entrega prevista</span><strong>{{ obra.data_fim_prevista or
+                    "Não informada" }}</strong></div>
         </div>
+    </section>
 
-        <div class="card obra-canteiro-action-card">
-            <div class="card-hdr obra-canteiro-action-hdr">
-                <div>
-                    <div class="card-title">Foto principal da obra</div>
-                    <div class="obra-card-subtitle">Use uma imagem de capa para aparecer na Visão do Canteiro.</div>
-                </div>
-            </div>
-            <form method="POST" action="{{ url_for('obras_bp.editar_obra', obra_id=obra.id) }}" class="obra-foto-form">
-                <input type="hidden" name="nome" value="{{ obra.nome }}">
-                <input type="hidden" name="endereco" value="{{ obra.endereco or '' }}">
-                <input type="hidden" name="tipo_obra" value="{{ obra.tipo_obra or 'contrato' }}">
-                <input type="hidden" name="tipologia" value="{{ obra.tipologia or '' }}">
-                <input type="hidden" name="fase_obra" value="{{ fase_atual if fase_atual != 'Não definida' else '' }}">
-                <input type="hidden" name="area_m2" value="{{ obra.area_m2 or 0 }}">
-                <input type="hidden" name="data_inicio" value="{{ obra.data_inicio or '' }}">
-                <input type="hidden" name="data_fim_prevista" value="{{ obra.data_fim_prevista or '' }}">
-                <input type="hidden" name="orcamento" value="{{ obra.orcamento or 0 }}">
-                <input type="hidden" name="receita_total" value="{{ obra.receita_total or 0 }}">
-                <input type="hidden" name="progresso_percentual" value="{{ obra.progresso_percentual or 0 }}">
-                <input type="hidden" name="status" value="{{ obra.status or 'andamento' }}">
-                <input type="hidden" name="observacao_responsavel" value="{{ observacao_canteiro }}">
-                <div class="form-group"><label>URL ou caminho da foto</label><input type="text" name="foto_capa"
-                        value="{{ foto_capa }}" placeholder="/static/uploads/obra-001.jpg"></div>
-                <div class="obra-foto-help">Por enquanto este campo aceita caminho/URL. Na próxima etapa podemos ligar
-                    upload real de arquivo.</div>
-                <div class="modal-footer obra-avanco-footer"><button type="submit" class="btn btn-primary">Salvar
-                        foto</button></div>
-            </form>
-        </div>
-    </div>
-    {% endif %}
-
-    <div class="card obra-portal-card obra-canteiro-public-card">
+    <section class="card obra-portal-card obra-canteiro-public-card obra-portal-card--featured">
         <div class="card-hdr obra-portal-card-hdr">
             <div>
-                <div class="card-title">Visão do Canteiro</div>
-                <div class="obra-card-subtitle">Link público para o cliente acompanhar apenas o progresso visual e
-                    operacional.</div>
+                <div class="card-title">Portal do cliente</div>
+                <div class="obra-card-subtitle">Link para compartilhar progresso visual, fase, observações e fotos da
+                    obra.</div>
             </div>
-            <div class="obra-portal-pill">Cliente vê somente isso</div>
+            <div class="obra-portal-pill">Conteúdo público</div>
         </div>
 
         {% if obra.token_publico %}
-        <div class="obra-portal-grid">
+        <div class="obra-portal-grid obra-portal-grid--saas">
             <div class="obra-portal-copy-box">
                 <div class="obra-portal-copy-label">Link público da Visão do Canteiro</div>
-                <div class="obra-portal-copy-row"><input id="link-portal" class="obra-portal-input" type="text" readonly
-                        value="{{ request.host_url }}portal/{{ obra.token_publico }}"><button type="button"
-                        class="btn btn-primary" onclick="copiarLinkPortal()">Copiar link</button></div>
-                <p class="obra-portal-note">O cliente verá apenas fotos, linha do tempo, fase atual, observações do
-                    responsável e barra de conclusão. Valores, custos, equipe, compras e medições continuam restritos ao
-                    painel interno.</p>
+                <div class="obra-portal-copy-row">
+                    <input id="link-portal" class="obra-portal-input" type="text" readonly
+                        value="{{ request.host_url }}portal/{{ obra.token_publico }}">
+                    <button type="button" class="btn btn-primary" onclick="copiarLinkPortal()">Copiar</button>
+                </div>
+                <p class="obra-portal-note">O cliente não vê custos, equipe, compras, medições ou dados internos.</p>
             </div>
-            <div class="obra-portal-actions">
+            <div class="obra-portal-actions obra-portal-actions--saas">
                 <a href="{{ request.host_url }}portal/{{ obra.token_publico }}" target="_blank"
-                    class="btn btn-success">Abrir Visão do Canteiro</a>
+                    class="btn btn-success">Abrir portal</a>
                 <a href="https://wa.me/?text=Acompanhe%20a%20Vis%C3%A3o%20do%20Canteiro%20da%20obra%20*{{ obra.nome|urlencode }}*:%20{{ (request.host_url ~ 'portal/' ~ obra.token_publico)|urlencode }}"
-                    target="_blank" class="btn obra-whats-btn">Enviar pelo WhatsApp</a>
+                    target="_blank" class="btn obra-whats-btn">WhatsApp</a>
                 <form method="POST" action="{{ url_for('portal_bp.revogar_link', obra_id=obra.id) }}"
-                    onsubmit="return confirm('Revogar o link? O cliente perderá o acesso imediatamente.');"><button
-                        type="submit" class="btn btn-danger">Revogar acesso</button></form>
+                    class="obra-portal-revogar-form" data-confirm-title="Revogar acesso do cliente?"
+                    data-confirm-message="O link publico deixara de funcionar imediatamente. Voce pode gerar um novo link depois."
+                    data-confirm-action="Revogar acesso" data-confirm-tone="danger">
+                    <button type="submit" class="obra-portal-revogar-link">Revogar acesso do cliente</button>
+                </form>
             </div>
         </div>
         {% else %}
-        <div class="obra-portal-empty">
-            <div class="obra-portal-empty-icon">🏗️</div>
+        <div class="obra-portal-empty obra-portal-empty--saas">
             <div class="obra-portal-empty-content">
-                <h3>Crie a Visão do Canteiro para o cliente</h3>
-                <p>O cliente acompanha a evolução da obra sem ver valores, custos, equipe, compras ou dados internos.
-                </p>
+                <h3>Portal ainda não criado</h3>
+                <p>Gere um link para o cliente acompanhar a evolução da obra sem acessar dados internos.</p>
             </div>
-            <form method="POST" action="{{ url_for('portal_bp.gerar_link', obra_id=obra.id) }}"><button type="submit"
-                    class="btn btn-primary">Gerar link da Visão do Canteiro</button></form>
+            <form method="POST" action="{{ url_for('portal_bp.gerar_link', obra_id=obra.id) }}">
+                <button type="submit" class="btn btn-primary">Gerar link do cliente</button>
+            </form>
         </div>
+        {% endif %}
+    </section>
+
+    <div class="obra-detalhe-tabs" role="tablist" aria-label="Área da obra">
+        <button type="button" class="obra-detalhe-tab active" data-obra-tab="galeria">Galeria de fotos</button>
+        {% if eh_gestor() %}
+        <button type="button" class="obra-detalhe-tab" data-obra-tab="atualizar">Atualizar canteiro</button>
         {% endif %}
     </div>
 
-    <div class="obra-canteiro-public-preview">
-        <div class="card obra-info-card">
-            <div class="card-hdr">
-                <div>
-                    <div class="card-title">O que o cliente verá</div>
-                    <div class="obra-card-subtitle">Resumo público, simples e sem informações financeiras.</div>
-                </div>
-            </div>
-            <div class="obra-info-list obra-info-list-publica">
-                <div class="obra-info-item"><span class="obra-info-label">Progresso visual</span><strong>Fotos da
-                        evolução da construção</strong></div>
-                <div class="obra-info-item"><span class="obra-info-label">Linha do tempo</span><strong>{{
-                        obra.data_inicio or "Início livre" }} → {{ obra.data_fim_prevista or "Fim livre" }}</strong>
-                </div>
-                <div class="obra-info-item"><span class="obra-info-label">Fase atual</span><strong>{{ fase_atual
-                        }}</strong></div>
-                <div class="obra-info-item"><span class="obra-info-label">Status de conclusão</span><strong>{{
-                        (obra.progresso_percentual or 0)|round(1) }}%</strong></div>
-            </div>
-        </div>
-        <div class="card obra-info-card">
-            <div class="card-hdr">
-                <div>
-                    <div class="card-title">Observações do responsável</div>
-                    <div class="obra-card-subtitle">Texto que ajuda o cliente a entender o que foi feito e próximos
-                        passos.</div>
-                </div>
-            </div>
-            <div class="obra-observacao-publica">{{ observacao_canteiro or "Nenhuma observação pública registrada
-                ainda." }}</div>
-        </div>
-    </div>
-
-    <div class="card obra-galeria-card">
+    <section class="card obra-galeria-card obra-galeria-card--featured obra-tab-panel active" data-obra-panel="galeria">
         <div class="card-hdr obra-galeria-hdr">
             <div>
-                <div class="card-title">Progresso visual da obra</div>
-                <div class="obra-card-subtitle">Galeria de fotos que mostra a evolução real da construção.</div>
+                <div class="card-title">Galeria de fotos</div>
+                <div class="obra-card-subtitle">Evolução visual da obra em grid, com destaque para o que o cliente mais
+                    quer acompanhar.</div>
             </div>
+            {% if galeria %}
+            <span class="obra-portal-pill">{{ galeria|length }} foto{% if galeria|length != 1 %}s{% endif %}</span>
+            {% endif %}
+            {% if eh_gestor() %}
+            <button type="button" class="btn btn-primary btn-small" id="btnToggleFotoObra">
+                Enviar nova foto
+            </button>
+            {% endif %}
         </div>
+
+        {% if galeria %}
+        <div class="obra-galeria-grid obra-galeria-grid--featured">
+            {% for foto in galeria %}
+            <div class="obra-galeria-item">
+                <img src="{{ foto.caminho or foto.url or foto.imagem }}" alt="Registro visual da obra">
+                <div class="obra-galeria-info">
+                    <strong>{{ foto.titulo or foto.fase or fase_atual }}</strong>
+                    <span>{{ foto.data_registro or foto.data or "Sem data" }}</span>
+                </div>
+                {% if eh_gestor() %}
+                <div class="obra-galeria-item-actions">
+                    <form method="POST"
+                        action="{{ url_for('obras_bp.usar_foto_como_capa', obra_id=obra.id, foto_id=foto.id) }}"
+                        class="obra-galeria-capa-form">
+                        <button type="submit" class="btn btn-ghost btn-xs">Usar como capa</button>
+                    </form>
+                    <form method="POST"
+                        action="{{ url_for('obras_bp.excluir_foto_obra', obra_id=obra.id, foto_id=foto.id) }}"
+                        class="obra-galeria-excluir-form" data-confirm-title="Excluir foto da galeria?"
+                        data-confirm-message="Esta foto sera removida da galeria da obra. Se ela for a capa atual, a capa tambem sera limpa."
+                        data-confirm-action="Excluir foto" data-confirm-tone="danger">
+                        <button type="submit" class="btn btn-ghost btn-xs obra-galeria-excluir-btn">Excluir</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="obra-empty-box obra-galeria-empty">Ainda não há fotos cadastradas para esta obra.</div>
+        {% endif %}
+
         {% if eh_gestor() %}
         <form method="POST" action="{{ url_for('obras_bp.nova_foto_obra', obra_id=obra.id) }}"
-            enctype="multipart/form-data" class="obra-galeria-upload-form">
+            enctype="multipart/form-data"
+            class="obra-galeria-upload-form obra-galeria-upload-form--collapsible {% if galeria %}obra-galeria-upload-form--collapsed{% else %}open{% endif %}"
+            id="formFotoObra">
+            <input type="hidden" name="fase"
+                value="{{ obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else '' }}">
             <div class="obra-galeria-upload-grid">
                 <div class="form-group">
                     <label>Foto da galeria</label>
@@ -262,25 +189,22 @@ obra.observacao_responsavel else '' %}
                     <input type="text" name="titulo" placeholder="Ex: Alvenaria finalizada">
                 </div>
                 <div class="form-group">
-                    <label>Fase</label>
-                    <input type="text" name="fase" value="{{ obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else '' }}"
-                        placeholder="Ex: Estrutura">
-                </div>
-                <div class="form-group">
                     <label>Data</label>
                     <input type="date" name="data_registro">
                 </div>
+                <div class="obra-foto-fase-atual">
+                    <span>Fase atual</span>
+                    <strong>{{ fase_atual }}</strong>
+                </div>
             </div>
             <div class="obra-galeria-upload-actions">
-                <div class="obra-foto-help">Selecione uma imagem do notebook ou celular para alimentar a galeria da
-                    Visao do Canteiro.</div>
                 <label class="obra-capa-check">
                     <input type="checkbox" name="usar_como_capa" value="1">
-                    <span>Usar esta foto como capa</span>
+                    <span>Usar como capa</span>
                 </label>
                 <button type="submit" class="btn btn-primary">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="3" width="18" height="18" rx="2" />
                         <circle cx="8.5" cy="8.5" r="1.5" />
                         <polyline points="21 15 16 10 5 21" />
@@ -290,28 +214,75 @@ obra.observacao_responsavel else '' %}
             </div>
         </form>
         {% endif %}
-        {% if galeria %}
-        <div class="obra-galeria-grid">
-            {% for foto in galeria %}
-            <div class="obra-galeria-item"><img src="{{ foto.caminho or foto.url or foto.imagem }}"
-                    alt="Registro visual da obra">
-                <div class="obra-galeria-info"><strong>{{ foto.titulo or foto.fase or fase_atual }}</strong><span>{{
-                        foto.data_registro or foto.data or "Sem data" }}</span></div>
-                {% if eh_gestor() %}
-                <form method="POST" action="{{ url_for('obras_bp.usar_foto_como_capa', obra_id=obra.id, foto_id=foto.id) }}"
-                    class="obra-galeria-capa-form">
-                    <button type="submit" class="btn btn-ghost btn-xs">Usar como capa</button>
-                </form>
-                {% endif %}
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="obra-empty-box obra-galeria-empty">Ainda não há galeria cadastrada. Na próxima etapa, vamos conectar
-            o upload de fotos para alimentar esta área automaticamente.</div>
-        {% endif %}
-    </div>
+    </section>
 
+    {% if eh_gestor() %}
+    <section class="card obra-canteiro-action-card obra-canteiro-internal-card obra-tab-panel"
+        data-obra-panel="atualizar">
+        <div class="card-hdr obra-canteiro-action-hdr">
+            <div>
+                <div class="card-title">Atualizar obra</div>
+                <div class="obra-card-subtitle">Atualize fase, porcentagem e observação do responsável.</div>
+            </div>
+            <span class="obra-portal-pill">Controle interno</span>
+        </div>
+
+        <form method="POST" action="{{ url_for('obras_bp.editar_obra', obra_id=obra.id) }}" class="obra-avanco-form">
+            <input type="hidden" name="nome" value="{{ obra.nome }}">
+            <input type="hidden" name="endereco" value="{{ obra.endereco or '' }}">
+            <input type="hidden" name="tipo_obra" value="{{ obra.tipo_obra or 'contrato' }}">
+            <input type="hidden" name="tipologia" value="{{ obra.tipologia or '' }}">
+            <input type="hidden" name="area_m2" value="{{ obra.area_m2 or 0 }}">
+            <input type="hidden" name="data_inicio" value="{{ obra.data_inicio or '' }}">
+            <input type="hidden" name="data_fim_prevista" value="{{ obra.data_fim_prevista or '' }}">
+            <input type="hidden" name="orcamento" value="{{ obra.orcamento or 0 }}">
+            <input type="hidden" name="receita_total" value="{{ obra.receita_total or 0 }}">
+            <input type="hidden" name="status" value="{{ obra.status or 'andamento' }}">
+            <input type="hidden" name="foto_capa" value="{{ foto_capa }}">
+
+            <div class="form-grid obra-avanco-grid">
+                <div class="form-group">
+                    <label>Fase da obra</label>
+                    <select name="fase_obra">
+                        <option value="" {% if not fase_atual or fase_atual=='Não definida' %}selected{% endif %}>
+                            Selecione...</option>
+                        {% for fase in ['Planejamento', 'Fundação', 'Estrutura', 'Alvenaria', 'Telhado',
+                        'Instalações', 'Revestimento', 'Acabamento', 'Vistoria', 'Concluída'] %}
+                        <option value="{{ fase }}" {% if fase_atual==fase %}selected{% endif %}>{{ fase }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Status de conclusão (%)</label>
+                    <input type="number" step="0.01" min="0" max="100" name="progresso_percentual"
+                        value="{{ obra.progresso_percentual or 0 }}">
+                </div>
+                <div class="form-group full">
+                    <label>Observações do responsável</label>
+                    <textarea name="observacao_responsavel"
+                        placeholder="Ex: alvenaria finalizada, próxima etapa será telhado. Houve atraso por chuva...">{{ observacao_canteiro }}</textarea>
+                </div>
+            </div>
+            <div class="modal-footer obra-avanco-footer">
+                <button type="submit" class="btn btn-primary">Salvar avanço</button>
+            </div>
+        </form>
+    </section>
+    {% endif %}
+</div>
+
+<div class="app-confirm-overlay" id="appConfirmOverlay" aria-hidden="true">
+    <div class="app-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="appConfirmTitle">
+        <div class="app-confirm-icon">!</div>
+        <div class="app-confirm-content">
+            <h3 id="appConfirmTitle">Confirmar acao</h3>
+            <p id="appConfirmMessage">Tem certeza que deseja continuar?</p>
+        </div>
+        <div class="app-confirm-actions">
+            <button type="button" class="btn btn-ghost" id="appConfirmCancel">Cancelar</button>
+            <button type="button" class="btn btn-danger" id="appConfirmSubmit">Confirmar</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -320,6 +291,73 @@ obra.observacao_responsavel else '' %}
             const width = Math.max(0, Math.min(100, Number(el.dataset.width || 0)));
             setTimeout(function () { el.style.width = `${width}%`; }, 60);
         });
+
+        const tabs = document.querySelectorAll("[data-obra-tab]");
+        const panels = document.querySelectorAll("[data-obra-panel]");
+        tabs.forEach(function (tab) {
+            tab.addEventListener("click", function () {
+                const alvo = tab.dataset.obraTab;
+                tabs.forEach(function (item) { item.classList.toggle("active", item === tab); });
+                panels.forEach(function (panel) {
+                    panel.classList.toggle("active", panel.dataset.obraPanel === alvo);
+                });
+            });
+        });
+
+        const btnToggleFoto = document.getElementById("btnToggleFotoObra");
+        const formFoto = document.getElementById("formFotoObra");
+        if (btnToggleFoto && formFoto) {
+            btnToggleFoto.addEventListener("click", function () {
+                const aberto = formFoto.classList.toggle("open");
+                btnToggleFoto.textContent = aberto ? "Fechar upload" : "Enviar nova foto";
+                if (aberto) {
+                    const input = formFoto.querySelector('input[type="file"]');
+                    if (input) input.focus();
+                }
+            });
+        }
+
+        const overlay = document.getElementById("appConfirmOverlay");
+        const title = document.getElementById("appConfirmTitle");
+        const message = document.getElementById("appConfirmMessage");
+        const cancel = document.getElementById("appConfirmCancel");
+        const submit = document.getElementById("appConfirmSubmit");
+        let formPendente = null;
+
+        function fecharConfirmacao() {
+            if (!overlay) return;
+            overlay.classList.remove("open");
+            overlay.setAttribute("aria-hidden", "true");
+            formPendente = null;
+        }
+
+        document.querySelectorAll("form[data-confirm-title]").forEach(function (form) {
+            form.addEventListener("submit", function (event) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                formPendente = form;
+                title.textContent = form.dataset.confirmTitle || "Confirmar acao";
+                message.textContent = form.dataset.confirmMessage || "Tem certeza que deseja continuar?";
+                submit.textContent = form.dataset.confirmAction || "Confirmar";
+                overlay.classList.add("open");
+                overlay.setAttribute("aria-hidden", "false");
+                cancel.focus();
+            }, true);
+        });
+
+        if (cancel) cancel.addEventListener("click", fecharConfirmacao);
+        if (overlay) overlay.addEventListener("click", function (event) {
+            if (event.target === overlay) fecharConfirmacao();
+        });
+        if (submit) submit.addEventListener("click", function () {
+            if (!formPendente) return;
+            HTMLFormElement.prototype.submit.call(formPendente);
+        });
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && overlay && overlay.classList.contains("open")) {
+                fecharConfirmacao();
+            }
+        });
     })();
 
     function copiarLinkPortal() {
@@ -327,7 +365,17 @@ obra.observacao_responsavel else '' %}
         if (!input) return;
         input.select();
         input.setSelectionRange(0, 99999);
-        navigator.clipboard.writeText(input.value).then(function () { alert("Link copiado!"); }).catch(function () { document.execCommand("copy"); alert("Link copiado!"); });
+        const botao = window.event && window.event.currentTarget ? window.event.currentTarget : null;
+        function feedback() {
+            if (!botao) return;
+            const textoOriginal = botao.textContent;
+            botao.textContent = "Copiado";
+            setTimeout(function () { botao.textContent = textoOriginal; }, 1600);
+        }
+        navigator.clipboard.writeText(input.value).then(feedback).catch(function () {
+            document.execCommand("copy");
+            feedback();
+        });
     }
 </script>
 {% endblock %}

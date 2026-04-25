@@ -26,9 +26,10 @@ def equipe():
 
 @equipe_bp.route("/equipe/novo", methods=["POST"])
 def novo_membro_equipe():
+    redirect_to = request.form.get("redirect_to") or url_for("equipe_bp.equipe")
     if not usuario_logado() or not eh_gestor():
         flash("Você não tem permissão para cadastrar equipe.", "erro")
-        return redirect(url_for("equipe_bp.equipe"))
+        return redirect(redirect_to)
 
     obra_id = request.form.get("obra_id", "").strip()
     nome = request.form.get("nome", "").strip()
@@ -36,7 +37,7 @@ def novo_membro_equipe():
 
     if not obra_id or not nome:
         flash("Preencha os campos obrigatórios da equipe.", "erro")
-        return redirect(url_for("equipe_bp.equipe"))
+        return redirect(redirect_to)
 
     valor_contratado = request.form.get("valor_contratado", "").strip()
     valor_pago = request.form.get("valor_pago", "").strip()
@@ -52,7 +53,7 @@ def novo_membro_equipe():
             raise ValueError("Valor pago não pode ser negativo.")
     except ValueError as e:
         flash(str(e), "erro")
-        return redirect(url_for("equipe_bp.equipe"))
+        return redirect(redirect_to)
 
     execute(
         """
@@ -71,7 +72,7 @@ def novo_membro_equipe():
     )
 
     flash("Profissional cadastrado com sucesso.", "sucesso")
-    return redirect(url_for("equipe_bp.equipe"))
+    return redirect(redirect_to)
 
 
 @equipe_bp.route("/equipe/editar/<int:equipe_id>", methods=["POST"])

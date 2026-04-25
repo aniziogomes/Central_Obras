@@ -5,6 +5,7 @@
 {% block content %}
 {% set fase_atual = obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else 'Nao definida' %}
 {% set margem_prevista = (obra.receita_total or 0) - (obra.orcamento or 0) %}
+{% set tem_custos_lancados = custos|length > 0 %}
 
 <div class="obra-view-page obra-detalhes-page">
     <div class="hdr">
@@ -39,68 +40,79 @@
         </div>
     </div>
 
-    <div class="obra-detalhes-kpis">
-        <div class="obra-card-dashboard-item">
-            <span>Receita prevista</span>
-            <strong>{{ formatar_moeda(obra.receita_total) }}</strong>
+    <div class="obra-detalhes-meta-strip">
+        <div class="obra-detalhes-meta-item"><span>Fase</span><strong>{{ fase_atual }}</strong></div>
+        <div class="obra-detalhes-meta-item"><span>Entrega</span><strong>{{ obra.data_fim_prevista or "-" }}</strong></div>
+        <div class="obra-detalhes-meta-item"><span>Área</span><strong>{{ obra.area_m2 or 0 }} m²</strong></div>
+        <div class="obra-detalhes-meta-item"><span>Galeria</span><strong>{{ fotos_obra|length }} foto(s)</strong></div>
+    </div>
+
+    <div class="obra-detalhes-kpi-section">
+        <div class="obra-detalhes-section-title">
+            <span>Financeiro</span>
+            {% if not tem_custos_lancados %}
+            <small>Sem gastos registrados; o saldo ainda considera apenas o valor do contrato.</small>
+            {% endif %}
         </div>
-        <div class="obra-card-dashboard-item">
-            <span>Custo previsto</span>
-            <strong>{{ formatar_moeda(obra.orcamento) }}</strong>
-        </div>
-        <div class="obra-card-dashboard-item">
-            <span>Custo lancado</span>
-            <strong>{{ formatar_moeda(custo_total) }}</strong>
-        </div>
-        <div class="obra-card-dashboard-item">
-            <span>Margem prevista</span>
-            <strong class="{% if margem_prevista >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">
-                {{ formatar_moeda(margem_prevista) }}
-            </strong>
-        </div>
-        <div class="obra-card-dashboard-item">
-            <span>Resultado atual</span>
-            <strong class="{% if margem >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">
-                {{ formatar_moeda(margem) }}
-            </strong>
-        </div>
-        <div class="obra-card-dashboard-item">
-            <span>Medicoes</span>
-            <strong>{{ medicoes|length }} registro(s)</strong>
-        </div>
-        <div class="obra-card-dashboard-item">
-            <span>Equipe</span>
-            <strong>{{ equipe|length }} profissional(is)</strong>
-        </div>
-        <div class="obra-card-dashboard-item">
-            <span>Compras</span>
-            <strong>{{ compras|length }} pedido(s)</strong>
+        <div class="obra-detalhes-kpis obra-detalhes-kpis--financeiro">
+            <div class="obra-card-dashboard-item">
+                <span>Contrato</span>
+                <strong>{{ formatar_moeda(obra.receita_total) }}</strong>
+            </div>
+            <div class="obra-card-dashboard-item">
+                <span>Gasto ate hoje</span>
+                <strong>{{ formatar_moeda(custo_total) }}</strong>
+                {% if not tem_custos_lancados %}
+                <small class="obra-kpi-note">Sem gastos registrados</small>
+                {% endif %}
+            </div>
+            <div class="obra-card-dashboard-item">
+                <span>Saldo disponivel</span>
+                <strong class="{% if margem >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">
+                    {{ formatar_moeda(margem) }}
+                </strong>
+            </div>
         </div>
     </div>
 
-    <div class="obra-sections-grid">
-        <div class="card obra-info-card">
+    <div class="obra-detalhes-chart-grid">
+        <div class="card chart-card obra-detalhes-chart-card">
             <div class="card-hdr">
-                <div class="card-title">Dados cadastrais</div>
+                <div>
+                    <div class="card-title">Custos por categoria</div>
+                    <div class="obra-card-subtitle">Distribuição do gasto.</div>
+                </div>
             </div>
-            <div class="obra-info-list">
-                <div class="obra-info-item"><span class="obra-info-label">Endereco</span><strong>{{ obra.endereco or "-" }}</strong></div>
-                <div class="obra-info-item"><span class="obra-info-label">Area</span><strong>{{ obra.area_m2 or 0 }} m2</strong></div>
-                <div class="obra-info-item"><span class="obra-info-label">Inicio</span><strong>{{ obra.data_inicio or "-" }}</strong></div>
-                <div class="obra-info-item"><span class="obra-info-label">Entrega prevista</span><strong>{{ obra.data_fim_prevista or "-" }}</strong></div>
-            </div>
+            {% if chart_custo_cat_labels %}
+            <div class="chart-box obra-detalhes-chart-box"><canvas id="graficoObraCategorias"></canvas></div>
+            {% else %}
+            <div class="obra-empty-box">Sem custos registrados para montar o gráfico.</div>
+            {% endif %}
         </div>
-        <div class="card obra-info-card">
+
+        <div class="card chart-card obra-detalhes-chart-card">
             <div class="card-hdr">
-                <div class="card-title">Visao do Canteiro</div>
+                <div>
+                    <div class="card-title">Evolução das medições</div>
+                    <div class="obra-card-subtitle">Execução e valor medido.</div>
+                </div>
             </div>
-            <div class="obra-info-list">
-                <div class="obra-info-item"><span class="obra-info-label">Foto de capa</span><strong>{% if obra.foto_capa %}Cadastrada{% else %}Nao cadastrada{% endif %}</strong></div>
-                <div class="obra-info-item"><span class="obra-info-label">Galeria</span><strong>{{ fotos_obra|length }} foto(s)</strong></div>
-                <div class="obra-info-item"><span class="obra-info-label">Fase atual</span><strong>{{ fase_atual }}</strong></div>
-                <div class="obra-info-item"><span class="obra-info-label">Status</span><strong>{{ obra.status or "-" }}</strong></div>
-            </div>
+            {% if chart_medicao_labels %}
+            <div class="chart-box obra-detalhes-chart-box"><canvas
+                    id="graficoObraMedicoes"></canvas></div>
+            {% else %}
+            <div class="obra-empty-box">Sem medições registradas para montar o gráfico.</div>
+            {% endif %}
         </div>
+    </div>
+
+    <div id="obra-detalhes-data"
+        data-custo-cat-labels='{{ chart_custo_cat_labels | tojson | safe }}'
+        data-custo-cat-valores='{{ chart_custo_cat_valores | tojson | safe }}'
+        data-medicao-labels='{{ chart_medicao_labels | tojson | safe }}'
+        data-medicao-percentuais='{{ chart_medicao_percentuais | tojson | safe }}'
+        data-medicao-valores='{{ chart_medicao_valores | tojson | safe }}'
+        style="display:none;">
     </div>
 
     <div class="obra-sections-grid">
@@ -120,8 +132,11 @@
         </div>
         <div class="card obra-section-card">
             <div class="card-hdr">
-                <div class="card-title">Medicoes</div>
-                <div class="obra-card-subtitle">{{ medicoes|length }} item(ns)</div>
+                <div>
+                    <div class="card-title">Medicoes</div>
+                    <div class="obra-card-subtitle">{{ medicoes|length }} registro(s)</div>
+                </div>
+                {% if eh_gestor() %}<button type="button" class="btn btn-small btn-primary" data-open-quick-modal="modalQuickMedicao">+ Medicao</button>{% endif %}
             </div>
             {% if medicoes %}
             <div class="obra-mini-lista">
@@ -136,8 +151,11 @@
 
     <div class="card obra-section-card obra-section-card--full">
         <div class="card-hdr">
-            <div class="card-title">Custos lancados</div>
-            <div class="obra-card-subtitle">{{ custos|length }} item(ns)</div>
+            <div>
+                <div class="card-title">Custos lancados</div>
+                <div class="obra-card-subtitle">{{ custos|length }} item(ns)</div>
+            </div>
+            {% if eh_gestor() %}<button type="button" class="btn btn-small btn-primary" data-open-quick-modal="modalQuickCusto">+ Custo</button>{% endif %}
         </div>
         {% if custos %}
         <div class="obra-mini-lista">
@@ -152,8 +170,11 @@
     <div class="obra-sections-grid">
         <div class="card obra-section-card">
             <div class="card-hdr">
-                <div class="card-title">Equipe</div>
-                <div class="obra-card-subtitle">{{ equipe|length }} item(ns)</div>
+                <div>
+                    <div class="card-title">Equipe</div>
+                    <div class="obra-card-subtitle">{{ equipe|length }} profissional(is)</div>
+                </div>
+                {% if eh_gestor() %}<button type="button" class="btn btn-small btn-primary" data-open-quick-modal="modalQuickEquipe">+ Profissional</button>{% endif %}
             </div>
             {% if equipe %}
             <div class="obra-mini-lista">
@@ -166,8 +187,11 @@
         </div>
         <div class="card obra-section-card">
             <div class="card-hdr">
-                <div class="card-title">Compras</div>
-                <div class="obra-card-subtitle">{{ compras|length }} item(ns)</div>
+                <div>
+                    <div class="card-title">Compras</div>
+                    <div class="obra-card-subtitle">{{ compras|length }} pedido(s)</div>
+                </div>
+                {% if eh_gestor() %}<button type="button" class="btn btn-small btn-primary" data-open-quick-modal="modalQuickCompra">+ Compra</button>{% endif %}
             </div>
             {% if compras %}
             <div class="obra-mini-lista">
@@ -181,10 +205,200 @@
     </div>
 </div>
 
+{% if eh_gestor() %}
+<div id="modalQuickCusto" class="modal-overlay obra-quick-modal">
+    <div class="modal-box">
+        <div class="modal-header"><h3>Novo custo</h3><button type="button" class="modal-close" data-close-quick-modal>&times;</button></div>
+        <form method="POST" action="{{ url_for('custos_bp.novo_custo') }}">
+            <input type="hidden" name="obra_id" value="{{ obra.id }}">
+            <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
+            <div class="form-grid modal-form-grid">
+                <div class="form-group full"><label>Descricao *</label><input type="text" name="descricao" required></div>
+                <div class="form-group"><label>Categoria *</label><select name="categoria" required>{% for categoria in categorias_custo %}<option value="{{ categoria }}">{{ categoria }}</option>{% endfor %}</select></div>
+                <div class="form-group"><label>Valor *</label><input type="number" step="0.01" name="valor_total" required></div>
+                <div class="form-group"><label>Fornecedor</label><input type="text" name="fornecedor"></div>
+                <div class="form-group"><label>Data</label><input type="date" name="data_lancamento"></div>
+                <div class="form-group full"><label>Observacao</label><textarea name="observacao"></textarea></div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-ghost" data-close-quick-modal>Cancelar</button><button type="submit" class="btn btn-primary">Salvar custo</button></div>
+        </form>
+    </div>
+</div>
+
+<div id="modalQuickMedicao" class="modal-overlay obra-quick-modal">
+    <div class="modal-box">
+        <div class="modal-header"><h3>Nova medicao</h3><button type="button" class="modal-close" data-close-quick-modal>&times;</button></div>
+        <form method="POST" action="{{ url_for('medicoes_bp.nova_medicao') }}">
+            <input type="hidden" name="obra_id" value="{{ obra.id }}">
+            <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
+            <div class="form-grid modal-form-grid">
+                <div class="form-group"><label>Medicao *</label><input type="text" name="medicao_nome" required placeholder="Ex: 1 BM"></div>
+                <div class="form-group"><label>Etapa *</label><input type="text" name="etapa" required></div>
+                <div class="form-group"><label>Percentual %</label><input type="number" step="0.01" name="percentual" value="0"></div>
+                <div class="form-group"><label>Acumulado %</label><input type="number" step="0.01" name="percentual_acumulado" value="0"></div>
+                <div class="form-group"><label>Valor realizado</label><input type="number" step="0.01" name="valor_realizado" value="0"></div>
+                <div class="form-group"><label>Data</label><input type="date" name="data_medicao"></div>
+                <div class="form-group full"><label>Observacao</label><textarea name="observacao"></textarea></div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-ghost" data-close-quick-modal>Cancelar</button><button type="submit" class="btn btn-primary">Salvar medicao</button></div>
+        </form>
+    </div>
+</div>
+
+<div id="modalQuickEquipe" class="modal-overlay obra-quick-modal">
+    <div class="modal-box">
+        <div class="modal-header"><h3>Novo profissional</h3><button type="button" class="modal-close" data-close-quick-modal>&times;</button></div>
+        <form method="POST" action="{{ url_for('equipe_bp.novo_membro_equipe') }}">
+            <input type="hidden" name="obra_id" value="{{ obra.id }}">
+            <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
+            <div class="form-grid modal-form-grid">
+                <div class="form-group"><label>Nome *</label><input type="text" name="nome" required></div>
+                <div class="form-group"><label>Funcao</label><input type="text" name="funcao"></div>
+                <div class="form-group"><label>Valor contratado</label><input type="number" step="0.01" name="valor_contratado" value="0"></div>
+                <div class="form-group"><label>Valor pago</label><input type="number" step="0.01" name="valor_pago" value="0"></div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-ghost" data-close-quick-modal>Cancelar</button><button type="submit" class="btn btn-primary">Salvar profissional</button></div>
+        </form>
+    </div>
+</div>
+
+<div id="modalQuickCompra" class="modal-overlay obra-quick-modal">
+    <div class="modal-box">
+        <div class="modal-header"><h3>Nova compra</h3><button type="button" class="modal-close" data-close-quick-modal>&times;</button></div>
+        <form method="POST" action="{{ url_for('compras_bp.nova_compra') }}">
+            <input type="hidden" name="obra_id" value="{{ obra.id }}">
+            <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
+            <div class="form-grid modal-form-grid">
+                <div class="form-group full"><label>Material *</label><input type="text" name="material" required></div>
+                <div class="form-group"><label>Fornecedor</label><select name="fornecedor_id"><option value="">Sem fornecedor</option>{% for fornecedor in fornecedores %}<option value="{{ fornecedor.id }}">{{ fornecedor.nome }}</option>{% endfor %}</select></div>
+                <div class="form-group"><label>Quantidade</label><input type="number" step="0.01" name="quantidade" value="0"></div>
+                <div class="form-group"><label>Valor unitario</label><input type="number" step="0.01" name="valor_unitario" value="0"></div>
+                <div class="form-group"><label>Status</label><select name="status"><option value="pedido">pedido</option><option value="entregue">entregue</option><option value="cancelado">cancelado</option></select></div>
+                <div class="form-group"><label>Entrega prevista</label><input type="date" name="data_entrega_prevista"></div>
+                <div class="form-group full"><label>Observacao</label><textarea name="observacao"></textarea></div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-ghost" data-close-quick-modal>Cancelar</button><button type="submit" class="btn btn-primary">Salvar compra</button></div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 <script>
-    document.querySelectorAll(".progress-dinamica").forEach(function (el) {
-        const width = Math.max(0, Math.min(100, Number(el.dataset.width || 0)));
-        setTimeout(function () { el.style.width = `${width}%`; }, 60);
-    });
+    (function initObraDetalhes() {
+        document.querySelectorAll(".progress-dinamica").forEach(function (el) {
+            const width = Math.max(0, Math.min(100, Number(el.dataset.width || 0)));
+            setTimeout(function () { el.style.width = `${width}%`; }, 60);
+        });
+
+        document.querySelectorAll("[data-open-quick-modal]").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                const modal = document.getElementById(btn.dataset.openQuickModal);
+                if (modal) modal.classList.add("show");
+            });
+        });
+
+        document.querySelectorAll("[data-close-quick-modal]").forEach(function (btn) {
+            btn.addEventListener("click", function () {
+                const modal = btn.closest(".modal-overlay");
+                if (modal) modal.classList.remove("show");
+            });
+        });
+
+        document.querySelectorAll(".obra-quick-modal").forEach(function (modal) {
+            modal.addEventListener("click", function (event) {
+                if (event.target === modal) modal.classList.remove("show");
+            });
+        });
+
+        function esperarChart(callback) {
+            if (typeof Chart !== "undefined") {
+                callback();
+                return;
+            }
+            const intervalo = setInterval(function () {
+                if (typeof Chart !== "undefined") {
+                    clearInterval(intervalo);
+                    callback();
+                }
+            }, 20);
+        }
+
+        const dataEl = document.getElementById("obra-detalhes-data");
+        if (!dataEl) return;
+
+        function jsonAttr(nome) {
+            try { return JSON.parse(dataEl.dataset[nome] || "[]"); }
+            catch (_) { return []; }
+        }
+
+        function fmtMoeda(v) {
+            return Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+        }
+
+        esperarChart(function () {
+            const txtCinza = "#8a8a95";
+            const txtClaro = "#f0f0f0";
+            const cores = ["#1654B0", "#e2a42d", "#28b56a", "#e8621a", "#7252cc", "#e8424e"];
+
+            const catCanvas = document.getElementById("graficoObraCategorias");
+            if (catCanvas) {
+                new Chart(catCanvas, {
+                    type: "doughnut",
+                    data: {
+                        labels: jsonAttr("custoCatLabels"),
+                        datasets: [{ data: jsonAttr("custoCatValores"), backgroundColor: cores, borderWidth: 0, hoverOffset: 6 }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: "62%",
+                        plugins: {
+                            legend: { position: "bottom", labels: { color: txtClaro, boxWidth: 12, boxHeight: 12, padding: 12 } },
+                            tooltip: { callbacks: { label: c => `${c.label}: ${fmtMoeda(c.raw)}` } }
+                        }
+                    }
+                });
+            }
+
+            const medCanvas = document.getElementById("graficoObraMedicoes");
+            if (medCanvas) {
+                new Chart(medCanvas, {
+                    type: "line",
+                    data: {
+                        labels: jsonAttr("medicaoLabels"),
+                        datasets: [
+                            {
+                                label: "% acumulado",
+                                data: jsonAttr("medicaoPercentuais"),
+                                borderColor: "#1654B0",
+                                backgroundColor: "rgba(22,84,176,.12)",
+                                tension: .35,
+                                fill: true,
+                                yAxisID: "y"
+                            },
+                            {
+                                label: "Valor realizado",
+                                data: jsonAttr("medicaoValores"),
+                                borderColor: "#28b56a",
+                                backgroundColor: "rgba(40,181,106,.18)",
+                                tension: .35,
+                                yAxisID: "y1"
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: txtClaro } }, tooltip: { callbacks: { label: c => c.dataset.yAxisID === "y1" ? `${c.dataset.label}: ${fmtMoeda(c.raw)}` : `${c.dataset.label}: ${c.raw}%` } } },
+                        scales: {
+                            x: { ticks: { color: txtCinza }, grid: { color: "rgba(255,255,255,.04)" } },
+                            y: { position: "left", min: 0, max: 100, ticks: { color: txtCinza, callback: v => v + "%" }, grid: { color: "rgba(255,255,255,.05)" } },
+                            y1: { position: "right", ticks: { color: txtCinza, callback: v => Math.abs(v) >= 1000 ? "R$" + (v / 1000).toFixed(0) + "K" : "R$" + v }, grid: { drawOnChartArea: false } }
+                        }
+                    }
+                });
+            }
+        });
+    })();
 </script>
 {% endblock %}

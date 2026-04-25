@@ -7,6 +7,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from werkzeug.utils import secure_filename
 from database import query_one, query_all, execute
 from services.validators import parse_valor_monetario, valor_negativo, validar_intervalo_percentual
+from services.validators import CATEGORIAS_CUSTO_VALIDAS
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 from services.log_service import registrar_log
 from utils import formatar_moeda, formatar_tipo_obra
@@ -95,6 +96,7 @@ def serializar_obras(lista_obras):
             "fase_obra": (o["fase_obra"] if "fase_obra" in keys and o["fase_obra"] else ""),
             "observacao_responsavel": (o["observacao_responsavel"] if "observacao_responsavel" in keys and o["observacao_responsavel"] else ""),
             "foto_capa": (o["foto_capa"] if "foto_capa" in keys and o["foto_capa"] else ""),
+            "token_publico": (o["token_publico"] if "token_publico" in keys and o["token_publico"] else ""),
         })
     return result
 
@@ -278,6 +280,7 @@ def obra_detalhes(codigo):
     medicoes = query_all("SELECT * FROM medicoes WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
     equipe = query_all("SELECT * FROM equipe WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
     compras = query_all("SELECT * FROM compras WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
+    fornecedores = query_all("SELECT * FROM fornecedores ORDER BY nome ASC")
     fotos_obra = query_all("SELECT * FROM fotos_obra WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
     custos_importados = query_all(
         "SELECT * FROM custos_importados_categoria WHERE obra_id = ? ORDER BY categoria ASC",
@@ -287,6 +290,21 @@ def obra_detalhes(codigo):
     custo_total = sum((c["valor_total"] or 0) for c in custos)
     margem = (obra["receita_total"] or 0) - custo_total
     lucro_previsto = (obra["receita_total"] or 0) - (obra["orcamento"] or 0)
+    custos_por_categoria = {}
+    for custo in custos:
+        categoria = custo["categoria"] or "Sem categoria"
+        custos_por_categoria[categoria] = custos_por_categoria.get(categoria, 0) + (custo["valor_total"] or 0)
+
+    medicoes_ordenadas = sorted(
+        medicoes,
+        key=lambda m: (m["data_medicao"] or "", m["id"] or 0)
+    )
+    medicao_labels = [
+        m["medicao_nome"] or m["etapa"] or m["data_medicao"] or f"Medicao {i + 1}"
+        for i, m in enumerate(medicoes_ordenadas)
+    ]
+    medicao_percentuais = [m["percentual_acumulado"] or m["percentual"] or 0 for m in medicoes_ordenadas]
+    medicao_valores = [m["valor_realizado"] or 0 for m in medicoes_ordenadas]
 
     return render_template(
         "obra_detalhes.html",
@@ -295,11 +313,18 @@ def obra_detalhes(codigo):
         medicoes=medicoes,
         equipe=equipe,
         compras=compras,
+        fornecedores=fornecedores,
+        categorias_custo=CATEGORIAS_CUSTO_VALIDAS,
         custos_importados=custos_importados,
         fotos_obra=fotos_obra,
         custo_total=custo_total,
         margem=margem,
         lucro_previsto=lucro_previsto,
+        chart_custo_cat_labels=list(custos_por_categoria.keys()),
+        chart_custo_cat_valores=list(custos_por_categoria.values()),
+        chart_medicao_labels=medicao_labels,
+        chart_medicao_percentuais=medicao_percentuais,
+        chart_medicao_valores=medicao_valores,
     )
 
 
@@ -400,6 +425,50 @@ def usar_foto_como_capa(obra_id, foto_id):
 
 
 # ─── Editar ──────────────────────────────────────────────────────────────────
+
+@obras_bp.route("/obras/<int:obra_id>/fotos/<int:foto_id>/excluir", methods=["POST"])
+def excluir_foto_obra(obra_id, foto_id):
+    if not usuario_logado() or not eh_gestor():
+        flash("Voce nao tem permissao para excluir fotos.", "erro")
+        return redirect(url_for("obras_bp.obras"))
+
+    obra = query_one("SELECT id, codigo, nome, foto_capa FROM obras WHERE id = ?", (obra_id,))
+    if not obra:
+        flash("Obra nao encontrada.", "erro")
+        return redirect(url_for("obras_bp.obras"))
+
+    foto = query_one(
+        "SELECT id, caminho FROM fotos_obra WHERE id = ? AND obra_id = ?",
+        (foto_id, obra_id)
+    )
+    if not foto:
+        flash("Foto nao encontrada na galeria.", "erro")
+        return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+
+    execute("DELETE FROM fotos_obra WHERE id = ? AND obra_id = ?", (foto_id, obra_id))
+
+    if obra["foto_capa"] == foto["caminho"]:
+        execute("UPDATE obras SET foto_capa = NULL WHERE id = ?", (obra_id,))
+
+    caminho = foto["caminho"] or ""
+    if caminho.startswith("/static/uploads/obras/"):
+        arquivo = Path(caminho.lstrip("/"))
+        try:
+            if arquivo.exists() and arquivo.is_file():
+                arquivo.unlink()
+        except OSError:
+            pass
+
+    registrar_log(
+        acao="foto_excluida",
+        entidade="obra",
+        entidade_id=obra_id,
+        descricao=f"Foto removida da galeria da obra: {obra['nome']}"
+    )
+
+    flash("Foto excluida da galeria.", "sucesso")
+    return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+
 
 @obras_bp.route("/obras/editar/<int:obra_id>", methods=["POST"])
 def editar_obra(obra_id):
