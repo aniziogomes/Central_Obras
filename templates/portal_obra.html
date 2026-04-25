@@ -489,7 +489,7 @@
       border-radius: 2px;
     }
 
-    /* ── Compras ── */
+    /* ── Materiais ── */
     .compra-item {
       display: flex;
       align-items: center;
@@ -918,7 +918,7 @@
     {% endif %}
 
 
-    <!-- Compras / materiais em andamento -->
+    <!-- Materiais em andamento -->
     {% if compras %}
     <div class="card">
       <div class="card-hdr">
@@ -941,7 +941,7 @@
             {% if c.data_entrega_prevista %} · Entrega: {{ c.data_entrega_prevista }}{% endif %}
           </div>
         </div>
-        {% if st in ['entregue'] %}<span class="comp-badge cb-ok">Entregue</span>
+        {% if st in ['entregue','entregue no prazo'] %}<span class="comp-badge cb-ok">Entregue</span>
         {% elif st in ['pendente','aguardando','no prazo'] %}<span class="comp-badge cb-pnd">Pendente</span>
         {% elif st in ['cancelado'] %}<span class="comp-badge cb-cxl">Cancelado</span>
         {% elif c.status %}<span class="comp-badge cb-dflt">{{ c.status }}</span>

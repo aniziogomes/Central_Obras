@@ -533,6 +533,10 @@ body {
   min-width: 0;
 }
 
+.js-material-field {
+  display: none;
+}
+
 .form-group.full {
   grid-column: 1 / -1;
 }
@@ -6405,6 +6409,24 @@ canvas {
   border-color: rgba(120, 170, 255, .58);
   background: rgba(22, 84, 176, .26);
   color: #fff;
+}
+
+.obra-card-actions .btn,
+.obra-card-actions .btn:hover,
+.obra-card-actions .btn:focus {
+  box-shadow: none;
+}
+
+.obra-card-actions .btn:not(.btn-danger) {
+  background: rgba(22, 84, 176, .10);
+}
+
+.obra-card-actions .btn:not(.btn-danger):hover {
+  background: rgba(22, 84, 176, .18);
+}
+
+.obra-card-actions .btn-danger {
+  box-shadow: none;
 }
 
 .obra-card-details.open {

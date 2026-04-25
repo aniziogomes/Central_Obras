@@ -54,11 +54,17 @@ def portal_obra(token):
         (obra["id"],)
     )
 
-    # Compras recentes — status de materiais (sem valores)
+    # Materiais recentes — status de entrega (sem valores)
     compras = query_all("""
-        SELECT material, quantidade, status, data_entrega_prevista
-        FROM compras
+        SELECT descricao AS material, quantidade, status_entrega AS status, data_entrega_prevista
+        FROM custos
         WHERE obra_id = ?
+          AND categoria = 'Material'
+          AND (
+              status_entrega IS NOT NULL
+              OR data_entrega_prevista IS NOT NULL
+              OR quantidade > 0
+          )
         ORDER BY id DESC
         LIMIT 5
     """, (obra["id"],))

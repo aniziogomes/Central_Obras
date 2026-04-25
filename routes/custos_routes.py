@@ -48,18 +48,23 @@ def gerar_cards_categorias(lista_custos):
 def obter_filtros_custos():
     return {
         "filtro_obra": request.args.get("obra", "").strip(),
+        "filtro_categoria": request.args.get("categoria", "").strip(),
         "data_inicio": request.args.get("data_inicio", "").strip(),
         "data_fim": request.args.get("data_fim", "").strip(),
     }
 
 
-def montar_query_custos(filtro_obra, data_inicio, data_fim):
+def montar_query_custos(filtro_obra, data_inicio, data_fim, filtro_categoria=""):
     clausulas = []
     params = []
 
     if filtro_obra:
         clausulas.append("o.codigo = ?")
         params.append(filtro_obra)
+
+    if filtro_categoria:
+        clausulas.append("c.categoria = ?")
+        params.append(filtro_categoria)
 
     if data_inicio:
         clausulas.append("(c.data_lancamento IS NOT NULL AND c.data_lancamento >= ?)")
@@ -73,8 +78,8 @@ def montar_query_custos(filtro_obra, data_inicio, data_fim):
     return where, tuple(params)
 
 
-def buscar_custos_filtrados(filtro_obra="", data_inicio="", data_fim=""):
-    where, params = montar_query_custos(filtro_obra, data_inicio, data_fim)
+def buscar_custos_filtrados(filtro_obra="", data_inicio="", data_fim="", filtro_categoria=""):
+    where, params = montar_query_custos(filtro_obra, data_inicio, data_fim, filtro_categoria)
 
     return query_all(f"""
         SELECT c.*, o.codigo AS codigo_obra, o.nome AS nome_obra
@@ -83,6 +88,30 @@ def buscar_custos_filtrados(filtro_obra="", data_inicio="", data_fim=""):
         {where}
         ORDER BY c.id DESC
     """, params)
+
+
+def normalizar_status_entrega(status):
+    mapa = {
+        "pedido": "Aguardando",
+        "aguardando": "Aguardando",
+        "entregue": "Entregue no Prazo",
+        "entregue no prazo": "Entregue no Prazo",
+        "entregue com atraso": "Entregue com Atraso",
+        "cancelado": "Cancelado",
+    }
+    chave = (status or "").strip().lower()
+    return mapa.get(chave, (status or "").strip())
+
+
+def calcular_valores_custo(valor_total, quantidade, valor_unitario):
+    valor_total_float = parse_valor_monetario(valor_total)
+    quantidade_float = parse_valor_monetario(quantidade)
+    valor_unitario_float = parse_valor_monetario(valor_unitario)
+
+    if not valor_total and quantidade_float and valor_unitario_float:
+        valor_total_float = quantidade_float * valor_unitario_float
+
+    return valor_total_float, quantidade_float, valor_unitario_float
 
 
 @custos_bp.route("/custos")
@@ -94,6 +123,7 @@ def custos():
 
     lista_custos = buscar_custos_filtrados(
         filtro_obra=filtros["filtro_obra"],
+        filtro_categoria=filtros["filtro_categoria"],
         data_inicio=filtros["data_inicio"],
         data_fim=filtros["data_fim"]
     )
@@ -110,6 +140,7 @@ def custos():
         categorias_custo=CATEGORIAS_CUSTO_VALIDAS,
         cards_categorias=cards_categorias,
         filtro_obra=filtros["filtro_obra"],
+        filtro_categoria=filtros["filtro_categoria"],
         data_inicio=filtros["data_inicio"],
         data_fim=filtros["data_fim"],
     )
@@ -124,6 +155,7 @@ def custos_dados():
 
     lista = buscar_custos_filtrados(
         filtro_obra=filtros["filtro_obra"],
+        filtro_categoria=filtros["filtro_categoria"],
         data_inicio=filtros["data_inicio"],
         data_fim=filtros["data_fim"]
     )
@@ -133,6 +165,7 @@ def custos_dados():
     return jsonify({
         "filtros": {
             "obra": filtros["filtro_obra"],
+            "categoria": filtros["filtro_categoria"],
             "data_inicio": filtros["data_inicio"],
             "data_fim": filtros["data_fim"],
         },
@@ -156,6 +189,11 @@ def custos_dados():
                 "categoria": c["categoria"] or "",
                 "fornecedor": c["fornecedor"] or "-",
                 "data_lancamento": c["data_lancamento"] or "-",
+                "quantidade": c["quantidade"] or 0,
+                "valor_unitario": c["valor_unitario"] or 0,
+                "status_entrega": c["status_entrega"] or "",
+                "data_entrega_prevista": c["data_entrega_prevista"] or "",
+                "data_entrega_realizada": c["data_entrega_realizada"] or "",
                 "valor_total": c["valor_total"] or 0,
                 "valor_formatado": formatar_moeda(c["valor_total"] or 0),
                 "nota_fiscal": c["nota_fiscal"] or "-",
@@ -180,18 +218,29 @@ def novo_custo():
     fornecedor = request.form.get("fornecedor", "").strip()
     data_lancamento = request.form.get("data_lancamento", "").strip()
     valor_total = request.form.get("valor_total", "").strip()
+    quantidade = request.form.get("quantidade", "").strip()
+    valor_unitario = request.form.get("valor_unitario", "").strip()
+    status_entrega = normalizar_status_entrega(request.form.get("status_entrega", ""))
+    data_entrega_prevista = request.form.get("data_entrega_prevista", "").strip()
+    data_entrega_realizada = request.form.get("data_entrega_realizada", "").strip()
     nota_fiscal = request.form.get("nota_fiscal", "").strip()
     observacao = request.form.get("observacao", "").strip()
 
-    if not obra_id or not descricao or not categoria or not valor_total:
+    if not obra_id or not descricao or not categoria:
         flash("Preencha os campos obrigatórios do custo.", "erro")
         return redirect(redirect_to)
 
     try:
         validar_categoria_custo(categoria)
-        valor_total_float = parse_valor_monetario(valor_total)
+        valor_total_float, quantidade_float, valor_unitario_float = calcular_valores_custo(valor_total, quantidade, valor_unitario)
         if valor_negativo(valor_total_float):
             raise ValueError("Valor do custo não pode ser negativo.")
+        if valor_negativo(quantidade_float):
+            raise ValueError("Quantidade nao pode ser negativa.")
+        if valor_negativo(valor_unitario_float):
+            raise ValueError("Valor unitario nao pode ser negativo.")
+        if valor_total_float <= 0:
+            raise ValueError("Informe o valor total ou quantidade e valor unitario.")
     except ValueError as e:
         flash(str(e), "erro")
         return redirect(redirect_to)
@@ -200,8 +249,10 @@ def novo_custo():
         """
         INSERT INTO custos (
             obra_id, descricao, categoria, fornecedor,
-            data_lancamento, valor_total, nota_fiscal, observacao
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            data_lancamento, valor_total, quantidade, valor_unitario,
+            status_entrega, data_entrega_prevista, data_entrega_realizada,
+            nota_fiscal, observacao
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             int(obra_id),
@@ -210,6 +261,11 @@ def novo_custo():
             fornecedor,
             data_lancamento,
             valor_total_float,
+            quantidade_float,
+            valor_unitario_float,
+            status_entrega,
+            data_entrega_prevista,
+            data_entrega_realizada,
             nota_fiscal,
             observacao
         )
@@ -237,14 +293,25 @@ def editar_custo(custo_id):
     fornecedor = request.form.get("fornecedor", "").strip()
     data_lancamento = request.form.get("data_lancamento", "").strip()
     valor_total = request.form.get("valor_total", "").strip()
+    quantidade = request.form.get("quantidade", "").strip()
+    valor_unitario = request.form.get("valor_unitario", "").strip()
+    status_entrega = normalizar_status_entrega(request.form.get("status_entrega", ""))
+    data_entrega_prevista = request.form.get("data_entrega_prevista", "").strip()
+    data_entrega_realizada = request.form.get("data_entrega_realizada", "").strip()
     nota_fiscal = request.form.get("nota_fiscal", "").strip()
     observacao = request.form.get("observacao", "").strip()
 
     try:
         validar_categoria_custo(categoria)
-        valor_total_float = parse_valor_monetario(valor_total)
+        valor_total_float, quantidade_float, valor_unitario_float = calcular_valores_custo(valor_total, quantidade, valor_unitario)
         if valor_negativo(valor_total_float):
             raise ValueError("Valor do custo não pode ser negativo.")
+        if valor_negativo(quantidade_float):
+            raise ValueError("Quantidade nao pode ser negativa.")
+        if valor_negativo(valor_unitario_float):
+            raise ValueError("Valor unitario nao pode ser negativo.")
+        if valor_total_float <= 0:
+            raise ValueError("Informe o valor total ou quantidade e valor unitario.")
     except ValueError as e:
         flash(str(e), "erro")
         return redirect(url_for("custos_bp.custos"))
@@ -253,7 +320,9 @@ def editar_custo(custo_id):
         """
         UPDATE custos
         SET descricao = ?, categoria = ?, fornecedor = ?,
-            data_lancamento = ?, valor_total = ?, nota_fiscal = ?, observacao = ?
+            data_lancamento = ?, valor_total = ?, quantidade = ?, valor_unitario = ?,
+            status_entrega = ?, data_entrega_prevista = ?, data_entrega_realizada = ?,
+            nota_fiscal = ?, observacao = ?
         WHERE id = ?
         """,
         (
@@ -262,6 +331,11 @@ def editar_custo(custo_id):
             fornecedor,
             data_lancamento,
             valor_total_float,
+            quantidade_float,
+            valor_unitario_float,
+            status_entrega,
+            data_entrega_prevista,
+            data_entrega_realizada,
             nota_fiscal,
             observacao,
             custo_id
@@ -310,6 +384,7 @@ def custos_exportar():
 
     lista = buscar_custos_filtrados(
         filtro_obra=filtros["filtro_obra"],
+        filtro_categoria=filtros["filtro_categoria"],
         data_inicio=filtros["data_inicio"],
         data_fim=filtros["data_fim"]
     )

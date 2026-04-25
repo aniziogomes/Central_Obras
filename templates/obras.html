@@ -37,6 +37,7 @@
     <div class="obras-summary-card">
         <span>Total em carteira</span>
         <strong>{{ obras|length }}</strong>
+
     </div>
     <div class="obras-summary-card">
         <span>Em andamento</span>
@@ -114,13 +115,10 @@
                 </div>
 
                 <div class="obra-card-canteiro-meta">
-                    <div class="obra-canteiro-mini">
-                        <span class="obra-canteiro-mini-label">Visão do Canteiro</span>
-                        <strong
-                            class="obra-portal-status {% if portal_ativo %}obra-portal-status--active{% else %}obra-portal-status--empty{% endif %}">
-                            {% if portal_ativo %}Link ativo{% else %}Sem link{% endif %}
-                        </strong>
-                    </div>
+                    <strong
+                        class="obra-portal-status {% if portal_ativo %}obra-portal-status--active{% else %}obra-portal-status--empty{% endif %}">
+                        {% if portal_ativo %}Link ativo{% else %}Sem link{% endif %}
+                    </strong>
                 </div>
             </div>
 
@@ -147,7 +145,7 @@
 
             <div class="obra-card-actions">
                 <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra.codigo) }}" class="btn btn-small btn-ghost">
-                    Abrir canteiro
+                    Portal do Cliente
                 </a>
                 {% if eh_gestor() %}
                 <button class="btn btn-small" type="button"
@@ -479,7 +477,7 @@
                     .map(v => (v || "").toLowerCase()).join(" ");
 
                 const acoes = `
-                <a href="/obra/${encodeURIComponent(o.codigo)}" class="btn btn-small btn-ghost">Abrir canteiro</a>
+                <a href="/obra/${encodeURIComponent(o.codigo)}" class="btn btn-small btn-ghost">Portal do Cliente</a>
                 ${podeEditar ? `<button class="btn btn-small" type="button" onclick="abrirModalEditarObra('${esc(String(o.id))}')">Editar</button>` : ""}
                 ${podeExcluir ? `<form method="POST" action="/obras/excluir/${esc(String(o.id))}" onsubmit="return confirm('Deseja realmente excluir esta obra?');" style="margin:0;"><button type="submit" class="btn btn-small btn-danger">Excluir</button></form>` : ""}
             `;
@@ -503,10 +501,7 @@
                             ${esc(o.data_inicio || "Início livre")} → ${esc(o.data_fim_prevista || "Fim livre")}
                         </div>
                         <div class="obra-card-canteiro-meta">
-                            <div class="obra-canteiro-mini">
-                                <span class="obra-canteiro-mini-label">Portal do cliente</span>
-                                <strong class="obra-portal-status ${portalAtivo ? "obra-portal-status--active" : "obra-portal-status--empty"}">${portalAtivo ? "Link ativo" : "Sem link"}</strong>
-                            </div>
+                            <strong class="obra-portal-status ${portalAtivo ? "obra-portal-status--active" : "obra-portal-status--empty"}">${portalAtivo ? "Link ativo" : "Sem link"}</strong>
                         </div>
                     </div>
                     <div class="obra-card-kpis">

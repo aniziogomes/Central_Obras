@@ -33,6 +33,12 @@ CREATE TABLE IF NOT EXISTS custos (
     fornecedor TEXT,
     data_lancamento TEXT,
     valor_total REAL DEFAULT 0,
+    quantidade REAL DEFAULT 0,
+    valor_unitario REAL DEFAULT 0,
+    status_entrega TEXT,
+    data_entrega_prevista TEXT,
+    data_entrega_realizada TEXT,
+    origem_compra_id INTEGER,
     nota_fiscal TEXT,
     observacao TEXT,
     FOREIGN KEY (obra_id) REFERENCES obras(id)

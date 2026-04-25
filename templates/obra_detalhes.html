@@ -188,19 +188,19 @@
         <div class="card obra-section-card">
             <div class="card-hdr">
                 <div>
-                    <div class="card-title">Compras</div>
-                    <div class="obra-card-subtitle">{{ compras|length }} pedido(s)</div>
+                    <div class="card-title">Materiais e entregas</div>
+                    <div class="obra-card-subtitle">{{ compras|length }} item(ns)</div>
                 </div>
-                {% if eh_gestor() %}<button type="button" class="btn btn-small btn-primary" data-open-quick-modal="modalQuickCompra">+ Compra</button>{% endif %}
+                {% if eh_gestor() %}<button type="button" class="btn btn-small btn-primary" data-open-quick-modal="modalQuickCusto">+ Material</button>{% endif %}
             </div>
             {% if compras %}
             <div class="obra-mini-lista">
-                <div class="obra-mini-head obra-mini-head--3"><span>Material</span><span>Qtd</span><span>Status</span></div>
+                <div class="obra-mini-head obra-mini-head--3"><span>Material</span><span>Qtd</span><span>Entrega</span></div>
                 {% for item in compras %}
-                <div class="obra-mini-row obra-mini-row--3"><span>{{ item.material }}</span><span>{{ item.quantidade or 0 }}</span><strong>{{ item.status or "-" }}</strong></div>
+                <div class="obra-mini-row obra-mini-row--3"><span>{{ item.descricao }}</span><span>{{ item.quantidade or 0 }}</span><strong>{{ item.status_entrega or "-" }}</strong></div>
                 {% endfor %}
             </div>
-            {% else %}<div class="obra-empty-box">Sem compras cadastradas.</div>{% endif %}
+            {% else %}<div class="obra-empty-box">Sem materiais com entrega controlada.</div>{% endif %}
         </div>
     </div>
 </div>
@@ -209,15 +209,19 @@
 <div id="modalQuickCusto" class="modal-overlay obra-quick-modal">
     <div class="modal-box">
         <div class="modal-header"><h3>Novo custo</h3><button type="button" class="modal-close" data-close-quick-modal>&times;</button></div>
-        <form method="POST" action="{{ url_for('custos_bp.novo_custo') }}">
+        <form method="POST" action="{{ url_for('custos_bp.novo_custo') }}" class="js-custo-form">
             <input type="hidden" name="obra_id" value="{{ obra.id }}">
             <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
             <div class="form-grid modal-form-grid">
                 <div class="form-group full"><label>Descricao *</label><input type="text" name="descricao" required></div>
-                <div class="form-group"><label>Categoria *</label><select name="categoria" required>{% for categoria in categorias_custo %}<option value="{{ categoria }}">{{ categoria }}</option>{% endfor %}</select></div>
-                <div class="form-group"><label>Valor *</label><input type="number" step="0.01" name="valor_total" required></div>
+                <div class="form-group"><label>Categoria *</label><select name="categoria" required class="js-categoria-custo"><option value="">Selecione...</option>{% for categoria in categorias_custo %}<option value="{{ categoria }}">{{ categoria }}</option>{% endfor %}</select></div>
+                <div class="form-group js-valor-total-field"><label>Valor</label><input type="number" step="0.01" name="valor_total" class="js-valor-total"></div>
                 <div class="form-group"><label>Fornecedor</label><input type="text" name="fornecedor"></div>
                 <div class="form-group"><label>Data</label><input type="date" name="data_lancamento"></div>
+                <div class="form-group js-material-field"><label>Quantidade</label><input type="number" step="0.01" name="quantidade" class="js-material-qtd"></div>
+                <div class="form-group js-material-field"><label>Valor unitario</label><input type="number" step="0.01" name="valor_unitario" class="js-material-unitario"></div>
+                <div class="form-group js-material-field"><label>Status entrega</label><select name="status_entrega"><option value="">Sem controle</option><option value="Aguardando">Aguardando</option><option value="Entregue no Prazo">Entregue no Prazo</option><option value="Entregue com Atraso">Entregue com Atraso</option><option value="Cancelado">Cancelado</option></select></div>
+                <div class="form-group js-material-field"><label>Entrega prevista</label><input type="date" name="data_entrega_prevista"></div>
                 <div class="form-group full"><label>Observacao</label><textarea name="observacao"></textarea></div>
             </div>
             <div class="modal-footer"><button type="button" class="btn btn-ghost" data-close-quick-modal>Cancelar</button><button type="submit" class="btn btn-primary">Salvar custo</button></div>
@@ -262,25 +266,6 @@
     </div>
 </div>
 
-<div id="modalQuickCompra" class="modal-overlay obra-quick-modal">
-    <div class="modal-box">
-        <div class="modal-header"><h3>Nova compra</h3><button type="button" class="modal-close" data-close-quick-modal>&times;</button></div>
-        <form method="POST" action="{{ url_for('compras_bp.nova_compra') }}">
-            <input type="hidden" name="obra_id" value="{{ obra.id }}">
-            <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
-            <div class="form-grid modal-form-grid">
-                <div class="form-group full"><label>Material *</label><input type="text" name="material" required></div>
-                <div class="form-group"><label>Fornecedor</label><select name="fornecedor_id"><option value="">Sem fornecedor</option>{% for fornecedor in fornecedores %}<option value="{{ fornecedor.id }}">{{ fornecedor.nome }}</option>{% endfor %}</select></div>
-                <div class="form-group"><label>Quantidade</label><input type="number" step="0.01" name="quantidade" value="0"></div>
-                <div class="form-group"><label>Valor unitario</label><input type="number" step="0.01" name="valor_unitario" value="0"></div>
-                <div class="form-group"><label>Status</label><select name="status"><option value="pedido">pedido</option><option value="entregue">entregue</option><option value="cancelado">cancelado</option></select></div>
-                <div class="form-group"><label>Entrega prevista</label><input type="date" name="data_entrega_prevista"></div>
-                <div class="form-group full"><label>Observacao</label><textarea name="observacao"></textarea></div>
-            </div>
-            <div class="modal-footer"><button type="button" class="btn btn-ghost" data-close-quick-modal>Cancelar</button><button type="submit" class="btn btn-primary">Salvar compra</button></div>
-        </form>
-    </div>
-</div>
 {% endif %}
 
 <script>
@@ -307,6 +292,52 @@
         document.querySelectorAll(".obra-quick-modal").forEach(function (modal) {
             modal.addEventListener("click", function (event) {
                 if (event.target === modal) modal.classList.remove("show");
+            });
+        });
+
+        function atualizarCamposMaterial(form) {
+            if (!form) return;
+            const categoria = form.querySelector(".js-categoria-custo");
+            const ehMaterial = categoria && categoria.value === "Material";
+            form.querySelectorAll(".js-material-field").forEach(function (campo) {
+                campo.style.display = ehMaterial ? "flex" : "none";
+            });
+            form.querySelectorAll(".js-valor-total-field").forEach(function (campo) {
+                campo.style.display = ehMaterial ? "none" : "flex";
+            });
+            const valorTotal = form.querySelector(".js-valor-total");
+            if (valorTotal) valorTotal.required = !ehMaterial;
+            form.querySelectorAll(".js-material-qtd, .js-material-unitario").forEach(function (input) {
+                input.required = ehMaterial;
+            });
+        }
+
+        function atualizarValorTotalMaterial(form) {
+            if (!form) return;
+            const categoria = form.querySelector(".js-categoria-custo");
+            if (!categoria || categoria.value !== "Material") return;
+            const quantidade = form.querySelector(".js-material-qtd");
+            const unitario = form.querySelector(".js-material-unitario");
+            const total = form.querySelector("[name='valor_total']");
+            if (!quantidade || !unitario || !total) return;
+            const qtd = Number(quantidade.value || 0);
+            const valorUnitario = Number(unitario.value || 0);
+            if (qtd > 0 && valorUnitario > 0) total.value = (qtd * valorUnitario).toFixed(2);
+        }
+
+        document.querySelectorAll(".js-custo-form").forEach(function (form) {
+            atualizarCamposMaterial(form);
+            const categoria = form.querySelector(".js-categoria-custo");
+            if (categoria) {
+                categoria.addEventListener("change", function () {
+                    atualizarCamposMaterial(form);
+                    atualizarValorTotalMaterial(form);
+                });
+            }
+            form.querySelectorAll(".js-material-qtd, .js-material-unitario").forEach(function (input) {
+                input.addEventListener("input", function () {
+                    atualizarValorTotalMaterial(form);
+                });
             });
         });
 

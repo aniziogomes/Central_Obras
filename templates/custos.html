@@ -10,12 +10,12 @@
     </div>
     <div class="hdr-right" style="display:flex; gap:8px;">
         <a id="linkExportarCustos"
-            href="{{ url_for('custos_bp.custos_exportar', obra=filtro_obra, data_inicio=data_inicio, data_fim=data_fim) }}"
+            href="{{ url_for('custos_bp.custos_exportar', obra=filtro_obra, categoria=filtro_categoria, data_inicio=data_inicio, data_fim=data_fim) }}"
             class="btn btn-success">
             Exportar Excel
         </a>
         {% if eh_gestor() %}
-        <button class="btn btn-primary" onclick="abrirModalCusto()">+ Novo Lançamento</button>
+        <button class="btn btn-primary" onclick="abrirModalCusto()">+ Novo Custo</button>
         {% endif %}
     </div>
 </div>
@@ -49,6 +49,7 @@
 
         <div class="dashboard-filter-body" id="custoFilterBody">
             <form method="GET" action="{{ url_for('custos_bp.custos') }}" id="formFiltrosCustos">
+                <input type="hidden" name="categoria" id="filtroCustoCategoria" value="{{ filtro_categoria }}">
                 <div class="dashboard-filter-grid dashboard-filter-grid--clean custos-filter-grid">
                     <div class="dashboard-filter-field">
                         <label>Obra</label>
@@ -101,11 +102,13 @@
     </div>
 
     <div class="custos-status-chips">
-        <button type="button" class="custo-chip active" onclick="selecionarFiltroCategoria('todas', this)">
+        <button type="button" class="custo-chip {% if not filtro_categoria %}active{% endif %}"
+            onclick="selecionarFiltroCategoria('todas', this)">
             Todas
         </button>
         {% for categoria in categorias_custo %}
-        <button type="button" class="custo-chip" onclick="selecionarFiltroCategoria('{{ categoria }}', this)">
+        <button type="button" class="custo-chip {% if filtro_categoria == categoria %}active{% endif %}"
+            onclick="selecionarFiltroCategoria('{{ categoria }}', this)">
             {{ categoria }}
         </button>
         {% endfor %}
@@ -125,7 +128,7 @@
     {% set obra_ref = grupo.list[0] %}
     <div class="custo-obra-card custo-obra-group"
         data-categoria="{{ (grupo.list|map(attribute='categoria')|join(' ')|lower) }}"
-        data-search="{{ ((obra_ref.codigo_obra or '') ~ ' ' ~ (obra_ref.nome_obra or '') ~ ' ' ~ (grupo.list|map(attribute='descricao')|join(' ')) ~ ' ' ~ (grupo.list|map(attribute='categoria')|join(' ')) ~ ' ' ~ (grupo.list|map(attribute='fornecedor')|join(' ')) ~ ' ' ~ (grupo.list|map(attribute='nota_fiscal')|join(' ')))|lower }}"
+        data-search="{{ ((obra_ref.codigo_obra or '') ~ ' ' ~ (obra_ref.nome_obra or '') ~ ' ' ~ (grupo.list|map(attribute='descricao')|join(' ')) ~ ' ' ~ (grupo.list|map(attribute='categoria')|join(' ')) ~ ' ' ~ (grupo.list|map(attribute='fornecedor')|join(' ')) ~ ' ' ~ (grupo.list|map(attribute='status_entrega')|join(' ')) ~ ' ' ~ (grupo.list|map(attribute='nota_fiscal')|join(' ')))|lower }}"
         data-categorias="{{ (grupo.list|map(attribute='categoria')|join('|')|lower) }}">
         <div class="custo-obra-main">
             <div class="custo-obra-identity">
@@ -195,6 +198,7 @@
                             <th>Categoria</th>
                             <th>Fornecedor</th>
                             <th>Data</th>
+                            <th>Entrega</th>
                             <th>Valor</th>
                             <th>NF</th>
                             <th>Ações</th>
@@ -207,6 +211,12 @@
                             <td>{{ custo.categoria }}</td>
                             <td>{{ custo.fornecedor or "-" }}</td>
                             <td>{{ custo.data_lancamento or "-" }}</td>
+                            <td>
+                                {% if custo.status_entrega or custo.data_entrega_prevista %}
+                                {{ custo.status_entrega or "-" }}{% if custo.data_entrega_prevista %} · {{
+                                custo.data_entrega_prevista }}{% endif %}
+                                {% else %}-{% endif %}
+                            </td>
                             <td>{{ formatar_moeda(custo.valor_total) }}</td>
                             <td>{{ custo.nota_fiscal or "-" }}</td>
                             <td>
@@ -253,7 +263,7 @@
             <button type="button" class="modal-close" onclick="fecharModalEditarCusto('{{ custo.id }}')">×</button>
         </div>
 
-        <form method="POST" action="{{ url_for('custos_bp.editar_custo', custo_id=custo.id) }}">
+        <form method="POST" action="{{ url_for('custos_bp.editar_custo', custo_id=custo.id) }}" class="js-custo-form">
             <div class="form-grid">
                 <div class="form-group full">
                     <label>Descrição</label>
@@ -262,7 +272,7 @@
 
                 <div class="form-group">
                     <label>Categoria</label>
-                    <select name="categoria" required>
+                    <select name="categoria" required class="js-categoria-custo">
                         <option value="">Selecione...</option>
                         {% for categoria in categorias_custo %}
                         <option value="{{ categoria }}" {% if custo.categoria==categoria %}selected{% endif %}>
@@ -282,9 +292,43 @@
                     <input type="date" name="data_lancamento" value="{{ custo.data_lancamento or '' }}">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group js-valor-total-field">
                     <label>Valor Total</label>
-                    <input type="number" step="0.01" name="valor_total" value="{{ custo.valor_total or 0 }}">
+                    <input type="number" step="0.01" name="valor_total" value="{{ custo.valor_total or 0 }}"
+                        class="js-valor-total">
+                </div>
+
+                <div class="form-group js-material-field">
+                    <label>Quantidade</label>
+                    <input type="number" step="0.01" name="quantidade" value="{{ custo.quantidade or 0 }}"
+                        class="js-material-qtd">
+                </div>
+
+                <div class="form-group js-material-field">
+                    <label>Valor Unitario</label>
+                    <input type="number" step="0.01" name="valor_unitario" value="{{ custo.valor_unitario or 0 }}"
+                        class="js-material-unitario">
+                </div>
+
+                <div class="form-group js-material-field">
+                    <label>Status de entrega</label>
+                    <select name="status_entrega">
+                        <option value="">Sem controle</option>
+                        {% for status in ["Aguardando", "Entregue no Prazo", "Entregue com Atraso", "Cancelado"] %}
+                        <option value="{{ status }}" {% if custo.status_entrega==status %}selected{% endif %}>{{ status
+                            }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group js-material-field">
+                    <label>Entrega prevista</label>
+                    <input type="date" name="data_entrega_prevista" value="{{ custo.data_entrega_prevista or '' }}">
+                </div>
+
+                <div class="form-group js-material-field">
+                    <label>Entrega realizada</label>
+                    <input type="date" name="data_entrega_realizada" value="{{ custo.data_entrega_realizada or '' }}">
                 </div>
 
                 <div class="form-group">
@@ -314,7 +358,7 @@
             <button type="button" class="modal-close" onclick="fecharModalCusto()">×</button>
         </div>
 
-        <form method="POST" action="{{ url_for('custos_bp.novo_custo') }}">
+        <form method="POST" action="{{ url_for('custos_bp.novo_custo') }}" class="js-custo-form">
             <div class="form-grid">
                 <div class="form-group">
                     <label>Obra *</label>
@@ -328,7 +372,7 @@
 
                 <div class="form-group">
                     <label>Categoria *</label>
-                    <select name="categoria" required>
+                    <select name="categoria" required class="js-categoria-custo">
                         <option value="">Selecione...</option>
                         {% for categoria in categorias_custo %}
                         <option value="{{ categoria }}">{{ categoria }}</option>
@@ -351,9 +395,41 @@
                     <input type="date" name="data_lancamento">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group js-valor-total-field">
                     <label>Valor Total (R$) *</label>
-                    <input type="number" step="0.01" name="valor_total" placeholder="4500" required>
+                    <input type="number" step="0.01" name="valor_total" placeholder="4500" class="js-valor-total">
+                </div>
+
+                <div class="form-group js-material-field">
+                    <label>Quantidade</label>
+                    <input type="number" step="0.01" name="quantidade" placeholder="50" class="js-material-qtd">
+                </div>
+
+                <div class="form-group js-material-field">
+                    <label>Valor Unitario (R$)</label>
+                    <input type="number" step="0.01" name="valor_unitario" placeholder="55"
+                        class="js-material-unitario">
+                </div>
+
+                <div class="form-group js-material-field">
+                    <label>Status de entrega</label>
+                    <select name="status_entrega">
+                        <option value="">Sem controle</option>
+                        <option value="Aguardando">Aguardando</option>
+                        <option value="Entregue no Prazo">Entregue no Prazo</option>
+                        <option value="Entregue com Atraso">Entregue com Atraso</option>
+                        <option value="Cancelado">Cancelado</option>
+                    </select>
+                </div>
+
+                <div class="form-group js-material-field">
+                    <label>Entrega prevista</label>
+                    <input type="date" name="data_entrega_prevista">
+                </div>
+
+                <div class="form-group js-material-field">
+                    <label>Entrega realizada</label>
+                    <input type="date" name="data_entrega_realizada">
                 </div>
 
                 <div class="form-group">
@@ -378,7 +454,7 @@
 
 <script>
     (function () {
-        let filtroCategoriaAtual = "todas";
+        let filtroCategoriaAtual = "{{ filtro_categoria or 'todas' }}";
 
         function esc(texto) {
             return String(texto ?? "")
@@ -423,6 +499,46 @@
             if (modal) modal.style.display = "none";
         }
 
+        function atualizarCamposMaterial(form) {
+            if (!form) return;
+            const categoria = form.querySelector(".js-categoria-custo");
+            const ehMaterial = categoria && categoria.value === "Material";
+
+            form.querySelectorAll(".js-material-field").forEach(function (campo) {
+                campo.style.display = ehMaterial ? "flex" : "none";
+            });
+
+            form.querySelectorAll(".js-valor-total-field").forEach(function (campo) {
+                campo.style.display = ehMaterial ? "none" : "flex";
+            });
+
+            const valorTotal = form.querySelector(".js-valor-total");
+            if (valorTotal) {
+                valorTotal.required = !ehMaterial;
+            }
+
+            form.querySelectorAll(".js-material-qtd, .js-material-unitario").forEach(function (input) {
+                input.required = ehMaterial;
+            });
+        }
+
+        function atualizarValorTotalMaterial(form) {
+            if (!form) return;
+            const categoria = form.querySelector(".js-categoria-custo");
+            if (!categoria || categoria.value !== "Material") return;
+
+            const quantidade = form.querySelector(".js-material-qtd");
+            const unitario = form.querySelector(".js-material-unitario");
+            const total = form.querySelector("[name='valor_total']");
+            if (!quantidade || !unitario || !total) return;
+
+            const qtd = Number(quantidade.value || 0);
+            const valorUnitario = Number(unitario.value || 0);
+            if (qtd > 0 && valorUnitario > 0) {
+                total.value = (qtd * valorUnitario).toFixed(2);
+            }
+        }
+
         function toggleDetalhesCusto(botao) {
             const card = botao.closest(".custo-obra-card");
             if (!card) return;
@@ -440,6 +556,10 @@
 
         function selecionarFiltroCategoria(categoria, botao) {
             filtroCategoriaAtual = categoria;
+            const inputCategoria = document.getElementById("filtroCustoCategoria");
+            if (inputCategoria) {
+                inputCategoria.value = categoria === "todas" ? "" : categoria;
+            }
 
             document.querySelectorAll(".custo-chip").forEach(function (chip) {
                 chip.classList.remove("active");
@@ -553,6 +673,7 @@
                     ...grupo.itens.map(i => i.descricao || ""),
                     ...grupo.itens.map(i => i.categoria || ""),
                     ...grupo.itens.map(i => i.fornecedor || ""),
+                    ...grupo.itens.map(i => i.status_entrega || ""),
                     ...grupo.itens.map(i => i.nota_fiscal || "")
                 ].join(" ").toLowerCase();
 
@@ -568,6 +689,7 @@
                         <td>${esc(c.categoria)}</td>
                         <td>${esc(c.fornecedor || "-")}</td>
                         <td>${esc(c.data_lancamento || "-")}</td>
+                        <td>${esc(c.status_entrega || "-")}${c.data_entrega_prevista ? " · " + esc(c.data_entrega_prevista) : ""}</td>
                         <td>${esc(c.valor_formatado)}</td>
                         <td>${esc(c.nota_fiscal || "-")}</td>
                         <td>${acoes}</td>
@@ -642,6 +764,7 @@
                                         <th>Categoria</th>
                                         <th>Fornecedor</th>
                                         <th>Data</th>
+                                        <th>Entrega</th>
                                         <th>Valor</th>
                                         <th>NF</th>
                                         <th>Ações</th>
@@ -687,6 +810,7 @@
                 if (payload.filtros.obra) params.set("obra", payload.filtros.obra);
                 if (payload.filtros.data_inicio) params.set("data_inicio", payload.filtros.data_inicio);
                 if (payload.filtros.data_fim) params.set("data_fim", payload.filtros.data_fim);
+                if (payload.filtros.categoria) params.set("categoria", payload.filtros.categoria);
                 linkExportar.href = `/custos/exportar?${params.toString()}`;
             }
         }
@@ -748,10 +872,28 @@
             });
         });
 
+        document.querySelectorAll(".js-custo-form").forEach(function (form) {
+            atualizarCamposMaterial(form);
+
+            const categoria = form.querySelector(".js-categoria-custo");
+            if (categoria) {
+                categoria.addEventListener("change", function () {
+                    atualizarCamposMaterial(form);
+                    atualizarValorTotalMaterial(form);
+                });
+            }
+
+            form.querySelectorAll(".js-material-qtd, .js-material-unitario").forEach(function (input) {
+                input.addEventListener("input", function () {
+                    atualizarValorTotalMaterial(form);
+                });
+            });
+        });
+
         const toggleBtn = document.getElementById("toggleCustoFilter");
         const btnLimpar = document.getElementById("btnLimparFiltrosCustos");
         const formFiltros = document.getElementById("formFiltrosCustos");
-        const hasActiveFilters = "{{ 'true' if filtro_obra or data_inicio or data_fim else 'false' }}" === "true";
+        const hasActiveFilters = "{{ 'true' if filtro_obra or filtro_categoria or data_inicio or data_fim else 'false' }}" === "true";
 
         if (hasActiveFilters) {
             abrirFiltrosCusto();
@@ -780,8 +922,11 @@
         if (btnLimpar) {
             btnLimpar.onclick = async function () {
                 document.getElementById("filtroCustoObra").value = "";
+                document.getElementById("filtroCustoCategoria").value = "";
                 document.getElementById("filtroCustoDataInicio").value = "";
                 document.getElementById("filtroCustoDataFim").value = "";
+                const chipTodas = document.querySelector(".custo-chip");
+                selecionarFiltroCategoria("todas", chipTodas);
                 await atualizarCustosParcial(false);
             };
         }

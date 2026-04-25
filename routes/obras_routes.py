@@ -240,7 +240,11 @@ def obra_detalhe(codigo):
     custos           = query_all("SELECT * FROM custos WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
     medicoes         = query_all("SELECT * FROM medicoes WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
     equipe           = query_all("SELECT * FROM equipe WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
-    compras          = query_all("SELECT * FROM compras WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
+    compras          = [
+        c for c in custos
+        if (c["categoria"] or "") == "Material"
+        and (c["status_entrega"] or c["data_entrega_prevista"] or c["quantidade"] or c["valor_unitario"])
+    ]
     fotos_obra       = query_all("SELECT * FROM fotos_obra WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
     custos_importados = query_all(
         "SELECT * FROM custos_importados_categoria WHERE obra_id = ? ORDER BY categoria ASC",
@@ -279,7 +283,11 @@ def obra_detalhes(codigo):
     custos = query_all("SELECT * FROM custos WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
     medicoes = query_all("SELECT * FROM medicoes WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
     equipe = query_all("SELECT * FROM equipe WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
-    compras = query_all("SELECT * FROM compras WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
+    compras = [
+        c for c in custos
+        if (c["categoria"] or "") == "Material"
+        and (c["status_entrega"] or c["data_entrega_prevista"] or c["quantidade"] or c["valor_unitario"])
+    ]
     fornecedores = query_all("SELECT * FROM fornecedores ORDER BY nome ASC")
     fotos_obra = query_all("SELECT * FROM fotos_obra WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
     custos_importados = query_all(
@@ -467,6 +475,53 @@ def excluir_foto_obra(obra_id, foto_id):
     )
 
     flash("Foto excluida da galeria.", "sucesso")
+    return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+
+
+@obras_bp.route("/obras/<int:obra_id>/canteiro", methods=["POST"])
+def atualizar_canteiro_obra(obra_id):
+    if not usuario_logado() or not eh_gestor():
+        flash("Voce nao tem permissao para atualizar o canteiro.", "erro")
+        return redirect(url_for("obras_bp.obras"))
+
+    obra = query_one("SELECT id, codigo, nome FROM obras WHERE id = ?", (obra_id,))
+    if not obra:
+        flash("Obra nao encontrada.", "erro")
+        return redirect(url_for("obras_bp.obras"))
+
+    fase_obra = request.form.get("fase_obra", "").strip()
+    progresso_percentual = request.form.get("progresso_percentual", "").strip()
+    observacao = request.form.get("observacao_responsavel", "").strip()
+
+    try:
+        progresso_valor = parse_valor_monetario(progresso_percentual)
+        validar_intervalo_percentual(progresso_valor, "Conclusao (%)")
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+
+    execute(
+        """
+        UPDATE obras
+        SET fase_obra = ?, progresso_percentual = ?, observacao_responsavel = ?
+        WHERE id = ?
+        """,
+        (
+            fase_obra or None,
+            progresso_valor,
+            observacao or None,
+            obra_id,
+        )
+    )
+
+    registrar_log(
+        acao="atualizacao_canteiro",
+        entidade="obra",
+        entidade_id=obra_id,
+        descricao=f"Canteiro atualizado: {obra['nome']}"
+    )
+
+    flash("Avanco do canteiro salvo com sucesso.", "sucesso")
     return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
 
