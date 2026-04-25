@@ -40,6 +40,57 @@ def init_db():
         conn.commit()
     except Exception:
         pass
+    
+    try:
+        conn.execute("ALTER TABLE obras ADD COLUMN token_publico TEXT")
+        conn.commit()
+    except Exception:
+        pass
+    
+    try:
+        conn.execute("ALTER TABLE obras ADD COLUMN fase_obra TEXT")
+        conn.commit()
+    except Exception:
+        pass
+ 
+    # obras.observacao_responsavel
+    try:
+        conn.execute("ALTER TABLE obras ADD COLUMN observacao_responsavel TEXT")
+        conn.commit()
+    except Exception:
+        pass
+ 
+    # obras.foto_capa
+    try:
+        conn.execute("ALTER TABLE obras ADD COLUMN foto_capa TEXT")
+        conn.commit()
+    except Exception:
+        pass
+ 
+    # obras.token_publico (link do portal)
+    try:
+        conn.execute("ALTER TABLE obras ADD COLUMN token_publico TEXT")
+        conn.commit()
+    except Exception:
+        pass
+ 
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS fotos_obra (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                obra_id INTEGER NOT NULL,
+                caminho TEXT NOT NULL,
+                titulo TEXT,
+                fase TEXT,
+                data_registro TEXT,
+                criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (obra_id) REFERENCES obras(id)
+            )
+        """)
+        conn.commit()
+    except Exception:
+        pass
+
 
     conn.commit()
     conn.close()

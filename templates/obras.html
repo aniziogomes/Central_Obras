@@ -6,24 +6,64 @@
 <div class="hdr">
     <div>
         <h1>Obras</h1>
-        <p>Cadastro completo com gestão de dados</p>
+        <p>Cadastro completo com visão operacional e acompanhamento do canteiro</p>
     </div>
     <div class="hdr-right">
         <a id="linkExportarObras"
             href="{{ url_for('obras_bp.obras_exportar', busca=filtro_busca, status=filtro_status) }}"
-            class="btn btn-success">Exportar Excel</a>
+            class="btn btn-success">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Exportar Excel
+        </a>
         {% if eh_gestor() %}
-        <button class="btn btn-primary" onclick="abrirModalObra()">+ Nova Obra</button>
+        <button class="btn btn-primary" onclick="abrirModalObra()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Nova Obra
+        </button>
         {% endif %}
     </div>
 </div>
 
-<!-- Busca + chips de status -->
-<div class="obras-toolbar">
+<div class="obras-summary-strip">
+    <div class="obras-summary-card">
+        <span>Total em carteira</span>
+        <strong>{{ obras|length }}</strong>
+    </div>
+    <div class="obras-summary-card">
+        <span>Em andamento</span>
+        <strong>{{ obras|selectattr('status', 'equalto', 'andamento')|list|length }}</strong>
+    </div>
+    <div class="obras-summary-card">
+        <span>Atrasadas</span>
+        <strong>{{ obras|selectattr('status', 'equalto', 'atrasada')|list|length }}</strong>
+    </div>
+    <div class="obras-summary-card">
+        <span>Concluidas</span>
+        <strong>{{ obras|selectattr('status', 'equalto', 'concluida')|list|length }}</strong>
+    </div>
+</div>
+
+<div class="obras-toolbar obras-toolbar--saas">
     <div class="obras-search-wrap">
+        <span class="obras-search-icon obras-search-icon--svg">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+        </span>
         <span class="obras-search-icon">⌕</span>
         <input type="text" id="obraSearch" class="obras-search-input"
-            placeholder="Buscar obra por nome, código, tipologia..." value="{{ filtro_busca or '' }}">
+            placeholder="Buscar obra por nome, código, tipologia, fase..." value="{{ filtro_busca or '' }}">
     </div>
     <div class="obras-status-chips" id="obrasStatusChips">
         <button type="button" class="obra-chip {% if not filtro_status or filtro_status == 'todas' %}active{% endif %}"
@@ -41,13 +81,15 @@
     </div>
 </div>
 
-<!-- Lista de obras em cards -->
 <div class="obras-cards" id="obrasCards">
     {% for obra in obras %}
+    {% set fase_atual = obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else 'Não definida' %}
+    {% set observacao_canteiro = obra.observacao_responsavel if obra.observacao_responsavel is defined and
+    obra.observacao_responsavel else '' %}
+    {% set foto_capa = obra.foto_capa if obra.foto_capa is defined and obra.foto_capa else '' %}
     <div class="obra-card" data-status="{{ obra.status or '' }}"
-        data-search="{{ (obra.codigo or '')|lower }} {{ (obra.nome or '')|lower }} {{ (obra.tipologia or '')|lower }} {{ (obra.endereco or '')|lower }} {{ (obra.tipo_obra or '')|lower }}">
+        data-search="{{ (obra.codigo or '')|lower }} {{ (obra.nome or '')|lower }} {{ (obra.tipologia or '')|lower }} {{ (obra.endereco or '')|lower }} {{ (obra.tipo_obra or '')|lower }} {{ (fase_atual or '')|lower }} {{ (observacao_canteiro or '')|lower }}">
 
-        <!-- Linha principal -->
         <div class="obra-card-main">
             <div class="obra-card-identity">
                 <div class="obra-card-title-row">
@@ -56,13 +98,27 @@
                     </a>
                     <span class="obra-card-codigo">{{ obra.codigo }}</span>
                     <span class="badge {{ obra.status }}">{{ obra.status }}</span>
+                    <span class="obra-fase-pill">{{ fase_atual }}</span>
                 </div>
+
                 <div class="obra-card-subtitle">
                     <span>{{ formatar_tipo_obra(obra.tipo_obra) }}</span>
                     {% if obra.tipologia %}<span class="obra-card-dot">·</span><span>{{ obra.tipologia }}</span>{% endif
                     %}
                     {% if obra.area_m2 %}<span class="obra-card-dot">·</span><span>{{ obra.area_m2 }} m²</span>{% endif
                     %}
+                </div>
+
+                <div class="obra-card-canteiro-meta">
+                    <div class="obra-canteiro-mini">
+                        <span class="obra-canteiro-mini-label">Linha do tempo</span>
+                        <strong>{{ obra.data_inicio or "início livre" }} → {{ obra.data_fim_prevista or "fim livre"
+                            }}</strong>
+                    </div>
+                    <div class="obra-canteiro-mini">
+                        <span class="obra-canteiro-mini-label">Visão do canteiro</span>
+                        <strong>{% if foto_capa %}Com foto{% else %}Sem foto{% endif %}</strong>
+                    </div>
                 </div>
             </div>
 
@@ -76,9 +132,9 @@
                     <div class="obra-kv-value">{{ formatar_moeda(obra.receita_total) }}</div>
                 </div>
                 <div class="obra-kv obra-kv--progress">
-                    <div class="obra-kv-label">Execução física</div>
+                    <div class="obra-kv-label">Status de conclusão</div>
                     <div class="obra-kv-progress-row">
-                        <div class="progress-bar-bg" style="width:140px; margin-top:0; margin-right:8px;">
+                        <div class="progress-bar-bg obra-progress-wide">
                             <div class="progress-bar-fill progress-dinamica"
                                 data-width="{{ obra.progresso_percentual or 0 }}"></div>
                         </div>
@@ -88,12 +144,11 @@
             </div>
 
             <div class="obra-card-actions">
-                <button type="button" class="obra-expand-btn" onclick="toggleObraCard(this)" title="Ver detalhes">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                </button>
+                <a href="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}"
+                    class="btn btn-small btn-ghost">Detalhes da obra</a>
+                <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra.codigo) }}" class="btn btn-small btn-ghost">
+                    Atualizar canteiro
+                </a>
                 {% if eh_gestor() %}
                 <button class="btn btn-small" type="button"
                     onclick="abrirModalEditarObra('{{ obra.id }}')">Editar</button>
@@ -107,42 +162,6 @@
             </div>
         </div>
 
-        <!-- Linha expandida (oculta por padrão) -->
-        <div class="obra-card-details">
-            <div class="obra-detail-grid">
-                <div class="obra-detail-item">
-                    <div class="obra-detail-label">Endereço</div>
-                    <div class="obra-detail-value">{{ obra.endereco or "—" }}</div>
-                </div>
-                <div class="obra-detail-item">
-                    <div class="obra-detail-label">Data de início</div>
-                    <div class="obra-detail-value">{{ obra.data_inicio or "—" }}</div>
-                </div>
-                <div class="obra-detail-item">
-                    <div class="obra-detail-label">Prazo final previsto</div>
-                    <div class="obra-detail-value">{{ obra.data_fim_prevista or "—" }}</div>
-                </div>
-                <div class="obra-detail-item">
-                    <div class="obra-detail-label">Tipo de negócio</div>
-                    <div class="obra-detail-value">{{ formatar_tipo_obra(obra.tipo_obra) }}</div>
-                </div>
-                <div class="obra-detail-item">
-                    <div class="obra-detail-label">Margem prevista</div>
-                    <div
-                        class="obra-detail-value {% if (obra.receita_total or 0) - (obra.orcamento or 0) >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">
-                        {{ formatar_moeda((obra.receita_total or 0) - (obra.orcamento or 0)) }}
-                    </div>
-                </div>
-                <div class="obra-detail-item">
-                    <div class="obra-detail-label">Ver todos os detalhes</div>
-                    <div class="obra-detail-value">
-                        <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra.codigo) }}" class="obra-detail-link">
-                            Abrir ficha completa →
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
     {% else %}
     <div class="obras-empty-state">Nenhuma obra cadastrada ainda.</div>
@@ -153,7 +172,6 @@
     Nenhuma obra encontrada com os filtros aplicados.
 </div>
 
-<!-- ======= MODAIS DE EDIÇÃO ======= -->
 {% if eh_gestor() %}
 {% for obra in obras %}
 <div id="modalEditarObra{{ obra.id }}" class="modal-overlay">
@@ -204,6 +222,12 @@
                     <input type="text" name="tipologia" value="{{ obra.tipologia or '' }}">
                 </div>
                 <div class="form-group">
+                    <label>Fase da Obra</label>
+                    <input type="text" name="fase_obra"
+                        value="{{ obra.fase_obra if obra.fase_obra is defined else '' }}"
+                        placeholder="Ex: Fundação, Alvenaria, Telhado">
+                </div>
+                <div class="form-group">
                     <label>Área m²</label>
                     <input type="number" step="0.01" name="area_m2" value="{{ obra.area_m2 or 0 }}">
                 </div>
@@ -224,7 +248,7 @@
                     <input type="number" step="0.01" name="receita_total" value="{{ obra.receita_total or 0 }}">
                 </div>
                 <div class="form-group">
-                    <label>Execução (%)</label>
+                    <label>Status de conclusão (%)</label>
                     <input type="number" step="0.01" name="progresso_percentual"
                         value="{{ obra.progresso_percentual or 0 }}">
                 </div>
@@ -241,13 +265,21 @@
                         <option value="vendida" {% if obra.status=='vendida' %}selected{% endif %}>vendida</option>
                     </select>
                 </div>
+                <div class="form-group full">
+                    <label>Observações do responsável</label>
+                    <textarea name="observacao_responsavel"
+                        placeholder="Descreva andamento, próximos passos ou imprevistos...">{{ obra.observacao_responsavel if obra.observacao_responsavel is defined else '' }}</textarea>
+                </div>
+                <div class="form-group full">
+                    <label>Foto principal da obra (URL ou caminho interno)</label>
+                    <input type="text" name="foto_capa"
+                        value="{{ obra.foto_capa if obra.foto_capa is defined else '' }}"
+                        placeholder="/static/uploads/obra-001.jpg">
+                </div>
             </div>
             <div class="modal-info-card">
-                {% if (obra.tipo_obra or 'contrato') == 'venda' %}
-                Receita prevista = valor esperado de venda do imóvel.
-                {% else %}
-                Receita prevista = valor do contrato/serviço fechado com o cliente.
-                {% endif %}
+                Atualize aqui os dados principais. Para avanço rápido, publicação de fotos e gestão completa da Visão do
+                Canteiro, use a ficha detalhada da obra.
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn" onclick="fecharModalEditarObra('{{ obra.id }}')">Cancelar</button>
@@ -258,7 +290,6 @@
 </div>
 {% endfor %}
 
-<!-- Modal nova obra -->
 <div id="modalObra" class="modal-overlay">
     <div class="modal-box">
         <div class="modal-header">
@@ -319,6 +350,10 @@
                     </select>
                 </div>
                 <div class="form-group">
+                    <label>Fase da Obra</label>
+                    <input type="text" name="fase_obra" placeholder="Ex: Fundação">
+                </div>
+                <div class="form-group">
                     <label>Área (m²)</label>
                     <input type="number" step="0.01" name="area_m2" placeholder="120">
                 </div>
@@ -339,7 +374,7 @@
                     <input type="number" step="0.01" name="receita_total" placeholder="320000">
                 </div>
                 <div class="form-group">
-                    <label>% Execução Física</label>
+                    <label>Status de conclusão (%)</label>
                     <input type="number" step="0.01" name="progresso_percentual" placeholder="0">
                 </div>
                 <div class="form-group">
@@ -352,6 +387,15 @@
                         <option value="concluida">concluida</option>
                         <option value="vendida">vendida</option>
                     </select>
+                </div>
+                <div class="form-group full">
+                    <label>Observações do responsável</label>
+                    <textarea name="observacao_responsavel"
+                        placeholder="Ex: fundação concluída, aguardando concretagem..."></textarea>
+                </div>
+                <div class="form-group full">
+                    <label>Foto principal da obra (URL ou caminho interno)</label>
+                    <input type="text" name="foto_capa" placeholder="/static/uploads/obra-001.jpg">
                 </div>
             </div>
             <div class="modal-info-card" id="ajudaTipoObraNova">
@@ -377,31 +421,20 @@
                 .replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
         }
 
-        /* ---------- barras de progresso ---------- */
         function aplicarBarras(root) {
             (root || document).querySelectorAll(".progress-dinamica").forEach(el => {
                 el.style.width = (el.dataset.width || 0) + "%";
             });
         }
 
-        /* ---------- expand / collapse de card ---------- */
-        window.toggleObraCard = function (btn) {
-            const card = btn.closest(".obra-card");
-            const details = card.querySelector(".obra-card-details");
-            const isOpen = details.classList.contains("open");
 
-            details.classList.toggle("open", !isOpen);
-            btn.classList.toggle("expanded", !isOpen);
-        };
 
-        /* ---------- chips de status ---------- */
         function atualizarChips(status) {
             document.querySelectorAll(".obra-chip").forEach(c => {
                 c.classList.toggle("active", (c.dataset.status || "todas") === (status || "todas"));
             });
         }
 
-        /* ---------- filtro local (client-side, sem fetch) ---------- */
         function filtrarCardsLocal() {
             const input = document.getElementById("obraSearch");
             const termo = input ? input.value.trim().toLowerCase() : "";
@@ -422,7 +455,6 @@
             if (empty) empty.style.display = (visiveis === 0 && cards.length > 0) ? "flex" : "none";
         }
 
-        /* ---------- renderiza cards via API ---------- */
         function renderizarCards(obras, podeEditar, podeExcluir) {
             const container = document.getElementById("obrasCards");
             const empty = document.getElementById("obrasSemResultado");
@@ -440,15 +472,15 @@
             container.innerHTML = obras.map(o => {
                 const margem = (o.receita_total || 0) - (o.orcamento || 0);
                 const margemClass = margem >= 0 ? "valor-positivo" : "valor-negativo";
-                const search = [o.codigo, o.nome, o.tipologia, o.endereco, o.tipo_obra]
+                const fase = o.fase_obra || "Não definida";
+                const observacao = o.observacao_responsavel || "";
+                const foto = o.foto_capa || "";
+                const search = [o.codigo, o.nome, o.tipologia, o.endereco, o.tipo_obra, fase, observacao]
                     .map(v => (v || "").toLowerCase()).join(" ");
 
                 const acoes = `
-                <button type="button" class="obra-expand-btn" onclick="toggleObraCard(this)" title="Ver detalhes">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="6 9 12 15 18 9"/>
-                    </svg>
-                </button>
+                <a href="/obra/${encodeURIComponent(o.codigo)}/detalhes" class="btn btn-small btn-ghost">Detalhes da obra</a>
+                <a href="/obra/${encodeURIComponent(o.codigo)}" class="btn btn-small btn-ghost">Atualizar canteiro</a>
                 ${podeEditar ? `<button class="btn btn-small" type="button" onclick="abrirModalEditarObra('${esc(String(o.id))}')">Editar</button>` : ""}
                 ${podeExcluir ? `<form method="POST" action="/obras/excluir/${esc(String(o.id))}" onsubmit="return confirm('Deseja realmente excluir esta obra?');" style="margin:0;"><button type="submit" class="btn btn-small btn-danger">Excluir</button></form>` : ""}
             `;
@@ -461,11 +493,22 @@
                             <a href="/obra/${encodeURIComponent(o.codigo)}" class="obra-card-nome">${esc(o.nome)}</a>
                             <span class="obra-card-codigo">${esc(o.codigo)}</span>
                             <span class="badge ${esc(o.status)}">${esc(o.status)}</span>
+                            <span class="obra-fase-pill">${esc(fase)}</span>
                         </div>
                         <div class="obra-card-subtitle">
                             <span>${esc(o.tipo_obra_formatado)}</span>
                             ${o.tipologia ? `<span class="obra-card-dot">·</span><span>${esc(o.tipologia)}</span>` : ""}
                             ${o.area_m2 ? `<span class="obra-card-dot">·</span><span>${esc(String(o.area_m2))} m²</span>` : ""}
+                        </div>
+                        <div class="obra-card-canteiro-meta">
+                            <div class="obra-canteiro-mini">
+                                <span class="obra-canteiro-mini-label">Linha do tempo</span>
+                                <strong>${esc(o.data_inicio || "início livre")} → ${esc(o.data_fim_prevista || "fim livre")}</strong>
+                            </div>
+                            <div class="obra-canteiro-mini">
+                                <span class="obra-canteiro-mini-label">Visão do canteiro</span>
+                                <strong>${foto ? "Com foto" : "Sem foto"}</strong>
+                            </div>
                         </div>
                     </div>
                     <div class="obra-card-kpis">
@@ -478,9 +521,9 @@
                             <div class="obra-kv-value">${esc(o.receita_total_formatado)}</div>
                         </div>
                         <div class="obra-kv obra-kv--progress">
-                            <div class="obra-kv-label">Execução física</div>
+                            <div class="obra-kv-label">Status de conclusão</div>
                             <div class="obra-kv-progress-row">
-                                <div class="progress-bar-bg" style="width:140px; margin-top:0; margin-right:8px;">
+                                <div class="progress-bar-bg obra-progress-wide">
                                     <div class="progress-bar-fill" style="width:${Number(o.progresso_percentual || 0)}%"></div>
                                 </div>
                                 <span class="obra-kv-pct">${Number(o.progresso_percentual || 0)}%</span>
@@ -489,33 +532,12 @@
                     </div>
                     <div class="obra-card-actions">${acoes}</div>
                 </div>
-                <div class="obra-card-details">
-                    <div class="obra-detail-grid">
-                        <div class="obra-detail-item">
-                            <div class="obra-detail-label">Endereço</div>
-                            <div class="obra-detail-value">${esc(o.endereco || "—")}</div>
-                        </div>
-                        <div class="obra-detail-item">
-                            <div class="obra-detail-label">Tipo de negócio</div>
-                            <div class="obra-detail-value">${esc(o.tipo_obra_formatado)}</div>
-                        </div>
-                        <div class="obra-detail-item">
-                            <div class="obra-detail-label">Margem prevista</div>
-                            <div class="obra-detail-value ${margemClass}">${esc(String(margem.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })))}</div>
-                        </div>
-                        <div class="obra-detail-item">
-                            <div class="obra-detail-label">Ver ficha completa</div>
-                            <div class="obra-detail-value"><a href="/obra/${encodeURIComponent(o.codigo)}" class="obra-detail-link">Abrir →</a></div>
-                        </div>
-                    </div>
-                </div>
             </div>`;
             }).join("");
 
             aplicarBarras(container);
         }
 
-        /* ---------- busca via API ---------- */
         async function atualizarObrasParcial() {
             const input = document.getElementById("obraSearch");
             const busca = input ? input.value.trim() : "";
@@ -546,7 +568,6 @@
             }
         }
 
-        /* ---------- modais ---------- */
         function abrirModalObra() { const m = document.getElementById("modalObra"); if (m) m.style.display = "flex"; }
         function fecharModalObra() { const m = document.getElementById("modalObra"); if (m) m.style.display = "none"; }
         function abrirModalEditarObra(id) { const m = document.getElementById("modalEditarObra" + id); if (m) m.style.display = "flex"; }
@@ -567,7 +588,6 @@
         window.fecharModalEditarObra = fecharModalEditarObra;
         window.atualizarAjudaTipoObraNova = atualizarAjudaTipoObraNova;
 
-        /* ---------- fechar modal clicando fora ---------- */
         window.addEventListener("click", e => {
             ["modalObra"].forEach(id => {
                 const m = document.getElementById(id);
@@ -578,7 +598,6 @@
             });
         });
 
-        /* ---------- chips ---------- */
         document.querySelectorAll(".obra-chip").forEach(chip => {
             chip.addEventListener("click", () => {
                 filtroStatusAtual = chip.dataset.status || "todas";
@@ -586,7 +605,6 @@
             });
         });
 
-        /* ---------- busca com debounce ---------- */
         const inputBusca = document.getElementById("obraSearch");
         if (inputBusca) {
             inputBusca.addEventListener("input", () => {
@@ -595,7 +613,6 @@
             });
         }
 
-        /* ---------- init ---------- */
         aplicarBarras();
         atualizarChips(filtroStatusAtual);
         atualizarAjudaTipoObraNova();

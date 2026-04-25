@@ -111,6 +111,17 @@ CREATE TABLE IF NOT EXISTS custos_importados_categoria (
     FOREIGN KEY (obra_id) REFERENCES obras(id)
 );
 
+CREATE TABLE IF NOT EXISTS fotos_obra (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    obra_id INTEGER NOT NULL,
+    caminho TEXT NOT NULL,
+    titulo TEXT,
+    fase TEXT,
+    data_registro TEXT,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (obra_id) REFERENCES obras(id)
+);
+
 CREATE TABLE IF NOT EXISTS logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     usuario_id INTEGER,

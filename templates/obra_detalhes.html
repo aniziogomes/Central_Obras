@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes {{ obra.codigo }} - Central de Obras{% endblock %}
+
+{% block content %}
+{% set fase_atual = obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else 'Nao definida' %}
+{% set margem_prevista = (obra.receita_total or 0) - (obra.orcamento or 0) %}
+
+<div class="obra-view-page obra-detalhes-page">
+    <div class="hdr">
+        <div>
+            <h1>Detalhes da obra</h1>
+            <p>{{ obra.nome }} · {{ obra.codigo }}</p>
+        </div>
+        <div class="hdr-right">
+            <a href="{{ url_for('obras_bp.obras') }}" class="btn btn-ghost">Voltar para obras</a>
+            <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra.codigo) }}" class="btn btn-primary">Atualizar canteiro</a>
+        </div>
+    </div>
+
+    <div class="obra-detalhes-hero card">
+        <div>
+            <div class="obra-view-kicker">Resumo executivo</div>
+            <h2>{{ obra.nome }}</h2>
+            <div class="obra-view-subtitle">
+                <span class="obra-view-code">{{ obra.codigo }}</span>
+                <span>{{ formatar_tipo_obra(obra.tipo_obra) }}</span>
+                <span>{{ obra.tipologia or "-" }}</span>
+                <span class="badge {{ obra.status }}">{{ obra.status or "-" }}</span>
+                <span class="obra-fase-pill">{{ fase_atual }}</span>
+            </div>
+        </div>
+        <div class="obra-detalhes-progress">
+            <span>Conclusao</span>
+            <strong>{{ (obra.progresso_percentual or 0)|round(1) }}%</strong>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill progress-dinamica" data-width="{{ obra.progresso_percentual or 0 }}"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="obra-detalhes-kpis">
+        <div class="obra-card-dashboard-item">
+            <span>Receita prevista</span>
+            <strong>{{ formatar_moeda(obra.receita_total) }}</strong>
+        </div>
+        <div class="obra-card-dashboard-item">
+            <span>Custo previsto</span>
+            <strong>{{ formatar_moeda(obra.orcamento) }}</strong>
+        </div>
+        <div class="obra-card-dashboard-item">
+            <span>Custo lancado</span>
+            <strong>{{ formatar_moeda(custo_total) }}</strong>
+        </div>
+        <div class="obra-card-dashboard-item">
+            <span>Margem prevista</span>
+            <strong class="{% if margem_prevista >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">
+                {{ formatar_moeda(margem_prevista) }}
+            </strong>
+        </div>
+        <div class="obra-card-dashboard-item">
+            <span>Resultado atual</span>
+            <strong class="{% if margem >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">
+                {{ formatar_moeda(margem) }}
+            </strong>
+        </div>
+        <div class="obra-card-dashboard-item">
+            <span>Medicoes</span>
+            <strong>{{ medicoes|length }} registro(s)</strong>
+        </div>
+        <div class="obra-card-dashboard-item">
+            <span>Equipe</span>
+            <strong>{{ equipe|length }} profissional(is)</strong>
+        </div>
+        <div class="obra-card-dashboard-item">
+            <span>Compras</span>
+            <strong>{{ compras|length }} pedido(s)</strong>
+        </div>
+    </div>
+
+    <div class="obra-sections-grid">
+        <div class="card obra-info-card">
+            <div class="card-hdr">
+                <div class="card-title">Dados cadastrais</div>
+            </div>
+            <div class="obra-info-list">
+                <div class="obra-info-item"><span class="obra-info-label">Endereco</span><strong>{{ obra.endereco or "-" }}</strong></div>
+                <div class="obra-info-item"><span class="obra-info-label">Area</span><strong>{{ obra.area_m2 or 0 }} m2</strong></div>
+                <div class="obra-info-item"><span class="obra-info-label">Inicio</span><strong>{{ obra.data_inicio or "-" }}</strong></div>
+                <div class="obra-info-item"><span class="obra-info-label">Entrega prevista</span><strong>{{ obra.data_fim_prevista or "-" }}</strong></div>
+            </div>
+        </div>
+        <div class="card obra-info-card">
+            <div class="card-hdr">
+                <div class="card-title">Visao do Canteiro</div>
+            </div>
+            <div class="obra-info-list">
+                <div class="obra-info-item"><span class="obra-info-label">Foto de capa</span><strong>{% if obra.foto_capa %}Cadastrada{% else %}Nao cadastrada{% endif %}</strong></div>
+                <div class="obra-info-item"><span class="obra-info-label">Galeria</span><strong>{{ fotos_obra|length }} foto(s)</strong></div>
+                <div class="obra-info-item"><span class="obra-info-label">Fase atual</span><strong>{{ fase_atual }}</strong></div>
+                <div class="obra-info-item"><span class="obra-info-label">Status</span><strong>{{ obra.status or "-" }}</strong></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="obra-sections-grid">
+        <div class="card obra-section-card">
+            <div class="card-hdr">
+                <div class="card-title">Custos importados</div>
+                <div class="obra-card-subtitle">{{ custos_importados|length }} item(ns)</div>
+            </div>
+            {% if custos_importados %}
+            <div class="obra-mini-lista">
+                <div class="obra-mini-head obra-mini-head--2"><span>Categoria</span><span>Valor</span></div>
+                {% for item in custos_importados %}
+                <div class="obra-mini-row obra-mini-row--2"><span>{{ item.categoria }}</span><strong>{{ formatar_moeda(item.valor_total) }}</strong></div>
+                {% endfor %}
+            </div>
+            {% else %}<div class="obra-empty-box">Sem custos importados.</div>{% endif %}
+        </div>
+        <div class="card obra-section-card">
+            <div class="card-hdr">
+                <div class="card-title">Medicoes</div>
+                <div class="obra-card-subtitle">{{ medicoes|length }} item(ns)</div>
+            </div>
+            {% if medicoes %}
+            <div class="obra-mini-lista">
+                <div class="obra-mini-head obra-mini-head--4"><span>Medicao</span><span>Etapa</span><span>%</span><span>Valor</span></div>
+                {% for item in medicoes %}
+                <div class="obra-mini-row obra-mini-row--4"><span>{{ item.medicao_nome }}</span><span>{{ item.etapa }}</span><span>{{ item.percentual or 0 }}%</span><strong>{{ formatar_moeda(item.valor_realizado) }}</strong></div>
+                {% endfor %}
+            </div>
+            {% else %}<div class="obra-empty-box">Sem medicoes.</div>{% endif %}
+        </div>
+    </div>
+
+    <div class="card obra-section-card obra-section-card--full">
+        <div class="card-hdr">
+            <div class="card-title">Custos lancados</div>
+            <div class="obra-card-subtitle">{{ custos|length }} item(ns)</div>
+        </div>
+        {% if custos %}
+        <div class="obra-mini-lista">
+            <div class="obra-mini-head obra-mini-head--4"><span>Categoria</span><span>Descricao</span><span>Fornecedor</span><span>Valor</span></div>
+            {% for item in custos %}
+            <div class="obra-mini-row obra-mini-row--4"><span>{{ item.categoria }}</span><span>{{ item.descricao }}</span><span>{{ item.fornecedor or "-" }}</span><strong>{{ formatar_moeda(item.valor_total) }}</strong></div>
+            {% endfor %}
+        </div>
+        {% else %}<div class="obra-empty-box">Sem custos lancados.</div>{% endif %}
+    </div>
+
+    <div class="obra-sections-grid">
+        <div class="card obra-section-card">
+            <div class="card-hdr">
+                <div class="card-title">Equipe</div>
+                <div class="obra-card-subtitle">{{ equipe|length }} item(ns)</div>
+            </div>
+            {% if equipe %}
+            <div class="obra-mini-lista">
+                <div class="obra-mini-head obra-mini-head--3"><span>Nome</span><span>Funcao</span><span>Pagamento</span></div>
+                {% for item in equipe %}
+                <div class="obra-mini-row obra-mini-row--3"><span>{{ item.nome }}</span><span>{{ item.funcao or "-" }}</span><strong>{{ item.status_pagamento or "-" }}</strong></div>
+                {% endfor %}
+            </div>
+            {% else %}<div class="obra-empty-box">Sem equipe cadastrada.</div>{% endif %}
+        </div>
+        <div class="card obra-section-card">
+            <div class="card-hdr">
+                <div class="card-title">Compras</div>
+                <div class="obra-card-subtitle">{{ compras|length }} item(ns)</div>
+            </div>
+            {% if compras %}
+            <div class="obra-mini-lista">
+                <div class="obra-mini-head obra-mini-head--3"><span>Material</span><span>Qtd</span><span>Status</span></div>
+                {% for item in compras %}
+                <div class="obra-mini-row obra-mini-row--3"><span>{{ item.material }}</span><span>{{ item.quantidade or 0 }}</span><strong>{{ item.status or "-" }}</strong></div>
+                {% endfor %}
+            </div>
+            {% else %}<div class="obra-empty-box">Sem compras cadastradas.</div>{% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll(".progress-dinamica").forEach(function (el) {
+        const width = Math.max(0, Math.min(100, Number(el.dataset.width || 0)));
+        setTimeout(function () { el.style.width = `${width}%`; }, 60);
+    });
+</script>
+{% endblock %}

@@ -18,6 +18,7 @@ from routes.compras_routes import compras_bp
 from routes.equipe_routes import equipe_bp
 from routes.medicoes_routes import medicoes_bp
 from routes.importacao_routes import importacao_bp
+from routes.portal_routes import portal_bp          # ← NOVO
 
 app = Flask(__name__)
 app.secret_key = "chave_super_secreta_trocar_depois"
@@ -38,6 +39,7 @@ def inject_helpers():
         usuario_perfil=usuario_perfil,
     )
 
+
 app.register_blueprint(auth_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(obras_bp)
@@ -47,6 +49,7 @@ app.register_blueprint(compras_bp)
 app.register_blueprint(equipe_bp)
 app.register_blueprint(medicoes_bp)
 app.register_blueprint(importacao_bp)
+app.register_blueprint(portal_bp)                  # ← NOVO
 
 
 if __name__ == "__main__":

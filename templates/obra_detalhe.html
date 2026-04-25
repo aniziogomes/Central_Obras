@@ -3,188 +3,331 @@
 {% block title %}Obra {{ obra.codigo }} - Central de Obras{% endblock %}
 
 {% block content %}
-<div class="hdr">
-    <div>
-        <h1>{{ obra.codigo }} - {{ obra.nome }}</h1>
-        <p>{{ obra.tipologia or "-" }} • Status: {{ obra.status or "-" }}</p>
+{% set fase_atual = obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else 'Não definida' %}
+{% set observacao_canteiro = obra.observacao_responsavel if obra.observacao_responsavel is defined and
+obra.observacao_responsavel else '' %}
+{% set foto_capa = obra.foto_capa if obra.foto_capa is defined and obra.foto_capa else '' %}
+{% set galeria = fotos_obra if fotos_obra is defined else [] %}
+
+<div class="obra-view-page obra-canteiro-page">
+    <div class="obra-view-header obra-canteiro-header">
+        <div>
+            <div class="obra-view-kicker">Ficha da obra</div>
+            <h1>{{ obra.nome }}</h1>
+            <div class="obra-view-subtitle">
+                <span class="obra-view-code">{{ obra.codigo }}</span>
+                <span class="obra-view-dot">•</span>
+                <span>{{ "Para venda" if obra.tipo_obra == "venda" else "Por contrato / reforma" }}</span>
+                <span class="obra-view-dot">•</span>
+                <span>{{ obra.tipologia or "-" }}</span>
+                <span class="obra-view-dot">•</span>
+                <span class="badge {{ obra.status }}">{{ obra.status or "-" }}</span>
+                <span class="obra-view-dot">•</span>
+                <span class="obra-fase-pill">{{ fase_atual }}</span>
+            </div>
+        </div>
+        <div class="obra-view-header-actions">
+            <a href="{{ url_for('obras_bp.obras') }}" class="btn btn-ghost">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12" />
+                    <polyline points="12 19 5 12 12 5" />
+                </svg>
+                Voltar para obras
+            </a>
+        </div>
     </div>
+
+    <div class="obra-canteiro-hero">
+        <div class="obra-canteiro-cover">
+            {% if foto_capa %}
+            <img src="{{ foto_capa }}" alt="Foto principal da obra {{ obra.nome }}">
+            {% else %}
+            <div class="obra-canteiro-cover-empty">
+                <span>Sem foto principal</span>
+                <small>Adicione uma foto da obra para valorizar a Visão do Canteiro.</small>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="obra-canteiro-hero-content">
+            <div class="obra-canteiro-tag">Visão do Canteiro</div>
+            <h2>{{ obra.nome }}</h2>
+            <p>Esta área concentra o que será importante para o cliente acompanhar: fase atual, progresso visual, linha
+                do tempo, observações do responsável e status de conclusão.</p>
+
+            <div class="obra-canteiro-status-grid">
+                <div class="obra-canteiro-status-card"><span>Fase de execução</span><strong>{{ fase_atual }}</strong>
+                </div>
+                <div class="obra-canteiro-status-card"><span>Status de conclusão</span><strong>{{
+                        (obra.progresso_percentual or 0)|round(1) }}%</strong></div>
+                <div class="obra-canteiro-status-card"><span>Data inicial</span><strong>{{ obra.data_inicio or "Não
+                        informada" }}</strong></div>
+                <div class="obra-canteiro-status-card"><span>Entrega prevista</span><strong>{{ obra.data_fim_prevista or
+                        "Não informada" }}</strong></div>
+            </div>
+
+            <div class="obra-canteiro-progress-block">
+                <div class="obra-canteiro-progress-top"><span>Progresso global da obra</span><strong>{{
+                        (obra.progresso_percentual or 0)|round(1) }}%</strong></div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill progress-dinamica" data-width="{{ obra.progresso_percentual or 0 }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if eh_gestor() %}
+    <div class="obra-canteiro-actions-panel">
+        <div class="card obra-canteiro-action-card">
+            <div class="card-hdr obra-canteiro-action-hdr">
+                <div>
+                    <div class="card-title">Avanço rápido da obra</div>
+                    <div class="obra-card-subtitle">Atualize fase, porcentagem e observação sem abrir o formulário
+                        completo de edição.</div>
+                </div>
+                <span class="obra-portal-pill">Controle interno</span>
+            </div>
+
+            <form method="POST" action="{{ url_for('obras_bp.editar_obra', obra_id=obra.id) }}"
+                class="obra-avanco-form">
+                <input type="hidden" name="nome" value="{{ obra.nome }}">
+                <input type="hidden" name="endereco" value="{{ obra.endereco or '' }}">
+                <input type="hidden" name="tipo_obra" value="{{ obra.tipo_obra or 'contrato' }}">
+                <input type="hidden" name="tipologia" value="{{ obra.tipologia or '' }}">
+                <input type="hidden" name="area_m2" value="{{ obra.area_m2 or 0 }}">
+                <input type="hidden" name="data_inicio" value="{{ obra.data_inicio or '' }}">
+                <input type="hidden" name="data_fim_prevista" value="{{ obra.data_fim_prevista or '' }}">
+                <input type="hidden" name="orcamento" value="{{ obra.orcamento or 0 }}">
+                <input type="hidden" name="receita_total" value="{{ obra.receita_total or 0 }}">
+                <input type="hidden" name="status" value="{{ obra.status or 'andamento' }}">
+                <input type="hidden" name="foto_capa" value="{{ foto_capa }}">
+
+                <div class="form-grid obra-avanco-grid">
+                    <div class="form-group">
+                        <label>Fase da obra</label>
+                        <select name="fase_obra">
+                            <option value="" {% if not fase_atual or fase_atual=='Não definida' %}selected{% endif %}>
+                                Selecione...</option>
+                            {% for fase in ['Planejamento', 'Fundação', 'Estrutura', 'Alvenaria', 'Telhado',
+                            'Instalações', 'Revestimento', 'Acabamento', 'Vistoria', 'Concluída'] %}
+                            <option value="{{ fase }}" {% if fase_atual==fase %}selected{% endif %}>{{ fase }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Status de conclusão (%)</label>
+                        <input type="number" step="0.01" min="0" max="100" name="progresso_percentual"
+                            value="{{ obra.progresso_percentual or 0 }}">
+                    </div>
+                    <div class="form-group full">
+                        <label>Observações do responsável</label>
+                        <textarea name="observacao_responsavel"
+                            placeholder="Ex: alvenaria finalizada, próxima etapa será telhado. Houve atraso por chuva...">{{ observacao_canteiro }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer obra-avanco-footer"><button type="submit" class="btn btn-primary">Salvar
+                        avanço</button></div>
+            </form>
+        </div>
+
+        <div class="card obra-canteiro-action-card">
+            <div class="card-hdr obra-canteiro-action-hdr">
+                <div>
+                    <div class="card-title">Foto principal da obra</div>
+                    <div class="obra-card-subtitle">Use uma imagem de capa para aparecer na Visão do Canteiro.</div>
+                </div>
+            </div>
+            <form method="POST" action="{{ url_for('obras_bp.editar_obra', obra_id=obra.id) }}" class="obra-foto-form">
+                <input type="hidden" name="nome" value="{{ obra.nome }}">
+                <input type="hidden" name="endereco" value="{{ obra.endereco or '' }}">
+                <input type="hidden" name="tipo_obra" value="{{ obra.tipo_obra or 'contrato' }}">
+                <input type="hidden" name="tipologia" value="{{ obra.tipologia or '' }}">
+                <input type="hidden" name="fase_obra" value="{{ fase_atual if fase_atual != 'Não definida' else '' }}">
+                <input type="hidden" name="area_m2" value="{{ obra.area_m2 or 0 }}">
+                <input type="hidden" name="data_inicio" value="{{ obra.data_inicio or '' }}">
+                <input type="hidden" name="data_fim_prevista" value="{{ obra.data_fim_prevista or '' }}">
+                <input type="hidden" name="orcamento" value="{{ obra.orcamento or 0 }}">
+                <input type="hidden" name="receita_total" value="{{ obra.receita_total or 0 }}">
+                <input type="hidden" name="progresso_percentual" value="{{ obra.progresso_percentual or 0 }}">
+                <input type="hidden" name="status" value="{{ obra.status or 'andamento' }}">
+                <input type="hidden" name="observacao_responsavel" value="{{ observacao_canteiro }}">
+                <div class="form-group"><label>URL ou caminho da foto</label><input type="text" name="foto_capa"
+                        value="{{ foto_capa }}" placeholder="/static/uploads/obra-001.jpg"></div>
+                <div class="obra-foto-help">Por enquanto este campo aceita caminho/URL. Na próxima etapa podemos ligar
+                    upload real de arquivo.</div>
+                <div class="modal-footer obra-avanco-footer"><button type="submit" class="btn btn-primary">Salvar
+                        foto</button></div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card obra-portal-card obra-canteiro-public-card">
+        <div class="card-hdr obra-portal-card-hdr">
+            <div>
+                <div class="card-title">Visão do Canteiro</div>
+                <div class="obra-card-subtitle">Link público para o cliente acompanhar apenas o progresso visual e
+                    operacional.</div>
+            </div>
+            <div class="obra-portal-pill">Cliente vê somente isso</div>
+        </div>
+
+        {% if obra.token_publico %}
+        <div class="obra-portal-grid">
+            <div class="obra-portal-copy-box">
+                <div class="obra-portal-copy-label">Link público da Visão do Canteiro</div>
+                <div class="obra-portal-copy-row"><input id="link-portal" class="obra-portal-input" type="text" readonly
+                        value="{{ request.host_url }}portal/{{ obra.token_publico }}"><button type="button"
+                        class="btn btn-primary" onclick="copiarLinkPortal()">Copiar link</button></div>
+                <p class="obra-portal-note">O cliente verá apenas fotos, linha do tempo, fase atual, observações do
+                    responsável e barra de conclusão. Valores, custos, equipe, compras e medições continuam restritos ao
+                    painel interno.</p>
+            </div>
+            <div class="obra-portal-actions">
+                <a href="{{ request.host_url }}portal/{{ obra.token_publico }}" target="_blank"
+                    class="btn btn-success">Abrir Visão do Canteiro</a>
+                <a href="https://wa.me/?text=Acompanhe%20a%20Vis%C3%A3o%20do%20Canteiro%20da%20obra%20*{{ obra.nome|urlencode }}*:%20{{ (request.host_url ~ 'portal/' ~ obra.token_publico)|urlencode }}"
+                    target="_blank" class="btn obra-whats-btn">Enviar pelo WhatsApp</a>
+                <form method="POST" action="{{ url_for('portal_bp.revogar_link', obra_id=obra.id) }}"
+                    onsubmit="return confirm('Revogar o link? O cliente perderá o acesso imediatamente.');"><button
+                        type="submit" class="btn btn-danger">Revogar acesso</button></form>
+            </div>
+        </div>
+        {% else %}
+        <div class="obra-portal-empty">
+            <div class="obra-portal-empty-icon">🏗️</div>
+            <div class="obra-portal-empty-content">
+                <h3>Crie a Visão do Canteiro para o cliente</h3>
+                <p>O cliente acompanha a evolução da obra sem ver valores, custos, equipe, compras ou dados internos.
+                </p>
+            </div>
+            <form method="POST" action="{{ url_for('portal_bp.gerar_link', obra_id=obra.id) }}"><button type="submit"
+                    class="btn btn-primary">Gerar link da Visão do Canteiro</button></form>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="obra-canteiro-public-preview">
+        <div class="card obra-info-card">
+            <div class="card-hdr">
+                <div>
+                    <div class="card-title">O que o cliente verá</div>
+                    <div class="obra-card-subtitle">Resumo público, simples e sem informações financeiras.</div>
+                </div>
+            </div>
+            <div class="obra-info-list obra-info-list-publica">
+                <div class="obra-info-item"><span class="obra-info-label">Progresso visual</span><strong>Fotos da
+                        evolução da construção</strong></div>
+                <div class="obra-info-item"><span class="obra-info-label">Linha do tempo</span><strong>{{
+                        obra.data_inicio or "Início livre" }} → {{ obra.data_fim_prevista or "Fim livre" }}</strong>
+                </div>
+                <div class="obra-info-item"><span class="obra-info-label">Fase atual</span><strong>{{ fase_atual
+                        }}</strong></div>
+                <div class="obra-info-item"><span class="obra-info-label">Status de conclusão</span><strong>{{
+                        (obra.progresso_percentual or 0)|round(1) }}%</strong></div>
+            </div>
+        </div>
+        <div class="card obra-info-card">
+            <div class="card-hdr">
+                <div>
+                    <div class="card-title">Observações do responsável</div>
+                    <div class="obra-card-subtitle">Texto que ajuda o cliente a entender o que foi feito e próximos
+                        passos.</div>
+                </div>
+            </div>
+            <div class="obra-observacao-publica">{{ observacao_canteiro or "Nenhuma observação pública registrada
+                ainda." }}</div>
+        </div>
+    </div>
+
+    <div class="card obra-galeria-card">
+        <div class="card-hdr obra-galeria-hdr">
+            <div>
+                <div class="card-title">Progresso visual da obra</div>
+                <div class="obra-card-subtitle">Galeria de fotos que mostra a evolução real da construção.</div>
+            </div>
+        </div>
+        {% if eh_gestor() %}
+        <form method="POST" action="{{ url_for('obras_bp.nova_foto_obra', obra_id=obra.id) }}"
+            enctype="multipart/form-data" class="obra-galeria-upload-form">
+            <div class="obra-galeria-upload-grid">
+                <div class="form-group">
+                    <label>Foto da galeria</label>
+                    <input type="file" name="foto_arquivo" accept="image/*" required>
+                </div>
+                <div class="form-group">
+                    <label>Titulo</label>
+                    <input type="text" name="titulo" placeholder="Ex: Alvenaria finalizada">
+                </div>
+                <div class="form-group">
+                    <label>Fase</label>
+                    <input type="text" name="fase" value="{{ obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else '' }}"
+                        placeholder="Ex: Estrutura">
+                </div>
+                <div class="form-group">
+                    <label>Data</label>
+                    <input type="date" name="data_registro">
+                </div>
+            </div>
+            <div class="obra-galeria-upload-actions">
+                <div class="obra-foto-help">Selecione uma imagem do notebook ou celular para alimentar a galeria da
+                    Visao do Canteiro.</div>
+                <label class="obra-capa-check">
+                    <input type="checkbox" name="usar_como_capa" value="1">
+                    <span>Usar esta foto como capa</span>
+                </label>
+                <button type="submit" class="btn btn-primary">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <circle cx="8.5" cy="8.5" r="1.5" />
+                        <polyline points="21 15 16 10 5 21" />
+                    </svg>
+                    Adicionar foto
+                </button>
+            </div>
+        </form>
+        {% endif %}
+        {% if galeria %}
+        <div class="obra-galeria-grid">
+            {% for foto in galeria %}
+            <div class="obra-galeria-item"><img src="{{ foto.caminho or foto.url or foto.imagem }}"
+                    alt="Registro visual da obra">
+                <div class="obra-galeria-info"><strong>{{ foto.titulo or foto.fase or fase_atual }}</strong><span>{{
+                        foto.data_registro or foto.data or "Sem data" }}</span></div>
+                {% if eh_gestor() %}
+                <form method="POST" action="{{ url_for('obras_bp.usar_foto_como_capa', obra_id=obra.id, foto_id=foto.id) }}"
+                    class="obra-galeria-capa-form">
+                    <button type="submit" class="btn btn-ghost btn-xs">Usar como capa</button>
+                </form>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="obra-empty-box obra-galeria-empty">Ainda não há galeria cadastrada. Na próxima etapa, vamos conectar
+            o upload de fotos para alimentar esta área automaticamente.</div>
+        {% endif %}
+    </div>
+
 </div>
 
-<div class="kpi-grid">
-    <div class="kpi or">
-        <div class="kpi-lbl">Receita</div>
-        <div class="kpi-val">{{ formatar_moeda(obra.receita_total) }}</div>
-    </div>
+<script>
+    (function () {
+        document.querySelectorAll(".progress-dinamica").forEach(function (el) {
+            const width = Math.max(0, Math.min(100, Number(el.dataset.width || 0)));
+            setTimeout(function () { el.style.width = `${width}%`; }, 60);
+        });
+    })();
 
-    <div class="kpi bl">
-        <div class="kpi-lbl">Custo Lançado</div>
-        <div class="kpi-val">{{ formatar_moeda(custo_total) }}</div>
-    </div>
-
-    <div class="kpi gr">
-        <div class="kpi-lbl">Margem</div>
-        <div class="kpi-val">{{ formatar_moeda(margem) }}</div>
-    </div>
-
-    <div class="kpi rd">
-        <div class="kpi-lbl">Execução</div>
-        <div class="kpi-val">{{ obra.progresso_percentual or 0 }}%</div>
-    </div>
-</div>
-
-<div class="g2">
-    <div class="card">
-        <div class="card-hdr">
-            <div class="card-title">Custos Importados</div>
-        </div>
-        <div class="tbl-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Categoria</th>
-                        <th>Valor</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in custos_importados %}
-                    <tr>
-                        <td>{{ item.categoria }}</td>
-                        <td>{{ formatar_moeda(item.valor_total) }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="2" class="muted">Sem custos importados.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-hdr">
-            <div class="card-title">Medições</div>
-        </div>
-        <div class="tbl-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Medição</th>
-                        <th>Etapa</th>
-                        <th>%</th>
-                        <th>Valor</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in medicoes %}
-                    <tr>
-                        <td>{{ item.medicao_nome }}</td>
-                        <td>{{ item.etapa }}</td>
-                        <td>{{ item.percentual or 0 }}%</td>
-                        <td>{{ formatar_moeda(item.valor_realizado) }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="4" class="muted">Sem medições.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<div class="card" style="margin-bottom:12px;">
-    <div class="card-hdr">
-        <div class="card-title">Custos Lançados</div>
-    </div>
-    <div class="tbl-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Categoria</th>
-                    <th>Descrição</th>
-                    <th>Fornecedor</th>
-                    <th>Valor</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in custos %}
-                <tr>
-                    <td>{{ item.categoria }}</td>
-                    <td>{{ item.descricao }}</td>
-                    <td>{{ item.fornecedor or "-" }}</td>
-                    <td>{{ formatar_moeda(item.valor_total) }}</td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="4" class="muted">Sem custos lançados.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<div class="g2">
-    <div class="card">
-        <div class="card-hdr">
-            <div class="card-title">Equipe</div>
-        </div>
-        <div class="tbl-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Nome</th>
-                        <th>Função</th>
-                        <th>Pagamento</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in equipe %}
-                    <tr>
-                        <td>{{ item.nome }}</td>
-                        <td>{{ item.funcao or "-" }}</td>
-                        <td>{{ item.status_pagamento or "-" }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="3" class="muted">Sem equipe cadastrada.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-hdr">
-            <div class="card-title">Compras</div>
-        </div>
-        <div class="tbl-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Material</th>
-                        <th>Qtd</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in compras %}
-                    <tr>
-                        <td>{{ item.material }}</td>
-                        <td>{{ item.quantidade or 0 }}</td>
-                        <td>{{ item.status or "-" }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="3" class="muted">Sem compras cadastradas.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+    function copiarLinkPortal() {
+        const input = document.getElementById("link-portal");
+        if (!input) return;
+        input.select();
+        input.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(input.value).then(function () { alert("Link copiado!"); }).catch(function () { document.execCommand("copy"); alert("Link copiado!"); });
+    }
+</script>
 {% endblock %}
