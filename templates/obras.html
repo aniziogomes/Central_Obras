@@ -9,17 +9,6 @@
         <p>Cadastro completo com visão operacional e acompanhamento do canteiro</p>
     </div>
     <div class="hdr-right">
-        <a id="linkExportarObras"
-            href="{{ url_for('obras_bp.obras_exportar', busca=filtro_busca, status=filtro_status) }}"
-            class="btn btn-success">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            Exportar Excel
-        </a>
         {% if eh_gestor() %}
         <button class="btn btn-primary" onclick="abrirModalObra()">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
@@ -84,7 +73,8 @@
 
 <div class="obras-cards" id="obrasCards">
     {% for obra in obras %}
-    {% set fase_atual = obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else 'Não definida' %}
+    {% set fase_definida = obra.fase_obra is defined and obra.fase_obra %}
+    {% set fase_atual = obra.fase_obra if fase_definida else 'Não definida' %}
     {% set observacao_canteiro = obra.observacao_responsavel if obra.observacao_responsavel is defined and
     obra.observacao_responsavel else '' %}
     {% set portal_ativo = obra.token_publico if obra.token_publico is defined and obra.token_publico else '' %}
@@ -99,7 +89,7 @@
                     </a>
                     <span class="obra-card-codigo">{{ obra.codigo }}</span>
                     <span class="badge {{ obra.status }}">{{ obra.status }}</span>
-                    <span class="obra-fase-pill">{{ fase_atual }}</span>
+                    <span class="obra-fase-pill {% if not fase_definida %}obra-fase-pill--empty{% endif %}">{{ fase_atual }}</span>
                 </div>
 
                 <div class="obra-card-subtitle">
@@ -117,7 +107,7 @@
                 <div class="obra-card-canteiro-meta">
                     <strong
                         class="obra-portal-status {% if portal_ativo %}obra-portal-status--active{% else %}obra-portal-status--empty{% endif %}">
-                        {% if portal_ativo %}Link ativo{% else %}Sem link{% endif %}
+                        {% if portal_ativo %}Link ativo{% else %}Sem portal{% endif %}
                     </strong>
                 </div>
             </div>
@@ -470,6 +460,7 @@
             container.innerHTML = obras.map(o => {
                 const margem = (o.receita_total || 0) - (o.orcamento || 0);
                 const margemClass = margem >= 0 ? "valor-positivo" : "valor-negativo";
+                const faseDefinida = Boolean(o.fase_obra);
                 const fase = o.fase_obra || "Não definida";
                 const observacao = o.observacao_responsavel || "";
                 const portalAtivo = Boolean(o.token_publico);
@@ -490,7 +481,7 @@
                             <a href="/obra/${encodeURIComponent(o.codigo)}/detalhes" class="obra-card-nome">${esc(o.nome)}</a>
                             <span class="obra-card-codigo">${esc(o.codigo)}</span>
                             <span class="badge ${esc(o.status)}">${esc(o.status)}</span>
-                            <span class="obra-fase-pill">${esc(fase)}</span>
+                            <span class="obra-fase-pill ${faseDefinida ? "" : "obra-fase-pill--empty"}">${esc(fase)}</span>
                         </div>
                         <div class="obra-card-subtitle">
                             <span>${esc(o.tipo_obra_formatado)}</span>
@@ -501,7 +492,7 @@
                             ${esc(o.data_inicio || "Início livre")} → ${esc(o.data_fim_prevista || "Fim livre")}
                         </div>
                         <div class="obra-card-canteiro-meta">
-                            <strong class="obra-portal-status ${portalAtivo ? "obra-portal-status--active" : "obra-portal-status--empty"}">${portalAtivo ? "Link ativo" : "Sem link"}</strong>
+                            <strong class="obra-portal-status ${portalAtivo ? "obra-portal-status--active" : "obra-portal-status--empty"}">${portalAtivo ? "Link ativo" : "Sem portal"}</strong>
                         </div>
                     </div>
                     <div class="obra-card-kpis">
@@ -548,7 +539,7 @@
 
                 renderizarCards(payload.obras, payload.pode_editar, payload.pode_excluir);
 
-                const link = document.getElementById("linkExportarObras");
+                const link = document.querySelector("[data-export-action]");
                 if (link) link.href = `/obras/exportar?${params.toString()}`;
 
                 filtroStatusAtual = payload.filtros.status || "todas";

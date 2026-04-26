@@ -13,9 +13,10 @@ def calcular_alertas(obra_ids_filtradas=None):
 
     alertas = []
     alertas_keys = set()
+    custos_totais_por_obra = {}
     hoje = datetime.today().date()
 
-    def adicionar_alerta(tipo, codigo, nome, mensagem):
+    def adicionar_alerta(tipo, codigo, nome, mensagem, contexto="", acao="Ver obra", destino="obra", obra_codigo=None):
         chave = (tipo, codigo, nome, mensagem)
         if chave not in alertas_keys:
             alertas_keys.add(chave)
@@ -23,7 +24,11 @@ def calcular_alertas(obra_ids_filtradas=None):
                 "tipo": tipo,
                 "codigo": codigo,
                 "nome": nome,
-                "mensagem": mensagem
+                "mensagem": mensagem,
+                "contexto": contexto,
+                "acao": acao,
+                "destino": destino,
+                "obra_codigo": obra_codigo or codigo
             })
 
     for obra in obras:
@@ -32,6 +37,7 @@ def calcular_alertas(obra_ids_filtradas=None):
             (obra["id"],)
         )
         custo_total = custo_obra["total"] if custo_obra else 0
+        custos_totais_por_obra[obra["codigo"]] = custo_total
         receita = obra["receita_total"] or 0
         custo_previsto = obra["orcamento"] or 0
         progresso = obra["progresso_percentual"] or 0
@@ -72,6 +78,65 @@ def calcular_alertas(obra_ids_filtradas=None):
     for profissional in equipe:
         if (profissional["status_pagamento"] or "").lower() == "pendente":
             adicionar_alerta("warn", "EQUIPE", profissional["nome"], f"Pagamento pendente para {profissional['nome']}.")
+
+    obras_por_codigo = {obra["codigo"]: obra for obra in obras}
+
+    for alerta in alertas:
+        tipo = alerta["tipo"]
+        codigo = alerta["codigo"]
+        mensagem = alerta["mensagem"] or ""
+        mensagem_lower = mensagem.lower()
+        obra = obras_por_codigo.get(codigo)
+
+        alerta["severidade"] = "CRÍTICO" if tipo == "danger" else ("ATENÇÃO" if tipo == "warn" else "INFO")
+        alerta["acao"] = alerta.get("acao") or ("Ver obra" if obra else "Ver equipe")
+        alerta["destino"] = "obra" if obra else "equipe"
+        alerta["obra_codigo"] = obra["codigo"] if obra else None
+
+        contexto = alerta.get("contexto") or ""
+
+        if obra:
+            custo_total = custos_totais_por_obra.get(codigo, 0)
+            receita = obra["receita_total"] or 0
+            custo_previsto = obra["orcamento"] or 0
+            prazo = obra["data_fim_prevista"]
+
+            if "data final" in mensagem_lower and prazo:
+                try:
+                    data_final = datetime.strptime(prazo, "%Y-%m-%d").date()
+                    dias = (data_final - hoje).days
+                    if dias < 0:
+                        contexto = f"Prazo: {prazo} · Atrasada há {abs(dias)} dia(s)"
+                    else:
+                        contexto = f"Prazo: {prazo} · Restam {dias} dia(s)"
+                except Exception:
+                    contexto = f"Prazo: {prazo}"
+                alerta["acao"] = "Ver cronograma"
+
+            elif "atrasada" in mensagem_lower:
+                contexto = f"Status: atrasada" + (f" · Prazo: {prazo}" if prazo else "")
+                alerta["acao"] = "Ver cronograma"
+
+            elif "custo" in mensagem_lower and receita:
+                contexto = f"Custo: {formatar_moeda(custo_total)} · Receita: {formatar_moeda(receita)}"
+                alerta["acao"] = "Revisar custos"
+
+            elif "custo previsto" in mensagem_lower and custo_previsto:
+                contexto = f"Custo: {formatar_moeda(custo_total)} · Previsto: {formatar_moeda(custo_previsto)}"
+                alerta["acao"] = "Revisar orçamento"
+
+            elif "execu" in mensagem_lower:
+                contexto = f"Execução: {obra['progresso_percentual'] or 0}% · Status: {obra['status'] or '-'}"
+                alerta["acao"] = "Atualizar canteiro"
+
+            elif not contexto:
+                contexto = f"Status: {obra['status'] or '-'}" + (f" · Prazo: {prazo}" if prazo else "")
+
+        elif "pagamento" in mensagem_lower:
+            contexto = f"Profissional: {alerta['nome']} · Status: pendente"
+            alerta["acao"] = "Ver equipe"
+
+        alerta["contexto"] = contexto
 
     return alertas
 

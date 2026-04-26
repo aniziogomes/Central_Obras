@@ -9,11 +9,6 @@
         <p>Lançamentos por obra e categoria</p>
     </div>
     <div class="hdr-right" style="display:flex; gap:8px;">
-        <a id="linkExportarCustos"
-            href="{{ url_for('custos_bp.custos_exportar', obra=filtro_obra, categoria=filtro_categoria, data_inicio=data_inicio, data_fim=data_fim) }}"
-            class="btn btn-success">
-            Exportar Excel
-        </a>
         {% if eh_gestor() %}
         <button class="btn btn-primary" onclick="abrirModalCusto()">+ Novo Custo</button>
         {% endif %}
@@ -787,7 +782,7 @@
             const resumoObra = document.getElementById("resumoObra");
             const resumoPeriodo = document.getElementById("resumoPeriodo");
             const resumoTotal = document.getElementById("custosResumoTotal");
-            const linkExportar = document.getElementById("linkExportarCustos");
+            const linkExportar = document.querySelector("[data-export-action]");
 
             if (resumoObra) {
                 resumoObra.textContent = payload.filtros.obra || "Todas";

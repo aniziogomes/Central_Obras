@@ -3,26 +3,101 @@
 {% block title %}Alertas - Central de Obras{% endblock %}
 
 {% block content %}
-<div class="hdr">
+{% set total_criticos = alertas|selectattr("tipo", "equalto", "danger")|list|length %}
+{% set total_atencao = alertas|selectattr("tipo", "equalto", "warn")|list|length %}
+{% set total_info = alertas|selectattr("tipo", "equalto", "info")|list|length %}
+
+<div class="hdr alertas-page-header">
     <div>
         <h1>Alertas</h1>
-        <p>Notificações automáticas</p>
+        <p>Notificações automáticas para agir antes que os problemas cresçam</p>
     </div>
 </div>
 
-{% if alertas and alertas|length > 0 %}
-{% for alerta in alertas %}
-<div class="alert-card {{ alerta.tipo }}">
-    <div class="alert-title">{{ alerta.codigo }} — {{ alerta.nome }}</div>
-    <div class="alert-text">{{ alerta.mensagem }}</div>
+<div class="alertas-summary-strip">
+    <button type="button" class="alertas-filter-card active" data-alert-filter="all">
+        <span>Todos</span>
+        <strong>{{ alertas|length }}</strong>
+    </button>
+    <button type="button" class="alertas-filter-card alertas-filter-card--danger" data-alert-filter="danger">
+        <span>Críticos</span>
+        <strong>{{ total_criticos }}</strong>
+    </button>
+    <button type="button" class="alertas-filter-card alertas-filter-card--warn" data-alert-filter="warn">
+        <span>Atenção</span>
+        <strong>{{ total_atencao }}</strong>
+    </button>
+    <button type="button" class="alertas-filter-card alertas-filter-card--info" data-alert-filter="info">
+        <span>Info</span>
+        <strong>{{ total_info }}</strong>
+    </button>
 </div>
-{% endfor %}
+
+{% if alertas and alertas|length > 0 %}
+<div class="alertas-list" id="alertasLista">
+    {% for alerta in alertas %}
+    <div class="alert-card alert-card--{{ alerta.tipo }}" data-alert-type="{{ alerta.tipo }}">
+        <div class="alert-severity">{{ alerta.severidade or ("CRÍTICO" if alerta.tipo == "danger" else "ATENÇÃO") }}</div>
+
+        <div class="alert-main">
+            <div class="alert-title">{{ alerta.codigo }} — {{ alerta.nome }}</div>
+            <div class="alert-text">{{ alerta.mensagem }}</div>
+            {% if alerta.contexto %}
+            <div class="alert-context">{{ alerta.contexto }}</div>
+            {% endif %}
+        </div>
+
+        <div class="alert-action">
+            {% if alerta.destino == "obra" and alerta.obra_codigo %}
+            <a href="{{ url_for('obras_bp.obra_detalhe', codigo=alerta.obra_codigo) }}" class="btn btn-small btn-ghost" data-spa>
+                {{ alerta.acao or "Ver obra" }} →
+            </a>
+            {% else %}
+            <a href="{{ url_for('equipe_bp.equipe') }}" class="btn btn-small btn-ghost" data-spa>
+                {{ alerta.acao or "Ver equipe" }} →
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="alertas-empty-filter" id="alertasFiltroVazio" hidden>
+    Nenhum alerta neste filtro.
+</div>
 {% else %}
-<div class="card">
+<div class="card alertas-empty-state">
     <div class="card-hdr">
         <div class="card-title">Situação atual</div>
     </div>
     <p class="muted">Nenhum alerta ativo. Tudo em ordem.</p>
 </div>
 {% endif %}
+
+<script>
+    (function () {
+        const buttons = document.querySelectorAll("[data-alert-filter]");
+        const cards = document.querySelectorAll("[data-alert-type]");
+        const empty = document.getElementById("alertasFiltroVazio");
+
+        if (!buttons.length || !cards.length) return;
+
+        buttons.forEach(button => {
+            button.addEventListener("click", () => {
+                const filter = button.dataset.alertFilter;
+                let visible = 0;
+
+                buttons.forEach(item => item.classList.toggle("active", item === button));
+
+                cards.forEach(card => {
+                    const show = filter === "all" || card.dataset.alertType === filter;
+                    card.hidden = !show;
+                    if (show) visible += 1;
+                });
+
+                if (empty) empty.hidden = visible > 0;
+            });
+        });
+    })();
+</script>
 {% endblock %}

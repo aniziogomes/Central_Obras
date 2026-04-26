@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Perfil - Central de Obras{% endblock %}
+
+{% block content %}
+{% set perfil_label = {'admin': 'Admin', 'gestor': 'Gestor', 'leitura': 'Leitura'}.get(usuario.perfil, usuario.perfil) %}
+
+<div class="hdr">
+  <div>
+    <h1>Perfil</h1>
+    <p>Conta e segurança do sistema</p>
+  </div>
+</div>
+
+<div class="profile-grid">
+  <section class="card profile-card profile-identity-card">
+    <div class="profile-identity">
+      <div class="profile-avatar-lg">{{ usuario.nome[0] | upper }}</div>
+      <div class="profile-identity-text">
+        <span class="profile-overline">Usuário conectado</span>
+        <h2>{{ usuario.nome }}</h2>
+        <p>@{{ usuario.username }}</p>
+        <span class="profile-role-badge profile-role-badge--{{ usuario.perfil }}">{{ perfil_label }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card profile-card profile-card--wide" id="trocar-senha">
+    <div class="card-hdr">
+      <div>
+        <div class="card-title">Trocar senha</div>
+        <div class="card-subtitle">Atualize sua senha de acesso</div>
+      </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('auth_bp.alterar_senha') }}" class="profile-form">
+      <label class="form-field">
+        <span>Senha atual</span>
+        <input type="password" name="senha_atual" autocomplete="current-password" required>
+      </label>
+      <label class="form-field">
+        <span>Nova senha</span>
+        <input type="password" name="nova_senha" autocomplete="new-password" minlength="6" required>
+      </label>
+      <label class="form-field">
+        <span>Confirmar nova senha</span>
+        <input type="password" name="confirmar_senha" autocomplete="new-password" minlength="6" required>
+      </label>
+      <div class="profile-form-actions">
+        <button type="submit" class="btn btn-primary">Salvar nova senha</button>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}

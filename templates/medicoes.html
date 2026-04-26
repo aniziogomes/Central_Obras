@@ -9,7 +9,6 @@
         <p>Controle físico-financeiro da obra</p>
     </div>
     <div class="hdr-right" style="display:flex; gap:8px;">
-        <a href="{{ url_for('medicoes_bp.medicoes_exportar') }}" class="btn btn-success">Exportar Excel</a>
         {% if eh_gestor() %}
         <button class="btn btn-primary" onclick="abrirModalMedicao()">Nova Medição</button>
         {% endif %}

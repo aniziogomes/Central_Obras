@@ -17,7 +17,6 @@
         <p>Mão de obra por obra</p>
     </div>
     <div class="hdr-right" style="display:flex; gap:8px;">
-        <a href="{{ url_for('equipe_bp.equipe_exportar') }}" class="btn btn-success">Exportar Excel</a>
         {% if eh_gestor() %}
         <button class="btn btn-primary" onclick="abrirModalEquipe()">Novo Profissional</button>
         {% endif %}

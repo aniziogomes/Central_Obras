@@ -90,6 +90,25 @@ def buscar_custos_filtrados(filtro_obra="", data_inicio="", data_fim="", filtro_
     """, params)
 
 
+def buscar_obras_com_custos(data_inicio="", data_fim="", filtro_categoria="", filtro_obra=""):
+    where, params = montar_query_custos("", data_inicio, data_fim, filtro_categoria)
+
+    obras = query_all(f"""
+        SELECT DISTINCT o.*
+        FROM obras o
+        JOIN custos c ON c.obra_id = o.id
+        {where}
+        ORDER BY o.nome ASC
+    """, params)
+
+    if filtro_obra and not any(obra["codigo"] == filtro_obra for obra in obras):
+        obra_atual = query_one("SELECT * FROM obras WHERE codigo = ?", (filtro_obra,))
+        if obra_atual:
+            obras = [obra_atual] + list(obras)
+
+    return obras
+
+
 def normalizar_status_entrega(status):
     mapa = {
         "pedido": "Aguardando",
@@ -128,7 +147,12 @@ def custos():
         data_fim=filtros["data_fim"]
     )
 
-    todas_obras = query_all("SELECT * FROM obras ORDER BY nome ASC")
+    todas_obras = buscar_obras_com_custos(
+        filtro_categoria=filtros["filtro_categoria"],
+        data_inicio=filtros["data_inicio"],
+        data_fim=filtros["data_fim"],
+        filtro_obra=filtros["filtro_obra"],
+    )
     obras = query_all("SELECT * FROM obras ORDER BY nome ASC")
     cards_categorias = gerar_cards_categorias(lista_custos)
 

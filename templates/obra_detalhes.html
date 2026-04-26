@@ -369,7 +369,7 @@
         esperarChart(function () {
             const txtCinza = "#8a8a95";
             const txtClaro = "#f0f0f0";
-            const cores = ["#1654B0", "#e2a42d", "#28b56a", "#e8621a", "#7252cc", "#e8424e"];
+            const cores = ["#315f9a", "#b08a3a", "#4f9b73", "#bd6b3a", "#715fa6", "#b5565f"];
 
             const catCanvas = document.getElementById("graficoObraCategorias");
             if (catCanvas) {
@@ -401,8 +401,8 @@
                             {
                                 label: "% acumulado",
                                 data: jsonAttr("medicaoPercentuais"),
-                                borderColor: "#1654B0",
-                                backgroundColor: "rgba(22,84,176,.12)",
+                                borderColor: "#315f9a",
+                                backgroundColor: "rgba(49,95,154,.10)",
                                 tension: .35,
                                 fill: true,
                                 yAxisID: "y"
@@ -410,8 +410,8 @@
                             {
                                 label: "Valor realizado",
                                 data: jsonAttr("medicaoValores"),
-                                borderColor: "#28b56a",
-                                backgroundColor: "rgba(40,181,106,.18)",
+                                borderColor: "#4f9b73",
+                                backgroundColor: "rgba(79,155,115,.14)",
                                 tension: .35,
                                 yAxisID: "y1"
                             }

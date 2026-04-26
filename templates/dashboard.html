@@ -8,13 +8,6 @@
         <h1>Dashboard Executivo</h1>
         <p>Visão geral das obras, resultados, custos e pontos de atenção</p>
     </div>
-
-    <div class="hdr-right">
-        <a class="btn btn-success" id="btnExportarExcel"
-            href="{{ url_for('dashboard_bp.dashboard_exportar', obra=filtro_obra, categoria=filtro_categoria, status=filtro_status, tipo_obra=filtro_tipo_obra, data_inicio=data_inicio, data_fim=data_fim) }}">
-            Exportar Excel
-        </a>
-    </div>
 </div>
 
 <div class="dashboard-filter-shell dashboard-filter-shell--executive">
@@ -173,7 +166,7 @@
     </div>
 </div>
 
-<div class="dashboard-alerts-card" id="alertasContainer">
+<div class="dashboard-alerts-card" id="alertasContainer" hidden>
     {% if alertas and alertas|length > 0 %}
     <div class="card dashboard-card-block">
         <div class="card-hdr dashboard-card-hdr-inline">
@@ -340,9 +333,9 @@
         let instMargem = null, instTipologia = null, instCustoCat = null;
 
         const CORES = [
-            "#e8621a", "#1654B0", "#28b56a", "#d99b1a",
-            "#7252cc", "#e8424e", "#f07535", "#2468cc",
-            "#34c77b", "#eab33e"
+            "#bd6b3a", "#315f9a", "#4f9b73", "#b08a3a",
+            "#715fa6", "#b5565f", "#c98354", "#4f78ad",
+            "#68a985", "#c6a35a"
         ];
 
         function fmt(v) {
@@ -384,9 +377,9 @@
                             label: "Margem (R$)",
                             data: charts.margem_valores,
                             backgroundColor: charts.margem_valores.map(v => v >= 0
-                                ? "rgba(232,98,26,0.82)" : "rgba(232,66,78,0.82)"),
+                                ? "rgba(189,107,58,0.68)" : "rgba(181,86,95,0.68)"),
                             borderColor: charts.margem_valores.map(v => v >= 0
-                                ? "rgba(232,98,26,1)" : "rgba(232,66,78,1)"),
+                                ? "rgba(189,107,58,0.92)" : "rgba(181,86,95,0.92)"),
                             borderWidth: 1,
                             borderRadius: 8
                         }]
@@ -618,7 +611,7 @@
             if (p.filtros.tipo_obra) params.set("tipo_obra", p.filtros.tipo_obra);
             if (p.filtros.data_inicio) params.set("data_inicio", p.filtros.data_inicio);
             if (p.filtros.data_fim) params.set("data_fim", p.filtros.data_fim);
-            const btn = document.getElementById("btnExportarExcel");
+            const btn = document.querySelector("[data-export-action]");
             if (btn) btn.href = `${window.location.origin}/dashboard/exportar?${params.toString()}`;
         }
 

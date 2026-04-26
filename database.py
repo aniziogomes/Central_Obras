@@ -1,7 +1,11 @@
 import sqlite3
+import os
+import shutil
 from pathlib import Path
 
-DB_PATH = Path("data/central_obras.db")
+DEFAULT_DB_DIR = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "Canteiro"
+DB_PATH = Path(os.environ.get("CENTRAL_OBRAS_DB", DEFAULT_DB_DIR / "central_obras.db"))
+LEGACY_DB_PATH = Path("data/central_obras.db")
 
 
 def get_connection():
@@ -12,6 +16,9 @@ def get_connection():
 
 def init_db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    if not DB_PATH.exists() and LEGACY_DB_PATH.exists():
+        shutil.copy2(LEGACY_DB_PATH, DB_PATH)
 
     conn = get_connection()
 

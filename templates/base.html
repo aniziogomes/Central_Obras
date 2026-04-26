@@ -120,6 +120,22 @@
           <span>Alertas</span>
         </a>
 
+        {% if eh_admin() %}
+        <a class="nav-item {% if request.endpoint == 'auth_bp.usuarios' %}active{% endif %}"
+          href="{{ url_for('auth_bp.usuarios') }}" data-spa>
+          <span class="nav-ico">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </span>
+          <span>Usuários</span>
+        </a>
+        {% endif %}
+
         <a class="nav-item {% if request.endpoint == 'importacao_bp.importacao' %}active{% endif %}"
           href="{{ url_for('importacao_bp.importacao') }}" data-spa>
           <span class="nav-ico">
@@ -165,7 +181,7 @@
           <div class="pulse"></div>
           <div class="sync-text">Dados locais ativos</div>
         </div>
-        <div class="user-badge">
+        <div class="user-badge" aria-label="Usuário conectado">
           <div class="user-badge-avatar">{{ session.get('usuario_nome', 'U')[0] | upper }}</div>
           <div class="user-badge-info">
             <div class="user-badge-name">{{ session.get('usuario_nome', 'Usuário') }}</div>
@@ -176,6 +192,63 @@
     </aside>
 
     <main class="main" id="spa-main">
+      {% set alertas_topo = alertas_globais|default([]) %}
+      <div class="top-actions">
+        <div class="global-alerts" data-alerts-widget>
+        <button type="button" class="global-alerts-btn" data-alerts-toggle aria-label="Abrir alertas"
+          aria-expanded="false">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          </svg>
+          {% if alertas_topo|length > 0 %}
+          <span class="global-alerts-count">{{ alertas_topo|length }}</span>
+          {% endif %}
+        </button>
+
+        <div class="global-alerts-panel" data-alerts-panel>
+          <div class="global-alerts-head">
+            <div>
+              <strong>Alertas ativos</strong>
+              <span>{{ alertas_topo|length }} ponto(s) de atenção</span>
+            </div>
+            <a href="{{ url_for('dashboard_bp.alertas') }}" data-spa>Ver todos</a>
+          </div>
+
+          {% if alertas_topo|length > 0 %}
+          <div class="global-alerts-list">
+            {% for alerta in alertas_topo[:6] %}
+            <a class="global-alert-item global-alert-item--{{ alerta.tipo }}"
+              href="{{ url_for('dashboard_bp.alertas') }}" data-spa>
+              <span class="global-alert-severity">{{ 'Crítico' if alerta.tipo == 'danger' else 'Atenção' }}</span>
+              <strong>{{ alerta.codigo }} — {{ alerta.nome }}</strong>
+              <small>{{ alerta.mensagem }}</small>
+            </a>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="global-alert-empty">Nenhum alerta ativo.</div>
+          {% endif %}
+        </div>
+        </div>
+
+        <div class="global-actions" data-actions-widget>
+          <button type="button" class="global-actions-btn" data-actions-toggle aria-label="Abrir menu de ações"
+            aria-expanded="false">
+            <span aria-hidden="true">⋯</span>
+          </button>
+          <div class="global-actions-panel" data-actions-panel>
+            {% if menu_export_url %}
+            <a href="{{ menu_export_url }}" class="global-actions-item" data-export-action>Exportar Excel</a>
+            <div class="global-actions-divider" role="separator"></div>
+            {% endif %}
+            <a href="{{ url_for('auth_bp.perfil') }}#trocar-senha" class="global-actions-item">Trocar senha</a>
+            <a href="{{ url_for('auth_bp.perfil') }}" class="global-actions-item" data-spa>Configurações da conta</a>
+          </div>
+        </div>
+      </div>
+
       {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
       {% for categoria, mensagem in messages %}
@@ -313,6 +386,97 @@
 
       // Registra estado inicial
       history.replaceState({ url: location.href }, '', location.href);
+    })();
+
+    /* =============================================
+       ALERTAS GLOBAIS
+       ============================================= */
+    (function () {
+      function closePanels() {
+        document.querySelectorAll('[data-alerts-widget].open').forEach(widget => {
+          widget.classList.remove('open');
+          const toggle = widget.querySelector('[data-alerts-toggle]');
+          if (toggle) toggle.setAttribute('aria-expanded', 'false');
+        });
+      }
+
+      document.addEventListener('click', function (event) {
+        const toggle = event.target.closest('[data-alerts-toggle]');
+        if (toggle) {
+          event.stopPropagation();
+          const widget = toggle.closest('[data-alerts-widget]');
+          if (!widget) return;
+          const isOpen = widget.classList.contains('open');
+          closePanels();
+          document.querySelectorAll('[data-actions-widget].open').forEach(actionWidget => {
+            actionWidget.classList.remove('open');
+            const actionToggle = actionWidget.querySelector('[data-actions-toggle]');
+            if (actionToggle) actionToggle.setAttribute('aria-expanded', 'false');
+          });
+          if (!isOpen) {
+            widget.classList.add('open');
+            toggle.setAttribute('aria-expanded', 'true');
+          }
+          return;
+        }
+
+        const alertLink = event.target.closest('[data-alerts-panel] a');
+        if (alertLink) {
+          closePanels();
+          return;
+        }
+
+        if (!event.target.closest('[data-alerts-widget]')) closePanels();
+      });
+
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') closePanels();
+      });
+    })();
+
+    /* =============================================
+       MENU GLOBAL DE AÇÕES
+       ============================================= */
+    (function () {
+      function closeActions() {
+        document.querySelectorAll('[data-actions-widget].open').forEach(widget => {
+          widget.classList.remove('open');
+          const toggle = widget.querySelector('[data-actions-toggle]');
+          if (toggle) toggle.setAttribute('aria-expanded', 'false');
+        });
+      }
+
+      document.addEventListener('click', function (event) {
+        const toggle = event.target.closest('[data-actions-toggle]');
+        if (toggle) {
+          event.stopPropagation();
+          const widget = toggle.closest('[data-actions-widget]');
+          if (!widget) return;
+          const isOpen = widget.classList.contains('open');
+          closeActions();
+          document.querySelectorAll('[data-alerts-widget].open').forEach(alertWidget => {
+            alertWidget.classList.remove('open');
+            const alertToggle = alertWidget.querySelector('[data-alerts-toggle]');
+            if (alertToggle) alertToggle.setAttribute('aria-expanded', 'false');
+          });
+          if (!isOpen) {
+            widget.classList.add('open');
+            toggle.setAttribute('aria-expanded', 'true');
+          }
+          return;
+        }
+
+        if (event.target.closest('[data-actions-panel] a')) {
+          closeActions();
+          return;
+        }
+
+        if (!event.target.closest('[data-actions-widget]')) closeActions();
+      });
+
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') closeActions();
+      });
     })();
 
     /* =============================================

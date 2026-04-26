@@ -22,7 +22,6 @@ risco_qtd=0) %}
             <p>Ranking e avaliação de performance</p>
         </div>
         <div class="hdr-right" style="display:flex; gap:8px;">
-            <a href="{{ url_for('fornecedores_bp.fornecedores_exportar') }}" class="btn btn-success">Exportar Excel</a>
             {% if eh_gestor() %}
             <button class="btn btn-primary" onclick="abrirModalFornecedor()">Novo Fornecedor</button>
             {% endif %}

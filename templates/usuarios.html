@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Usuários - Central de Obras{% endblock %}
+
+{% block content %}
+{% set ativos = usuarios|selectattr('ativo')|list|length %}
+{% set inativos = usuarios|length - ativos %}
+
+<div class="hdr">
+  <div>
+    <h1>Usuários</h1>
+    <p>Controle de acesso ao sistema</p>
+  </div>
+</div>
+
+<div class="quick-strip usuarios-quick-strip">
+  <div class="quick-item">
+    <div class="quick-label">Total</div>
+    <div class="quick-value">{{ usuarios|length }}</div>
+  </div>
+  <div class="quick-item">
+    <div class="quick-label">Ativos</div>
+    <div class="quick-value">{{ ativos }}</div>
+  </div>
+  <div class="quick-item">
+    <div class="quick-label">Inativos</div>
+    <div class="quick-value">{{ inativos }}</div>
+  </div>
+  <div class="quick-item">
+    <div class="quick-label">Administração</div>
+    <div class="quick-value">Admin</div>
+  </div>
+</div>
+
+<section class="card usuarios-create-card">
+  <div class="card-hdr">
+    <div>
+      <div class="card-title">Criar novo usuário</div>
+      <div class="card-subtitle">Defina o perfil de acesso e uma senha inicial</div>
+    </div>
+  </div>
+
+  <form method="POST" action="{{ url_for('auth_bp.novo_usuario') }}" class="usuarios-create-form">
+    <label class="form-field">
+      <span>Nome</span>
+      <input type="text" name="nome" placeholder="Nome do usuário" required>
+    </label>
+    <label class="form-field">
+      <span>Username</span>
+      <input type="text" name="username" placeholder="usuario.login" required>
+    </label>
+    <label class="form-field">
+      <span>Perfil</span>
+      <select name="perfil" required>
+        <option value="gestor">Gestor</option>
+        <option value="leitura">Leitura</option>
+        <option value="admin">Admin</option>
+      </select>
+    </label>
+    <label class="form-field">
+      <span>Senha inicial</span>
+      <input type="password" name="senha" minlength="6" placeholder="Mínimo 6 caracteres" required>
+    </label>
+    <div class="usuarios-create-actions">
+      <button type="submit" class="btn btn-primary">Criar usuário</button>
+    </div>
+  </form>
+</section>
+
+<section class="card usuarios-list-card">
+  <div class="card-hdr">
+    <div>
+      <div class="card-title">Usuários cadastrados</div>
+      <div class="card-subtitle">Status, perfil e ações administrativas</div>
+    </div>
+  </div>
+
+  <div class="usuarios-table-wrap">
+    <table class="usuarios-table">
+      <thead>
+        <tr>
+          <th>Usuário</th>
+          <th>Perfil</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for usuario in usuarios %}
+        {% set perfil_label = {'admin': 'Admin', 'gestor': 'Gestor', 'leitura': 'Leitura'}.get(usuario.perfil, usuario.perfil) %}
+        <tr>
+          <td>
+            <div class="usuarios-person">
+              <div class="usuarios-avatar">{{ usuario.nome[0] | upper }}</div>
+              <div>
+                <strong>{{ usuario.nome }}</strong>
+                <span>@{{ usuario.username }}</span>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="profile-role-badge profile-role-badge--{{ usuario.perfil }}">{{ perfil_label }}</span>
+          </td>
+          <td>
+            <span class="status-pill {{ 'ok' if usuario.ativo else 'danger' }}">
+              {{ 'Ativo' if usuario.ativo else 'Inativo' }}
+            </span>
+          </td>
+          <td>
+            <div class="usuarios-actions">
+              <form method="POST" action="{{ url_for('auth_bp.resetar_senha_usuario', usuario_id=usuario.id) }}"
+                class="usuarios-reset-form">
+                <input type="password" name="nova_senha" minlength="6" placeholder="Nova senha" required>
+                <button type="submit" class="btn btn-secondary">Redefinir</button>
+              </form>
+
+              <form method="POST" action="{{ url_for('auth_bp.desativar_usuario', usuario_id=usuario.id) }}">
+                <button type="submit" class="btn btn-danger" {% if not usuario.ativo or usuario.id == session.get('usuario_id') %}disabled{% endif %}>
+                  Desativar
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="usuarios-empty">Nenhum usuário cadastrado.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

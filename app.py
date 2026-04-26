@@ -1,12 +1,14 @@
-from flask import Flask
+from flask import Flask, request, url_for
 from database import init_db
 from utils import formatar_moeda, calcular_media_fornecedor, formatar_tipo_obra
+from services.dashboard_service import calcular_alertas
 
 from auth import (
     criar_usuario_admin,
     eh_admin,
     eh_gestor,
     eh_leitura,
+    usuario_logado,
     usuario_perfil,
 )
 from routes.auth_routes import auth_bp
@@ -29,6 +31,30 @@ criar_usuario_admin()
 
 @app.context_processor
 def inject_helpers():
+    alertas_globais = []
+    if usuario_logado() and eh_leitura():
+        try:
+            alertas_globais = calcular_alertas()
+        except Exception:
+            alertas_globais = []
+
+    export_endpoints = {
+        "dashboard_bp.dashboard": "dashboard_bp.dashboard_exportar",
+        "obras_bp.obras": "obras_bp.obras_exportar",
+        "custos_bp.custos": "custos_bp.custos_exportar",
+        "compras_bp.compras": "compras_bp.compras_exportar",
+        "fornecedores_bp.fornecedores": "fornecedores_bp.fornecedores_exportar",
+        "equipe_bp.equipe": "equipe_bp.equipe_exportar",
+        "medicoes_bp.medicoes": "medicoes_bp.medicoes_exportar",
+    }
+    menu_export_url = None
+    export_endpoint = export_endpoints.get(request.endpoint)
+    if usuario_logado() and export_endpoint:
+        try:
+            menu_export_url = url_for(export_endpoint, **request.args.to_dict(flat=True))
+        except Exception:
+            menu_export_url = None
+
     return dict(
         formatar_moeda=formatar_moeda,
         calcular_media_fornecedor=calcular_media_fornecedor,
@@ -37,6 +63,8 @@ def inject_helpers():
         eh_gestor=eh_gestor,
         eh_leitura=eh_leitura,
         usuario_perfil=usuario_perfil,
+        alertas_globais=alertas_globais,
+        menu_export_url=menu_export_url,
     )
 
 
