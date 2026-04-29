@@ -3,32 +3,10 @@
 {% block title %}Usuários - Central de Obras{% endblock %}
 
 {% block content %}
-{% set ativos = usuarios|selectattr('ativo')|list|length %}
-{% set inativos = usuarios|length - ativos %}
-
 <div class="hdr">
   <div>
     <h1>Usuários</h1>
     <p>Controle de acesso ao sistema</p>
-  </div>
-</div>
-
-<div class="quick-strip usuarios-quick-strip">
-  <div class="quick-item">
-    <div class="quick-label">Total</div>
-    <div class="quick-value">{{ usuarios|length }}</div>
-  </div>
-  <div class="quick-item">
-    <div class="quick-label">Ativos</div>
-    <div class="quick-value">{{ ativos }}</div>
-  </div>
-  <div class="quick-item">
-    <div class="quick-label">Inativos</div>
-    <div class="quick-value">{{ inativos }}</div>
-  </div>
-  <div class="quick-item">
-    <div class="quick-label">Administração</div>
-    <div class="quick-value">Admin</div>
   </div>
 </div>
 
@@ -87,7 +65,8 @@
       </thead>
       <tbody>
         {% for usuario in usuarios %}
-        {% set perfil_label = {'admin': 'Admin', 'gestor': 'Gestor', 'leitura': 'Leitura'}.get(usuario.perfil, usuario.perfil) %}
+        {% set perfil_label = {'admin': 'Admin', 'gestor': 'Gestor', 'leitura': 'Leitura'}.get(usuario.perfil,
+        usuario.perfil) %}
         <tr>
           <td>
             <div class="usuarios-person">
@@ -114,8 +93,10 @@
                 <button type="submit" class="btn btn-secondary">Redefinir</button>
               </form>
 
-              <form method="POST" action="{{ url_for('auth_bp.desativar_usuario', usuario_id=usuario.id) }}">
-                <button type="submit" class="btn btn-danger" {% if not usuario.ativo or usuario.id == session.get('usuario_id') %}disabled{% endif %}>
+              <form method="POST" action="{{ url_for('auth_bp.desativar_usuario', usuario_id=usuario.id) }}"
+                class="usuarios-disable-form">
+                <button type="submit" class="btn btn-danger" {% if not usuario.ativo or
+                  usuario.id==session.get('usuario_id') %}disabled{% endif %}>
                   Desativar
                 </button>
               </form>
@@ -131,4 +112,48 @@
     </table>
   </div>
 </section>
+
+<script>
+  (function () {
+    document.querySelectorAll(".usuarios-disable-form").forEach(function (form) {
+      form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const button = form.querySelector("button[type='submit']");
+        if (!button || button.disabled) return;
+
+        button.disabled = true;
+        button.textContent = "Desativando";
+
+        try {
+          const response = await fetch(form.action, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "X-Requested-With": "XMLHttpRequest" }
+          });
+
+          if (!response.ok) {
+            let message = "Nao foi possivel desativar este usuario.";
+            try {
+              const data = await response.json();
+              if (data.message) message = data.message;
+            } catch (err) {
+              // Resposta HTML de redirect/login: usa mensagem padrao.
+            }
+            alert(message);
+            button.disabled = false;
+            button.textContent = "Desativar";
+            return;
+          }
+
+          window.location.href = "{{ url_for('auth_bp.usuarios') }}";
+        } catch (err) {
+          alert("Nao foi possivel desativar este usuario.");
+          button.disabled = false;
+          button.textContent = "Desativar";
+        }
+      });
+    });
+  })();
+</script>
 {% endblock %}

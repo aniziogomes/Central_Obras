@@ -3,34 +3,11 @@
 {% block title %}Alertas - Central de Obras{% endblock %}
 
 {% block content %}
-{% set total_criticos = alertas|selectattr("tipo", "equalto", "danger")|list|length %}
-{% set total_atencao = alertas|selectattr("tipo", "equalto", "warn")|list|length %}
-{% set total_info = alertas|selectattr("tipo", "equalto", "info")|list|length %}
-
 <div class="hdr alertas-page-header">
     <div>
         <h1>Alertas</h1>
         <p>Notificações automáticas para agir antes que os problemas cresçam</p>
     </div>
-</div>
-
-<div class="alertas-summary-strip">
-    <button type="button" class="alertas-filter-card active" data-alert-filter="all">
-        <span>Todos</span>
-        <strong>{{ alertas|length }}</strong>
-    </button>
-    <button type="button" class="alertas-filter-card alertas-filter-card--danger" data-alert-filter="danger">
-        <span>Críticos</span>
-        <strong>{{ total_criticos }}</strong>
-    </button>
-    <button type="button" class="alertas-filter-card alertas-filter-card--warn" data-alert-filter="warn">
-        <span>Atenção</span>
-        <strong>{{ total_atencao }}</strong>
-    </button>
-    <button type="button" class="alertas-filter-card alertas-filter-card--info" data-alert-filter="info">
-        <span>Info</span>
-        <strong>{{ total_info }}</strong>
-    </button>
 </div>
 
 {% if alertas and alertas|length > 0 %}

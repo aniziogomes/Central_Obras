@@ -1,13 +1,37 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from pathlib import Path
+from uuid import uuid4
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
+from werkzeug.utils import secure_filename
 from database import query_all, query_one, execute
 from auth import verificar_senha, gerar_hash_senha, eh_admin
 from services.log_service import registrar_log
 
 auth_bp = Blueprint("auth_bp", __name__)
+UPLOAD_USUARIOS_DIR = Path("static/uploads/usuarios")
+EXTENSOES_IMAGEM = {"png", "jpg", "jpeg", "webp", "gif"}
 
 
 def usuario_logado():
     return "usuario_id" in session
+
+
+def extensao_permitida(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in EXTENSOES_IMAGEM
+
+
+def salvar_foto_usuario(arquivo, usuario_id):
+    if not arquivo or not arquivo.filename:
+        raise ValueError("Selecione uma foto para enviar.")
+    if not extensao_permitida(arquivo.filename):
+        raise ValueError("Use uma imagem PNG, JPG, JPEG, WEBP ou GIF.")
+
+    UPLOAD_USUARIOS_DIR.mkdir(parents=True, exist_ok=True)
+    filename = secure_filename(arquivo.filename)
+    extensao = filename.rsplit(".", 1)[1].lower()
+    nome_arquivo = f"usuario-{usuario_id}-{uuid4().hex[:10]}.{extensao}"
+    destino = UPLOAD_USUARIOS_DIR / nome_arquivo
+    arquivo.save(destino)
+    return "/" + destino.as_posix()
 
 
 @auth_bp.route("/")
@@ -41,6 +65,7 @@ def login():
                 descricao=f"Usuário {usuario['username']} fez login")
             session["usuario_nome"] = usuario["nome"]
             session["usuario_perfil"] = usuario["perfil"]
+            session["usuario_foto"] = usuario["foto_perfil"] if "foto_perfil" in usuario.keys() and usuario["foto_perfil"] else ""
             return redirect(url_for("dashboard_bp.dashboard"))
         else:
             flash("Senha incorreta.", "erro")
@@ -53,12 +78,16 @@ def perfil():
     if not usuario_logado():
         return redirect(url_for("auth_bp.login"))
 
-    usuario = query_one("SELECT id, nome, username, perfil, ativo FROM usuarios WHERE id = ?", (session["usuario_id"],))
+    usuario = query_one("SELECT id, nome, username, perfil, ativo, foto_perfil FROM usuarios WHERE id = ?", (session["usuario_id"],))
     if not usuario:
         session.clear()
         return redirect(url_for("auth_bp.login"))
 
-    return render_template("perfil.html", usuario=usuario)
+    usuarios = []
+    if eh_admin():
+        usuarios = query_all("SELECT id, nome, username, perfil, ativo, foto_perfil, criado_em FROM usuarios ORDER BY nome ASC")
+
+    return render_template("perfil.html", usuario=usuario, usuarios=usuarios)
 
 
 @auth_bp.route("/perfil/senha", methods=["POST"])
@@ -90,6 +119,24 @@ def alterar_senha():
     return redirect(url_for("auth_bp.perfil"))
 
 
+@auth_bp.route("/perfil/foto", methods=["POST"])
+def atualizar_foto_perfil():
+    if not usuario_logado():
+        return redirect(url_for("auth_bp.login"))
+
+    try:
+        caminho = salvar_foto_usuario(request.files.get("foto_perfil"), session["usuario_id"])
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirect(url_for("auth_bp.perfil"))
+
+    execute("UPDATE usuarios SET foto_perfil = ? WHERE id = ?", (caminho, session["usuario_id"]))
+    session["usuario_foto"] = caminho
+    registrar_log("atualizar_foto", "usuario", session["usuario_id"], "Usuario atualizou a foto de perfil")
+    flash("Foto de perfil atualizada.", "sucesso")
+    return redirect(url_for("auth_bp.perfil"))
+
+
 @auth_bp.route("/usuarios")
 def usuarios():
     if not usuario_logado():
@@ -98,15 +145,14 @@ def usuarios():
         flash("Apenas administradores podem gerenciar usuários.", "erro")
         return redirect(url_for("dashboard_bp.dashboard"))
 
-    lista_usuarios = query_all("SELECT id, nome, username, perfil, ativo, criado_em FROM usuarios ORDER BY nome ASC")
-    return render_template("usuarios.html", usuarios=lista_usuarios)
+    return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
 
 @auth_bp.route("/usuarios/novo", methods=["POST"])
 def novo_usuario():
     if not usuario_logado() or not eh_admin():
         flash("Apenas administradores podem criar usuários.", "erro")
-        return redirect(url_for("auth_bp.usuarios"))
+        return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
     nome = request.form.get("nome", "").strip()
     username = request.form.get("username", "").strip()
@@ -118,11 +164,11 @@ def novo_usuario():
 
     if not nome or not username or len(senha) < 6:
         flash("Informe nome, username e uma senha com pelo menos 6 caracteres.", "erro")
-        return redirect(url_for("auth_bp.usuarios"))
+        return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
     if query_one("SELECT id FROM usuarios WHERE username = ?", (username,)):
         flash("Já existe um usuário com esse username.", "erro")
-        return redirect(url_for("auth_bp.usuarios"))
+        return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
     usuario_id = execute(
         """
@@ -133,40 +179,97 @@ def novo_usuario():
     )
     registrar_log("criar_usuario", "usuario", usuario_id, f"Usuário {username} criado")
     flash("Usuário criado com sucesso.", "sucesso")
-    return redirect(url_for("auth_bp.usuarios"))
+    return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
 
 @auth_bp.route("/usuarios/<int:usuario_id>/desativar", methods=["POST"])
 def desativar_usuario(usuario_id):
+    requisicao_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
     if not usuario_logado() or not eh_admin():
         flash("Apenas administradores podem desativar usuários.", "erro")
-        return redirect(url_for("auth_bp.usuarios"))
+        return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
     if usuario_id == session.get("usuario_id"):
         flash("Você não pode desativar seu próprio usuário.", "erro")
-        return redirect(url_for("auth_bp.usuarios"))
+        return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
-    execute("UPDATE usuarios SET ativo = 0 WHERE id = ?", (usuario_id,))
+    usuario = query_one("SELECT id, ativo FROM usuarios WHERE id = ?", (usuario_id,))
+    if not usuario:
+        if requisicao_ajax:
+            return jsonify({"ok": False, "message": "Usuario nao encontrado."}), 404
+        flash("Usuario nao encontrado.", "erro")
+        return redirect(url_for("auth_bp.perfil") + "#usuarios")
+
+    if not usuario["ativo"]:
+        if requisicao_ajax:
+            return jsonify({"ok": True, "message": "Usuario ja estava inativo."})
+        flash("Usuario ja estava inativo.", "sucesso")
+        return redirect(url_for("auth_bp.perfil") + "#usuarios")
+
+    execute("UPDATE usuarios SET ativo = 0 WHERE id = ? AND ativo = 1", (usuario_id,))
     registrar_log("desativar_usuario", "usuario", usuario_id, "Usuário desativado")
     flash("Usuário desativado.", "sucesso")
-    return redirect(url_for("auth_bp.usuarios"))
+    return redirect(url_for("auth_bp.perfil") + "#usuarios")
+
+
+@auth_bp.route("/usuarios/<int:usuario_id>/reativar", methods=["POST"])
+def reativar_usuario(usuario_id):
+    if not usuario_logado() or not eh_admin():
+        flash("Apenas administradores podem reativar usuarios.", "erro")
+        return redirect(url_for("auth_bp.perfil") + "#usuarios")
+
+    usuario = query_one("SELECT id FROM usuarios WHERE id = ?", (usuario_id,))
+    if not usuario:
+        flash("Usuario nao encontrado.", "erro")
+        return redirect(url_for("auth_bp.perfil") + "#usuarios")
+
+    execute("UPDATE usuarios SET ativo = 1 WHERE id = ?", (usuario_id,))
+    registrar_log("reativar_usuario", "usuario", usuario_id, "Usuario reativado")
+    flash("Usuario reativado.", "sucesso")
+    return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
 
 @auth_bp.route("/usuarios/<int:usuario_id>/resetar-senha", methods=["POST"])
 def resetar_senha_usuario(usuario_id):
     if not usuario_logado() or not eh_admin():
         flash("Apenas administradores podem redefinir senhas.", "erro")
-        return redirect(url_for("auth_bp.usuarios"))
+        return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
     nova_senha = request.form.get("nova_senha", "").strip()
     if len(nova_senha) < 6:
         flash("A nova senha precisa ter pelo menos 6 caracteres.", "erro")
-        return redirect(url_for("auth_bp.usuarios"))
+        return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
     execute("UPDATE usuarios SET senha_hash = ? WHERE id = ?", (gerar_hash_senha(nova_senha), usuario_id))
     registrar_log("resetar_senha", "usuario", usuario_id, "Senha redefinida pelo administrador")
     flash("Senha redefinida com sucesso.", "sucesso")
-    return redirect(url_for("auth_bp.usuarios"))
+    return redirect(url_for("auth_bp.perfil") + "#usuarios")
+
+
+@auth_bp.route("/usuarios/<int:usuario_id>/foto", methods=["POST"])
+def atualizar_foto_usuario(usuario_id):
+    if not usuario_logado() or not eh_admin():
+        flash("Apenas administradores podem alterar fotos de usuarios.", "erro")
+        return redirect(url_for("auth_bp.perfil") + "#usuarios")
+
+    usuario = query_one("SELECT id FROM usuarios WHERE id = ?", (usuario_id,))
+    if not usuario:
+        flash("Usuario nao encontrado.", "erro")
+        return redirect(url_for("auth_bp.perfil") + "#usuarios")
+
+    try:
+        caminho = salvar_foto_usuario(request.files.get("foto_perfil"), usuario_id)
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirect(url_for("auth_bp.perfil") + "#usuarios")
+
+    execute("UPDATE usuarios SET foto_perfil = ? WHERE id = ?", (caminho, usuario_id))
+    if usuario_id == session.get("usuario_id"):
+        session["usuario_foto"] = caminho
+    registrar_log("atualizar_foto_usuario", "usuario", usuario_id, "Foto de usuario atualizada pelo administrador")
+    flash("Foto do usuario atualizada.", "sucesso")
+    return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
 
 @auth_bp.route("/logout")

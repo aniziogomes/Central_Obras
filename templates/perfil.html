@@ -1,21 +1,27 @@
 {% extends "base.html" %}
 
-{% block title %}Perfil - Central de Obras{% endblock %}
+{% block title %}Configurações da conta - Central de Obras{% endblock %}
 
 {% block content %}
 {% set perfil_label = {'admin': 'Admin', 'gestor': 'Gestor', 'leitura': 'Leitura'}.get(usuario.perfil, usuario.perfil) %}
 
 <div class="hdr">
   <div>
-    <h1>Perfil</h1>
-    <p>Conta e segurança do sistema</p>
+    <h1>Configurações da conta</h1>
+    <p>Conta, segurança e acesso ao sistema</p>
   </div>
 </div>
 
 <div class="profile-grid">
   <section class="card profile-card profile-identity-card">
     <div class="profile-identity">
-      <div class="profile-avatar-lg">{{ usuario.nome[0] | upper }}</div>
+      <div class="profile-avatar-lg">
+        {% if usuario.foto_perfil %}
+        <img src="{{ usuario.foto_perfil }}" alt="Foto de {{ usuario.nome }}">
+        {% else %}
+        {{ usuario.nome[0] | upper }}
+        {% endif %}
+      </div>
       <div class="profile-identity-text">
         <span class="profile-overline">Usuário conectado</span>
         <h2>{{ usuario.nome }}</h2>
@@ -23,12 +29,20 @@
         <span class="profile-role-badge profile-role-badge--{{ usuario.perfil }}">{{ perfil_label }}</span>
       </div>
     </div>
+    <form method="POST" action="{{ url_for('auth_bp.atualizar_foto_perfil') }}" enctype="multipart/form-data"
+      class="profile-photo-form">
+      <label class="form-field">
+        <span>Foto do perfil</span>
+        <input type="file" name="foto_perfil" accept="image/*" required>
+      </label>
+      <button type="submit" class="btn btn-ghost">Atualizar foto</button>
+    </form>
   </section>
 
-  <section class="card profile-card profile-card--wide" id="trocar-senha">
+  <section class="card profile-card profile-card--wide" id="seguranca">
     <div class="card-hdr">
       <div>
-        <div class="card-title">Trocar senha</div>
+        <div class="card-title">Segurança da conta</div>
         <div class="card-subtitle">Atualize sua senha de acesso</div>
       </div>
     </div>
@@ -47,9 +61,175 @@
         <input type="password" name="confirmar_senha" autocomplete="new-password" minlength="6" required>
       </label>
       <div class="profile-form-actions">
-        <button type="submit" class="btn btn-primary">Salvar nova senha</button>
+        <button type="submit" class="btn btn-primary">Salvar senha</button>
       </div>
     </form>
   </section>
 </div>
+
+{% if eh_admin() %}
+<section class="card usuarios-create-card" id="usuarios">
+  <div class="card-hdr">
+    <div>
+      <div class="card-title">Usuários</div>
+      <div class="card-subtitle">Controle de acesso dentro das configurações da conta</div>
+    </div>
+  </div>
+
+  <form method="POST" action="{{ url_for('auth_bp.novo_usuario') }}" class="usuarios-create-form">
+    <label class="form-field">
+      <span>Nome</span>
+      <input type="text" name="nome" placeholder="Nome do usuário" required>
+    </label>
+    <label class="form-field">
+      <span>Username</span>
+      <input type="text" name="username" placeholder="usuario.login" required>
+    </label>
+    <label class="form-field">
+      <span>Perfil</span>
+      <select name="perfil" required>
+        <option value="gestor">Gestor</option>
+        <option value="leitura">Leitura</option>
+        <option value="admin">Admin</option>
+      </select>
+    </label>
+    <label class="form-field">
+      <span>Senha inicial</span>
+      <input type="password" name="senha" minlength="6" placeholder="Mínimo 6 caracteres" required>
+    </label>
+    <div class="usuarios-create-actions">
+      <button type="submit" class="btn btn-primary">Criar usuário</button>
+    </div>
+  </form>
+</section>
+
+<section class="card usuarios-list-card">
+  <div class="card-hdr">
+    <div>
+      <div class="card-title">Usuários cadastrados</div>
+      <div class="card-subtitle">Status, perfil e ações administrativas</div>
+    </div>
+  </div>
+
+  <div class="usuarios-table-wrap">
+    <table class="usuarios-table">
+      <thead>
+        <tr>
+          <th>Usuário</th>
+          <th>Perfil</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in usuarios %}
+        {% set item_perfil_label = {'admin': 'Admin', 'gestor': 'Gestor', 'leitura': 'Leitura'}.get(item.perfil,
+        item.perfil) %}
+        <tr>
+          <td>
+            <div class="usuarios-person">
+              <div class="usuarios-avatar">
+                {% if item.foto_perfil %}
+                <img src="{{ item.foto_perfil }}" alt="Foto de {{ item.nome }}">
+                {% else %}
+                {{ item.nome[0] | upper }}
+                {% endif %}
+              </div>
+              <div>
+                <strong>{{ item.nome }}</strong>
+                <span>@{{ item.username }}</span>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="profile-role-badge profile-role-badge--{{ item.perfil }}">{{ item_perfil_label }}</span>
+          </td>
+          <td>
+            <span class="status-pill {{ 'ok' if item.ativo else 'danger' }}">
+              {{ 'Ativo' if item.ativo else 'Inativo' }}
+            </span>
+          </td>
+          <td>
+            <div class="usuarios-actions">
+              <form method="POST" action="{{ url_for('auth_bp.atualizar_foto_usuario', usuario_id=item.id) }}"
+                enctype="multipart/form-data" class="usuarios-photo-form">
+                <input type="file" name="foto_perfil" accept="image/*" required>
+                <button type="submit" class="btn btn-secondary">Foto</button>
+              </form>
+
+              <form method="POST" action="{{ url_for('auth_bp.resetar_senha_usuario', usuario_id=item.id) }}"
+                class="usuarios-reset-form">
+                <input type="password" name="nova_senha" minlength="6" placeholder="Nova senha" required>
+                <button type="submit" class="btn btn-secondary">Redefinir</button>
+              </form>
+
+              {% if item.ativo %}
+              <form method="POST" action="{{ url_for('auth_bp.desativar_usuario', usuario_id=item.id) }}"
+                class="usuarios-disable-form">
+                <button type="submit" class="btn btn-danger" {% if item.id==session.get('usuario_id') %}disabled{% endif %}>
+                  Desativar
+                </button>
+              </form>
+              {% else %}
+              <form method="POST" action="{{ url_for('auth_bp.reativar_usuario', usuario_id=item.id) }}">
+                <button type="submit" class="btn btn-secondary">Reativar</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="usuarios-empty">Nenhum usuário cadastrado.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+  (function () {
+    document.querySelectorAll(".usuarios-disable-form").forEach(function (form) {
+      form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const button = form.querySelector("button[type='submit']");
+        if (!button || button.disabled) return;
+
+        button.disabled = true;
+        button.textContent = "Desativando";
+
+        try {
+          const response = await fetch(form.action, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "X-Requested-With": "XMLHttpRequest" }
+          });
+
+          if (!response.ok) {
+            let message = "Nao foi possivel desativar este usuario.";
+            try {
+              const data = await response.json();
+              if (data.message) message = data.message;
+            } catch (err) {
+              // Resposta HTML de redirect/login: usa mensagem padrao.
+            }
+            alert(message);
+            button.disabled = false;
+            button.textContent = "Desativar";
+            return;
+          }
+
+          window.location.href = "{{ url_for('auth_bp.perfil') }}#usuarios";
+        } catch (err) {
+          alert("Nao foi possivel desativar este usuario.");
+          button.disabled = false;
+          button.textContent = "Desativar";
+        }
+      });
+    });
+  })();
+</script>
+{% endif %}
 {% endblock %}

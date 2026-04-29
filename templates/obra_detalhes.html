@@ -6,77 +6,297 @@
 {% set fase_atual = obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else 'Nao definida' %}
 {% set margem_prevista = (obra.receita_total or 0) - (obra.orcamento or 0) %}
 {% set tem_custos_lancados = custos|length > 0 %}
+{% set valor_contrato = obra.receita_total or 0 %}
+{% set gasto_ultrapassou = custo_total > valor_contrato and valor_contrato > 0 %}
+{% set saldo_negativo = margem < 0 %}
+{% set percentual_orcamento = (custo_total / valor_contrato * 100) if valor_contrato > 0 else 0 %}
+{% set percentual_orcamento_barra = 100 if percentual_orcamento > 100 else percentual_orcamento %}
+{% set foto_capa = obra.foto_capa if obra.foto_capa is defined and obra.foto_capa else '' %}
+{% set entrega_real = obra.data_fim_real if obra.data_fim_real is defined and obra.data_fim_real else '' %}
+{% if not entrega_real and (obra.status or '')|lower == 'concluida' %}
+{% set entrega_real = obra.data_fim_prevista %}
+{% endif %}
 
 <div class="obra-view-page obra-detalhes-page">
     <div class="hdr">
         <div>
-            <h1>Detalhes da obra</h1>
+            <h1>Portal do cliente</h1>
             <p>{{ obra.nome }} · {{ obra.codigo }}</p>
         </div>
         <div class="hdr-right">
-            <a href="{{ url_for('obras_bp.obras') }}" class="btn btn-ghost">Voltar para obras</a>
-            <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra.codigo) }}" class="btn btn-primary">Atualizar canteiro</a>
+            <a href="{{ url_for('obras_bp.obras') }}" class="btn btn-ghost">← Voltar para obras</a>
         </div>
     </div>
 
-    <div class="obra-detalhes-hero card">
-        <div>
-            <div class="obra-view-kicker">Resumo executivo</div>
-            <h2>{{ obra.nome }}</h2>
-            <div class="obra-view-subtitle">
-                <span class="obra-view-code">{{ obra.codigo }}</span>
-                <span>{{ formatar_tipo_obra(obra.tipo_obra) }}</span>
-                <span>{{ obra.tipologia or "-" }}</span>
-                <span class="badge {{ obra.status }}">{{ obra.status or "-" }}</span>
-                <span class="obra-fase-pill">{{ fase_atual }}</span>
+    <div class="obra-detalhes-hero card obra-detalhes-hero--portal">
+        <div class="obra-detalhes-hero-main">
+            <div class="obra-detalhes-cover">
+                {% if foto_capa %}
+                <img src="{{ foto_capa }}" alt="{{ obra.nome }}">
+                {% else %}
+                <div class="obra-detalhes-cover-placeholder">{{ (obra.nome or 'Obra')[:1] }}</div>
+                {% endif %}
+            </div>
+            <div class="obra-detalhes-identity">
+                <div class="obra-detalhes-title-row">
+                    <h2>{{ obra.nome }}</h2>
+                    <span class="obra-view-code">{{ obra.codigo }}</span>
+                </div>
+                <div class="obra-view-subtitle obra-detalhes-subtitle--portal">
+                    <span>{{ formatar_tipo_obra(obra.tipo_obra) }}</span>
+                    <span>{{ obra.tipologia or "-" }}</span>
+                    <span>{{ obra.area_m2 or 0 }} m²</span>
+                </div>
+                <div class="obra-detalhes-status-row">
+                    <span class="badge {{ obra.status }}">{{ obra.status or "-" }}</span>
+                    <span class="obra-fase-pill">{{ fase_atual }}</span>
+                    {% if obra.token_publico is defined and obra.token_publico %}
+                    <span class="obra-detalhes-link-status">Link ativo</span>
+                    {% endif %}
+                </div>
             </div>
         </div>
-        <div class="obra-detalhes-progress">
-            <span>Conclusao</span>
-            <strong>{{ (obra.progresso_percentual or 0)|round(1) }}%</strong>
-            <div class="progress-bar-bg">
-                <div class="progress-bar-fill progress-dinamica" data-width="{{ obra.progresso_percentual or 0 }}"></div>
+        <div class="obra-detalhes-hero-side">
+            <div class="obra-detalhes-progress obra-detalhes-progress--portal">
+                <span>Conclusão da obra</span>
+                <strong>{{ (obra.progresso_percentual or 0)|round(1) }}%</strong>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill progress-dinamica" data-width="{{ obra.progresso_percentual or 0 }}">
+                    </div>
+                </div>
+            </div>
+            <div class="obra-detalhes-date-strip">
+                <div><span>Início da obra</span><strong>{{ formatar_data(obra.data_inicio, "-") }}</strong></div>
+                <div><span>Entrega prevista</span><strong>{{ formatar_data(obra.data_fim_prevista, "-") }}</strong>
+                </div>
+                <div><span>Entrega real</span><strong>{{ formatar_data(entrega_real, "-") }}</strong></div>
             </div>
         </div>
     </div>
 
     <div class="obra-detalhes-meta-strip">
         <div class="obra-detalhes-meta-item"><span>Fase</span><strong>{{ fase_atual }}</strong></div>
-        <div class="obra-detalhes-meta-item"><span>Entrega</span><strong>{{ obra.data_fim_prevista or "-" }}</strong></div>
+        <div class="obra-detalhes-meta-item"><span>Entrega</span><strong>{{ formatar_data(obra.data_fim_prevista) }}</strong></div>
         <div class="obra-detalhes-meta-item"><span>Área</span><strong>{{ obra.area_m2 or 0 }} m²</strong></div>
         <div class="obra-detalhes-meta-item"><span>Galeria</span><strong>{{ fotos_obra|length }} foto(s)</strong></div>
     </div>
 
-    <div class="obra-detalhes-kpi-section">
+    <div class="obra-detalhes-sticky-suite">
+        <section class="obra-sticky-finance-summary" aria-label="Resumo financeiro da obra">
+            <div class="obra-sticky-finance-cards">
+                <div class="obra-sticky-finance-card obra-sticky-finance-card--contract">
+                    <span>Valor do contrato</span>
+                    <strong>{{ formatar_moeda(obra.receita_total) }}</strong>
+                </div>
+                <div class="obra-sticky-finance-card obra-sticky-finance-card--spent">
+                    <span>Gasto ate hoje</span>
+                    <strong class="{% if gasto_ultrapassou %}valor-negativo{% endif %}">{{ formatar_moeda(custo_total) }}</strong>
+                </div>
+                <div class="obra-sticky-finance-card obra-sticky-finance-card--balance">
+                    <span>Saldo disponivel</span>
+                    <strong class="{% if margem >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">{{ formatar_moeda(margem) }}</strong>
+                </div>
+            </div>
+            <div class="obra-sticky-budget-progress {% if gasto_ultrapassou %}is-danger{% endif %}">
+                <div>
+                    <span>Uso do orçamento</span>
+                    <strong>{{ '%.1f'|format(percentual_orcamento) }}% utilizado do orçamento</strong>
+                </div>
+                <div class="obra-budget-progress-track">
+                    <div class="obra-budget-progress-fill" style="width: {{ percentual_orcamento_barra }}%;"></div>
+                </div>
+            </div>
+        </section>
+
+        <div class="obra-detalhes-tabs-bar" aria-label="Seções da obra">
+            <button type="button" class="active" data-obra-detail-tab="visao-geral">Visão Geral</button>
+            <button type="button" data-obra-detail-tab="financeiro">Financeiro</button>
+            <button type="button" data-obra-detail-tab="cronograma">Cronograma</button>
+            <button type="button" data-obra-detail-tab="medicoes">Medições</button>
+            <button type="button" data-obra-detail-tab="despesas">Despesas</button>
+            <button type="button" data-obra-detail-tab="equipe">Equipe</button>
+        </div>
+    </div>
+
+    <section class="obra-overview-grid" id="visao-geral" data-obra-detail-panel="visao-geral">
+        <div class="card obra-section-card obra-overview-progress-card">
+            <div class="card-hdr">
+                <div>
+                    <div class="card-title">Progresso da obra</div>
+                    <div class="obra-card-subtitle">Acompanhamento físico-financeiro</div>
+                </div>
+            </div>
+            <div class="obra-overview-progress-body">
+                <div class="obra-progress-ring" style="--pct: {{ (obra.progresso_percentual or 0) * 3.6 }}deg;">
+                    <div>
+                        <strong>{{ (obra.progresso_percentual or 0)|round(0)|int }}%</strong>
+                        <span>{{ obra.status or fase_atual }}</span>
+                    </div>
+                </div>
+                <div class="obra-overview-progress-lines">
+                    <div>
+                        <div class="obra-overview-line-top">
+                            <span>Progresso físico</span>
+                            <strong>{{ (obra.progresso_percentual or 0)|round(1) }}%</strong>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill progress-dinamica" data-width="{{ obra.progresso_percentual or 0 }}"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="obra-overview-line-top">
+                            <span>Progresso financeiro</span>
+                            <strong>{{ '%.1f'|format(percentual_orcamento) }}%</strong>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" style="width: {{ percentual_orcamento_barra }}%;"></div>
+                        </div>
+                    </div>
+                    <div class="obra-overview-dates">
+                        <div><span>Conclusão da obra</span><strong>{{ formatar_data(entrega_real or obra.data_fim_prevista, "-") }}</strong></div>
+                        <div><span>Galeria</span><strong>{{ fotos_obra|length }} foto(s)</strong></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card obra-section-card obra-overview-timeline-card" id="cronograma">
+            <div class="card-hdr">
+                <div class="card-title">Linha do tempo</div>
+            </div>
+            <div class="obra-overview-timeline">
+                <div class="obra-overview-timeline-item">
+                    <span class="is-start"></span>
+                    <div><strong>Início da obra</strong><small>{{ formatar_data(obra.data_inicio, "-") }}</small></div>
+                </div>
+                {% for item in medicoes[:3] %}
+                <div class="obra-overview-timeline-item">
+                    <span></span>
+                    <div>
+                        <strong>{{ item.medicao_nome or item.etapa or "Medição" }}</strong>
+                        <small>{{ formatar_data(item.data_medicao, "-") }}{% if item.valor_realizado %} - {{ formatar_moeda(item.valor_realizado) }}{% endif %}</small>
+                    </div>
+                </div>
+                {% endfor %}
+                <div class="obra-overview-timeline-item">
+                    <span></span>
+                    <div><strong>{{ fase_atual }}</strong><small>{{ formatar_data(entrega_real or obra.data_fim_prevista, "-") }}</small></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="card obra-section-card obra-section-card--full obra-latest-expenses" id="despesas"
+        data-obra-detail-panel="despesas">
+        <div class="card-hdr">
+            <div class="card-title">Últimas despesas</div>
+            {% if eh_gestor() %}<button type="button" class="btn btn-small btn-primary" data-open-quick-modal="modalQuickCusto">+ Custo</button>{% endif %}
+        </div>
+        {% if custos %}
+        <div class="obra-expenses-table">
+            <div class="obra-expenses-head">
+                <span>Data</span><span>Descrição</span><span>Categoria</span><span>Fornecedor</span><span>Valor</span><span>Status</span>
+            </div>
+            {% for item in custos[:5] %}
+            <div class="obra-expenses-row">
+                <span>{{ formatar_data(item.data_lancamento, "-") }}</span>
+                <span>{{ item.descricao }}</span>
+                <span>{{ item.categoria }}</span>
+                <span>{{ item.fornecedor or "-" }}</span>
+                <strong>{{ formatar_moeda(item.valor_total) }}</strong>
+                <span class="obra-expense-status">Lançado</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}<div class="obra-empty-box">Sem despesas lançadas.</div>{% endif %}
+    </section>
+
+    <section class="card obra-section-card obra-section-card--full obra-cronograma-panel" id="cronograma"
+        data-obra-detail-panel="cronograma">
+        <div class="card-hdr">
+            <div>
+                <div class="card-title">Cronograma</div>
+                <div class="obra-card-subtitle">Etapas e marcos da obra.</div>
+            </div>
+        </div>
+        <div class="obra-overview-timeline">
+            <div class="obra-overview-timeline-item">
+                <span class="is-start"></span>
+                <div><strong>Início da obra</strong><small>{{ formatar_data(obra.data_inicio, "-") }}</small></div>
+            </div>
+            {% for item in medicoes %}
+            <div class="obra-overview-timeline-item">
+                <span></span>
+                <div>
+                    <strong>{{ item.medicao_nome or item.etapa or "Medição" }}</strong>
+                    <small>{{ formatar_data(item.data_medicao, "-") }}{% if item.percentual %} - {{ item.percentual }}%{% endif %}{% if item.valor_realizado %} - {{ formatar_moeda(item.valor_realizado) }}{% endif %}</small>
+                </div>
+            </div>
+            {% endfor %}
+            <div class="obra-overview-timeline-item">
+                <span></span>
+                <div><strong>Entrega prevista</strong><small>{{ formatar_data(obra.data_fim_prevista, "-") }}</small></div>
+            </div>
+        </div>
+    </section>
+
+    <div class="obra-detalhes-kpi-section" id="financeiro" data-obra-detail-panel="financeiro">
         <div class="obra-detalhes-section-title">
             <span>Financeiro</span>
             {% if not tem_custos_lancados %}
             <small>Sem gastos registrados; o saldo ainda considera apenas o valor do contrato.</small>
             {% endif %}
         </div>
-        <div class="obra-detalhes-kpis obra-detalhes-kpis--financeiro">
-            <div class="obra-card-dashboard-item">
-                <span>Contrato</span>
-                <strong>{{ formatar_moeda(obra.receita_total) }}</strong>
+        <div class="obra-finance-exec">
+            <div class="obra-finance-exec-summary">
+                <div>
+                    <span>Receita prevista</span>
+                    <strong>{{ formatar_moeda(obra.receita_total) }}</strong>
+                </div>
+                <div>
+                    <span>Orçamento base</span>
+                    <strong>{{ formatar_moeda(obra.orcamento) }}</strong>
+                </div>
+                <div>
+                    <span>Custo realizado</span>
+                    <strong class="{% if gasto_ultrapassou %}valor-negativo{% endif %}">{{ formatar_moeda(custo_total) }}</strong>
+                </div>
+                <div>
+                    <span>Margem projetada</span>
+                    <strong class="{% if margem_prevista >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">
+                        {{ formatar_moeda(margem_prevista) }}
+                    </strong>
+                </div>
             </div>
-            <div class="obra-card-dashboard-item">
-                <span>Gasto ate hoje</span>
-                <strong>{{ formatar_moeda(custo_total) }}</strong>
-                {% if not tem_custos_lancados %}
-                <small class="obra-kpi-note">Sem gastos registrados</small>
-                {% endif %}
-            </div>
-            <div class="obra-card-dashboard-item">
-                <span>Saldo disponivel</span>
-                <strong class="{% if margem >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">
-                    {{ formatar_moeda(margem) }}
-                </strong>
+            <div class="obra-finance-exec-visual">
+                <div class="obra-finance-exec-row">
+                    <div><span>Receita</span><strong>{{ formatar_moeda(obra.receita_total) }}</strong></div>
+                    <div class="obra-finance-bar"><span style="width: 100%;"></span></div>
+                </div>
+                <div class="obra-finance-exec-row">
+                    <div><span>Custo</span><strong>{{ formatar_moeda(custo_total) }}</strong></div>
+                    <div class="obra-finance-bar obra-finance-bar--cost"><span style="width: {{ percentual_orcamento_barra }}%;"></span></div>
+                </div>
+                <div class="obra-finance-exec-row">
+                    <div><span>Saldo</span><strong>{{ formatar_moeda(margem) }}</strong></div>
+                    <div class="obra-finance-bar obra-finance-bar--balance"><span style="width: {{ (100 - percentual_orcamento_barra) if percentual_orcamento_barra < 100 else 0 }}%;"></span></div>
+                </div>
+                <div class="obra-finance-exec-note {% if gasto_ultrapassou %}is-danger{% endif %}">
+                    <span>{{ '%.1f'|format(percentual_orcamento) }}% utilizado do orçamento</span>
+                    {% if gasto_ultrapassou %}
+                    <strong>Gasto acima do contrato</strong>
+                    {% elif valor_contrato <= 0 %}
+                    <strong>Cadastre o valor do contrato</strong>
+                    {% else %}
+                    <strong>{{ formatar_moeda(margem) }} disponível</strong>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
 
     <div class="obra-detalhes-chart-grid">
-        <div class="card chart-card obra-detalhes-chart-card">
+        <div class="card chart-card obra-detalhes-chart-card" data-obra-detail-panel="financeiro">
             <div class="card-hdr">
                 <div>
                     <div class="card-title">Custos por categoria</div>
@@ -90,7 +310,7 @@
             {% endif %}
         </div>
 
-        <div class="card chart-card obra-detalhes-chart-card">
+        <div class="card chart-card obra-detalhes-chart-card" id="medicoes" data-obra-detail-panel="medicoes">
             <div class="card-hdr">
                 <div>
                     <div class="card-title">Evolução das medições</div>
@@ -116,7 +336,7 @@
     </div>
 
     <div class="obra-sections-grid">
-        <div class="card obra-section-card">
+        <div class="card obra-section-card" data-obra-detail-panel="financeiro">
             <div class="card-hdr">
                 <div class="card-title">Custos importados</div>
                 <div class="obra-card-subtitle">{{ custos_importados|length }} item(ns)</div>
@@ -130,7 +350,7 @@
             </div>
             {% else %}<div class="obra-empty-box">Sem custos importados.</div>{% endif %}
         </div>
-        <div class="card obra-section-card">
+        <div class="card obra-section-card" data-obra-detail-panel="medicoes">
             <div class="card-hdr">
                 <div>
                     <div class="card-title">Medicoes</div>
@@ -149,7 +369,7 @@
         </div>
     </div>
 
-    <div class="card obra-section-card obra-section-card--full">
+    <div class="card obra-section-card obra-section-card--full obra-custos-lancados-old">
         <div class="card-hdr">
             <div>
                 <div class="card-title">Custos lancados</div>
@@ -168,7 +388,7 @@
     </div>
 
     <div class="obra-sections-grid">
-        <div class="card obra-section-card">
+        <div class="card obra-section-card" id="equipe" data-obra-detail-panel="equipe">
             <div class="card-hdr">
                 <div>
                     <div class="card-title">Equipe</div>
@@ -185,7 +405,7 @@
             </div>
             {% else %}<div class="obra-empty-box">Sem equipe cadastrada.</div>{% endif %}
         </div>
-        <div class="card obra-section-card">
+        <div class="card obra-section-card" data-obra-detail-panel="cronograma">
             <div class="card-hdr">
                 <div>
                     <div class="card-title">Materiais e entregas</div>
@@ -268,11 +488,768 @@
 
 {% endif %}
 
+<style>
+    .obra-detalhes-page>.obra-detalhes-meta-strip {
+        display: none;
+    }
+
+    .obra-detalhes-sticky-suite {
+        position: sticky;
+        top: 0;
+        z-index: 80;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        margin: 6px 0 12px;
+        padding-top: 1px;
+        background:
+            linear-gradient(180deg, rgba(30, 33, 40, .98), rgba(30, 33, 40, .92));
+        backdrop-filter: blur(14px);
+    }
+
+    .obra-sticky-finance-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .obra-sticky-finance-cards {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .obra-sticky-finance-card,
+    .obra-sticky-budget-progress {
+        min-width: 0;
+        border: 1px solid rgba(255, 255, 255, .08);
+        border-radius: 8px;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, .032), rgba(255, 255, 255, .008)),
+            var(--bg2);
+        box-shadow: var(--premium-shadow);
+    }
+
+    .obra-sticky-finance-card {
+        padding: 16px 18px;
+        min-height: 92px;
+    }
+
+    .obra-sticky-finance-card--contract {
+        border-top-color: rgba(240, 117, 53, .55);
+    }
+
+    .obra-sticky-finance-card--spent {
+        border-top-color: rgba(232, 66, 78, .55);
+    }
+
+    .obra-sticky-finance-card--balance {
+        border-top-color: rgba(40, 181, 106, .55);
+    }
+
+    .obra-sticky-finance-card span,
+    .obra-sticky-budget-progress span {
+        display: block;
+        color: var(--text2);
+        font-size: 11px;
+        font-weight: 850;
+        letter-spacing: .05em;
+        text-transform: uppercase;
+    }
+
+    .obra-sticky-finance-card strong {
+        display: block;
+        margin-top: 12px;
+        color: var(--text);
+        font-size: 24px;
+        line-height: 1.15;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .obra-sticky-budget-progress {
+        padding: 14px 18px;
+    }
+
+    .obra-sticky-budget-progress>div:first-child {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .obra-sticky-budget-progress strong {
+        color: var(--text);
+        font-size: 14px;
+    }
+
+    .obra-sticky-budget-progress .obra-budget-progress-track {
+        height: 10px;
+    }
+
+    .obra-detalhes-tabs-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 0 12px;
+        border: 1px solid rgba(255, 255, 255, .08);
+        border-radius: 8px;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, .032), rgba(255, 255, 255, .008)),
+            var(--bg2);
+        overflow-x: auto;
+    }
+
+    .obra-detalhes-tabs-bar button {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        min-height: 42px;
+        padding: 0 14px;
+        border: 0;
+        background: transparent;
+        color: var(--text2);
+        font-size: 12px;
+        font-weight: 750;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+
+    .obra-detalhes-tabs-bar button.active {
+        color: #67a6ff;
+    }
+
+    .obra-detalhes-tabs-bar button.active::after {
+        content: "";
+        position: absolute;
+        right: 10px;
+        bottom: 0;
+        left: 10px;
+        height: 2px;
+        border-radius: 999px;
+        background: #2f7df0;
+    }
+
+    [data-obra-detail-panel].is-tab-hidden {
+        display: none !important;
+    }
+
+    .obra-finance-exec {
+        display: grid;
+        grid-template-columns: minmax(0, .95fr) minmax(320px, 1.05fr);
+        gap: 14px;
+        margin-top: 12px;
+    }
+
+    .obra-finance-exec-summary {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .obra-finance-exec-summary>div,
+    .obra-finance-exec-visual {
+        min-width: 0;
+        padding: 16px;
+        border: 1px solid rgba(255, 255, 255, .08);
+        border-radius: 8px;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, .032), rgba(255, 255, 255, .008)),
+            var(--bg2);
+    }
+
+    .obra-finance-exec-summary span,
+    .obra-finance-exec-row span,
+    .obra-finance-exec-note span {
+        display: block;
+        color: var(--text2);
+        font-size: 10px;
+        font-weight: 850;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+
+    .obra-finance-exec-summary strong {
+        display: block;
+        margin-top: 9px;
+        color: var(--text);
+        font-size: 22px;
+        line-height: 1.15;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .obra-finance-exec-visual {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .obra-finance-exec-row {
+        display: grid;
+        grid-template-columns: 150px minmax(0, 1fr);
+        align-items: center;
+        gap: 14px;
+    }
+
+    .obra-finance-exec-row strong {
+        display: block;
+        margin-top: 5px;
+        color: var(--text);
+        font-size: 13px;
+    }
+
+    .obra-finance-bar {
+        height: 10px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, .08);
+    }
+
+    .obra-finance-bar span {
+        display: block;
+        height: 100%;
+        max-width: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #2f7df0, #70a9ff);
+    }
+
+    .obra-finance-bar--cost span {
+        background: linear-gradient(90deg, #f07535, #ffb06d);
+    }
+
+    .obra-finance-bar--balance span {
+        background: linear-gradient(90deg, #38bf72, #7ae4a6);
+    }
+
+    .obra-finance-exec-note {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(255, 255, 255, .07);
+    }
+
+    .obra-finance-exec-note strong {
+        color: var(--text);
+        font-size: 13px;
+    }
+
+    .obra-finance-exec-note.is-danger strong {
+        color: #ff8d96;
+    }
+
+    .obra-overview-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr);
+        gap: 14px;
+        margin-bottom: 14px;
+    }
+
+    .obra-overview-progress-card,
+    .obra-overview-timeline-card,
+    .obra-latest-expenses {
+        border-radius: 8px;
+    }
+
+    .obra-overview-progress-body {
+        display: grid;
+        grid-template-columns: 168px minmax(0, 1fr);
+        align-items: center;
+        gap: 26px;
+        min-height: 190px;
+    }
+
+    .obra-progress-ring {
+        width: 136px;
+        height: 136px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background:
+            radial-gradient(circle, var(--bg2) 55%, transparent 56%),
+            conic-gradient(#2f7df0 var(--pct), rgba(255, 255, 255, .08) 0);
+    }
+
+    .obra-progress-ring div {
+        text-align: center;
+    }
+
+    .obra-progress-ring strong {
+        display: block;
+        color: var(--text);
+        font-size: 28px;
+        line-height: 1;
+    }
+
+    .obra-progress-ring span {
+        display: block;
+        margin-top: 7px;
+        color: var(--text2);
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .obra-overview-progress-lines {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        min-width: 0;
+    }
+
+    .obra-overview-line-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 750;
+    }
+
+    .obra-overview-line-top strong {
+        font-size: 12px;
+    }
+
+    .obra-overview-dates {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        color: var(--text2);
+        font-size: 12px;
+    }
+
+    .obra-overview-dates span {
+        display: block;
+        margin-bottom: 4px;
+    }
+
+    .obra-overview-dates strong {
+        color: var(--text);
+        font-size: 13px;
+    }
+
+    .obra-overview-timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 4px 0;
+    }
+
+    .obra-overview-timeline-item {
+        display: grid;
+        grid-template-columns: 28px minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+    }
+
+    .obra-overview-timeline-item>span {
+        width: 22px;
+        height: 22px;
+        border-radius: 8px;
+        background: rgba(40, 181, 106, .18);
+        border: 1px solid rgba(40, 181, 106, .25);
+        position: relative;
+    }
+
+    .obra-overview-timeline-item>span::after {
+        content: "";
+        position: absolute;
+        inset: 6px;
+        border-radius: 50%;
+        background: #48d17f;
+    }
+
+    .obra-overview-timeline-item>span.is-start {
+        background: rgba(47, 125, 240, .18);
+        border-color: rgba(47, 125, 240, .28);
+    }
+
+    .obra-overview-timeline-item>span.is-start::after {
+        background: #67a6ff;
+    }
+
+    .obra-overview-timeline-item strong,
+    .obra-overview-timeline-item small {
+        display: block;
+    }
+
+    .obra-overview-timeline-item strong {
+        color: var(--text);
+        font-size: 13px;
+        margin-bottom: 3px;
+    }
+
+    .obra-overview-timeline-item small {
+        color: var(--text2);
+        font-size: 12px;
+    }
+
+    .obra-latest-expenses {
+        margin-bottom: 18px;
+        overflow: hidden;
+    }
+
+    .obra-expenses-table {
+        min-width: 760px;
+    }
+
+    .obra-expenses-head,
+    .obra-expenses-row {
+        display: grid;
+        grid-template-columns: 110px minmax(180px, 1.3fr) minmax(140px, .8fr) minmax(140px, .8fr) 120px 90px;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .obra-expenses-head {
+        min-height: 42px;
+        padding: 0 14px;
+        color: var(--text2);
+        background: rgba(255, 255, 255, .035);
+        font-size: 10px;
+        font-weight: 850;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+
+    .obra-expenses-row {
+        min-height: 44px;
+        padding: 0 14px;
+        border-top: 1px solid rgba(255, 255, 255, .055);
+        color: var(--text);
+        font-size: 12px;
+    }
+
+    .obra-expenses-row strong {
+        font-size: 12px;
+    }
+
+    .obra-expense-status {
+        justify-self: start;
+        padding: 4px 9px;
+        border-radius: 999px;
+        color: #6ee79c;
+        background: rgba(40, 181, 106, .13);
+        font-size: 11px;
+        font-weight: 800;
+    }
+
+    .obra-custos-lancados-old {
+        display: none;
+    }
+
+    .obra-detalhes-hero--portal {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 380px;
+        align-items: stretch;
+        gap: 18px;
+        min-height: 132px;
+        padding: 18px;
+        border-radius: 8px;
+    }
+
+    .obra-detalhes-hero-main {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        min-width: 0;
+    }
+
+    .obra-detalhes-cover,
+    .obra-detalhes-cover img,
+    .obra-detalhes-cover-placeholder {
+        width: 92px;
+        height: 92px;
+        border-radius: 8px;
+    }
+
+    .obra-detalhes-cover {
+        overflow: hidden;
+        flex: 0 0 auto;
+        background: var(--bg3);
+    }
+
+    .obra-detalhes-cover img {
+        display: block;
+        object-fit: cover;
+    }
+
+    .obra-detalhes-cover-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text);
+        font-size: 32px;
+        font-weight: 900;
+        background: linear-gradient(135deg, rgba(36, 104, 204, .38), rgba(232, 98, 26, .24));
+    }
+
+    .obra-detalhes-identity {
+        min-width: 0;
+    }
+
+    .obra-detalhes-title-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        margin-bottom: 8px;
+    }
+
+    .obra-detalhes-hero--portal h2 {
+        margin: 0;
+        min-width: 0;
+        color: var(--text);
+        font-size: 24px;
+        line-height: 1.15;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .obra-detalhes-subtitle--portal {
+        margin-bottom: 12px;
+    }
+
+    .obra-detalhes-subtitle--portal span:not(:last-child)::after {
+        content: "•";
+        margin-left: 8px;
+        color: var(--text3);
+    }
+
+    .obra-detalhes-status-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .obra-detalhes-link-status {
+        display: inline-flex;
+        align-items: center;
+        min-height: 22px;
+        padding: 0 9px;
+        border: 1px solid rgba(40, 181, 106, .28);
+        border-radius: 999px;
+        color: #6ee79c;
+        background: rgba(40, 181, 106, .12);
+        font-size: 11px;
+        font-weight: 800;
+    }
+
+    .obra-detalhes-hero-side {
+        display: grid;
+        grid-template-rows: 1fr auto;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .obra-detalhes-progress--portal {
+        align-self: stretch;
+        min-width: 0;
+        padding: 14px;
+        border: 1px solid rgba(255, 255, 255, .08);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, .025);
+    }
+
+    .obra-detalhes-progress--portal span,
+    .obra-detalhes-date-strip span {
+        display: block;
+        color: var(--text2);
+        font-size: 10px;
+        font-weight: 850;
+        letter-spacing: .03em;
+        line-height: 1.25;
+        text-transform: uppercase;
+    }
+
+    .obra-detalhes-progress--portal strong {
+        margin: 7px 0 10px;
+        color: var(--text);
+        font-size: 22px;
+        line-height: 1;
+    }
+
+    .obra-detalhes-progress--portal .progress-bar-bg {
+        height: 8px;
+    }
+
+    .obra-detalhes-date-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        border: 1px solid rgba(255, 255, 255, .08);
+        border-radius: 8px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, .018);
+    }
+
+    .obra-detalhes-date-strip div {
+        min-width: 0;
+        padding: 9px 10px;
+        border-left: 1px solid rgba(255, 255, 255, .065);
+    }
+
+    .obra-detalhes-date-strip div:first-child {
+        border-left: 0;
+    }
+
+    .obra-detalhes-date-strip strong {
+        display: block;
+        margin-top: 4px;
+        color: var(--text);
+        font-size: 13px;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    @media (max-width: 1100px) {
+        .obra-detalhes-hero--portal {
+            grid-template-columns: 1fr;
+        }
+
+        .obra-detalhes-hero-side {
+            grid-template-rows: auto;
+        }
+
+        .obra-overview-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .obra-finance-exec {
+            grid-template-columns: 1fr;
+        }
+
+        .obra-sticky-finance-cards {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 720px) {
+        .obra-detalhes-sticky-suite {
+            margin-top: 12px;
+        }
+
+        .obra-detalhes-tabs-bar {
+            padding: 0 6px;
+        }
+
+        .obra-detalhes-tabs-bar button {
+            padding: 0 10px;
+            font-size: 11px;
+        }
+
+        .obra-sticky-finance-card {
+            min-height: 78px;
+            padding: 13px 14px;
+        }
+
+        .obra-sticky-finance-card strong {
+            font-size: 20px;
+        }
+
+        .obra-sticky-budget-progress>div:first-child {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .obra-detalhes-hero-main {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .obra-detalhes-cover,
+        .obra-detalhes-cover img,
+        .obra-detalhes-cover-placeholder {
+            width: 100%;
+            height: 170px;
+        }
+
+        .obra-detalhes-title-row {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .obra-detalhes-hero--portal h2 {
+            white-space: normal;
+        }
+
+        .obra-detalhes-date-strip {
+            grid-template-columns: 1fr;
+        }
+
+        .obra-detalhes-date-strip div,
+        .obra-detalhes-date-strip div:first-child {
+            border-left: 0;
+            border-top: 1px solid rgba(255, 255, 255, .065);
+        }
+
+        .obra-detalhes-date-strip div:first-child {
+            border-top: 0;
+        }
+
+        .obra-overview-progress-body {
+            grid-template-columns: 1fr;
+            justify-items: center;
+            gap: 20px;
+        }
+
+        .obra-overview-progress-lines {
+            width: 100%;
+        }
+
+        .obra-latest-expenses {
+            overflow-x: auto;
+        }
+
+        .obra-finance-exec-summary,
+        .obra-finance-exec-row {
+            grid-template-columns: 1fr;
+        }
+
+        .obra-finance-exec-note {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+    }
+</style>
+
 <script>
     (function initObraDetalhes() {
         document.querySelectorAll(".progress-dinamica").forEach(function (el) {
             const width = Math.max(0, Math.min(100, Number(el.dataset.width || 0)));
             setTimeout(function () { el.style.width = `${width}%`; }, 60);
+        });
+
+        const detailTabs = document.querySelectorAll("[data-obra-detail-tab]");
+        const detailPanels = document.querySelectorAll("[data-obra-detail-panel]");
+        function ativarAbaDetalhes(alvo) {
+            detailTabs.forEach(function (tab) {
+                tab.classList.toggle("active", tab.dataset.obraDetailTab === alvo);
+            });
+            detailPanels.forEach(function (panel) {
+                panel.classList.toggle("is-tab-hidden", panel.dataset.obraDetailPanel !== alvo);
+            });
+            setTimeout(function () {
+                if (!window.Chart || !Chart.instances) return;
+                Object.values(Chart.instances).forEach(function (chart) {
+                    if (chart && typeof chart.resize === "function") chart.resize();
+                });
+            }, 80);
+        }
+        detailTabs.forEach(function (tab) {
+            tab.addEventListener("click", function () {
+                ativarAbaDetalhes(tab.dataset.obraDetailTab);
+            });
         });
 
         document.querySelectorAll("[data-open-quick-modal]").forEach(function (btn) {
@@ -429,6 +1406,7 @@
                     }
                 });
             }
+            ativarAbaDetalhes("visao-geral");
         });
     })();
 </script>

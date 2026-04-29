@@ -1,6 +1,6 @@
 from datetime import datetime
 from database import query_all, query_one
-from utils import calcular_media_fornecedor, formatar_moeda
+from utils import calcular_media_fornecedor, formatar_moeda, formatar_data
 from services.validators import data_no_periodo
 
 
@@ -106,15 +106,15 @@ def calcular_alertas(obra_ids_filtradas=None):
                     data_final = datetime.strptime(prazo, "%Y-%m-%d").date()
                     dias = (data_final - hoje).days
                     if dias < 0:
-                        contexto = f"Prazo: {prazo} · Atrasada há {abs(dias)} dia(s)"
+                        contexto = f"Prazo: {formatar_data(prazo)} · Atrasada há {abs(dias)} dia(s)"
                     else:
-                        contexto = f"Prazo: {prazo} · Restam {dias} dia(s)"
+                        contexto = f"Prazo: {formatar_data(prazo)} · Restam {dias} dia(s)"
                 except Exception:
-                    contexto = f"Prazo: {prazo}"
+                    contexto = f"Prazo: {formatar_data(prazo)}"
                 alerta["acao"] = "Ver cronograma"
 
             elif "atrasada" in mensagem_lower:
-                contexto = f"Status: atrasada" + (f" · Prazo: {prazo}" if prazo else "")
+                contexto = f"Status: atrasada" + (f" · Prazo: {formatar_data(prazo)}" if prazo else "")
                 alerta["acao"] = "Ver cronograma"
 
             elif "custo" in mensagem_lower and receita:
@@ -130,7 +130,7 @@ def calcular_alertas(obra_ids_filtradas=None):
                 alerta["acao"] = "Atualizar canteiro"
 
             elif not contexto:
-                contexto = f"Status: {obra['status'] or '-'}" + (f" · Prazo: {prazo}" if prazo else "")
+                contexto = f"Status: {obra['status'] or '-'}" + (f" · Prazo: {formatar_data(prazo)}" if prazo else "")
 
         elif "pagamento" in mensagem_lower:
             contexto = f"Profissional: {alerta['nome']} · Status: pendente"
@@ -231,7 +231,11 @@ def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="
             "tipo_obra": tipo_obra,
             "receita_contexto": receita_contexto,
             "status": obra["status"],
+            "fase_obra": obra["fase_obra"] if "fase_obra" in obra.keys() else "",
             "execucao": obra["progresso_percentual"] or 0,
+            "receita_total": obra["receita_total"] or 0,
+            "orcamento": obra["orcamento"] or 0,
+            "custo_realizado": custo_obra,
             "margem_valor": (obra["receita_total"] or 0) - custo_obra,
             "lucro_previsto": (obra["receita_total"] or 0) - (obra["orcamento"] or 0)
         })
@@ -348,6 +352,8 @@ def serializar_dashboard_json(dados, filtros):
             "tipo_obra": filtros.get("filtro_tipo_obra", ""),
             "data_inicio": filtros.get("data_inicio", ""),
             "data_fim": filtros.get("data_fim", ""),
+            "data_inicio_formatada": formatar_data(filtros.get("data_inicio", ""), ""),
+            "data_fim_formatada": formatar_data(filtros.get("data_fim", ""), ""),
         },
         "quick_strip": {
             "obras_filtradas": len(dados["obras"]),
@@ -387,6 +393,9 @@ def serializar_dashboard_json(dados, filtros):
         "margem_por_obra": [
             {
                 **item,
+                "receita_total_formatada": formatar_moeda(item["receita_total"]),
+                "orcamento_formatado": formatar_moeda(item["orcamento"]),
+                "custo_realizado_formatado": formatar_moeda(item["custo_realizado"]),
                 "lucro_previsto_formatado": formatar_moeda(item["lucro_previsto"]),
                 "margem_valor_formatado": formatar_moeda(item["margem_valor"]),
             }

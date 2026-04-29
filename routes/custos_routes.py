@@ -10,7 +10,7 @@ from services.validators import (
 )
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 from services.log_service import registrar_log
-from utils import formatar_moeda
+from utils import formatar_moeda, formatar_data
 
 custos_bp = Blueprint("custos_bp", __name__)
 
@@ -31,7 +31,7 @@ def gerar_cards_categorias(lista_custos):
     cards_base = [
         {"slug": "mao-de-obra", "titulo": "Mão de Obra", "cor": "or", "valor": 0, "quantidade": 0},
         {"slug": "projeto-engenharia", "titulo": "Projeto/Engenharia", "cor": "bl", "valor": 0, "quantidade": 0},
-        {"slug": "material", "titulo": "Material", "cor": "gr", "valor": 0, "quantidade": 0},
+        {"slug": "material", "titulo": "Material", "cor": "pu", "valor": 0, "quantidade": 0},
     ]
 
     indice = {card["titulo"]: card for card in cards_base}
@@ -192,6 +192,8 @@ def custos_dados():
             "categoria": filtros["filtro_categoria"],
             "data_inicio": filtros["data_inicio"],
             "data_fim": filtros["data_fim"],
+            "data_inicio_formatada": formatar_data(filtros["data_inicio"], ""),
+            "data_fim_formatada": formatar_data(filtros["data_fim"], ""),
         },
         "total": len(lista),
         "cards": [
@@ -213,11 +215,14 @@ def custos_dados():
                 "categoria": c["categoria"] or "",
                 "fornecedor": c["fornecedor"] or "-",
                 "data_lancamento": c["data_lancamento"] or "-",
+                "data_lancamento_formatada": formatar_data(c["data_lancamento"]),
                 "quantidade": c["quantidade"] or 0,
                 "valor_unitario": c["valor_unitario"] or 0,
                 "status_entrega": c["status_entrega"] or "",
                 "data_entrega_prevista": c["data_entrega_prevista"] or "",
+                "data_entrega_prevista_formatada": formatar_data(c["data_entrega_prevista"], ""),
                 "data_entrega_realizada": c["data_entrega_realizada"] or "",
+                "data_entrega_realizada_formatada": formatar_data(c["data_entrega_realizada"], ""),
                 "valor_total": c["valor_total"] or 0,
                 "valor_formatado": formatar_moeda(c["valor_total"] or 0),
                 "nota_fiscal": c["nota_fiscal"] or "-",

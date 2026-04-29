@@ -28,8 +28,7 @@
                     <span>Obra: <strong id="resumoObra">{{ filtro_obra if filtro_obra else "Todas" }}</strong></span>
                     <span>Período: <strong id="resumoPeriodo">
                             {% if data_inicio or data_fim %}
-                            {{ data_inicio if data_inicio else "início livre" }} até {{ data_fim if data_fim else "fim
-                            livre" }}
+                            {{ formatar_data(data_inicio, "início livre") if data_inicio else "início livre" }} até {{ formatar_data(data_fim, "fim livre") if data_fim else "fim livre" }}
                             {% else %}
                             livre
                             {% endif %}
@@ -82,9 +81,18 @@
 <div class="custos-kpi-grid" id="custosKpiGrid">
     {% for card in cards_categorias %}
     <div class="custos-kpi-card {{ card.cor }}" data-categoria-card="{{ card.titulo }}">
-        <div class="custos-kpi-title">{{ card.titulo }}</div>
-        <div class="custos-kpi-value">{{ formatar_moeda(card.valor) }}</div>
-        <div class="custos-kpi-sub">{{ card.quantidade }} lançamento{% if card.quantidade != 1 %}s{% endif %}</div>
+        <div class="metric-summary-icon" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3v18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+                <path d="M17 7.5c-.8-1.4-2.2-2.1-4.2-2.1H10a3 3 0 0 0 0 6h4a3 3 0 0 1 0 6h-3c-2 0-3.5-.8-4.3-2.3"
+                    stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+        </div>
+        <div class="metric-summary-content">
+            <div class="custos-kpi-title">{{ card.titulo }}</div>
+            <div class="custos-kpi-value">{{ formatar_moeda(card.valor) }}</div>
+            <div class="custos-kpi-sub">{{ card.quantidade }} lançamento{% if card.quantidade != 1 %}s{% endif %}</div>
+        </div>
     </div>
     {% endfor %}
 </div>
@@ -128,7 +136,7 @@
         <div class="custo-obra-main">
             <div class="custo-obra-identity">
                 <div class="custo-obra-title-row">
-                    <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra_ref.codigo_obra) }}"
+                    <a href="{{ url_for('obras_bp.obra_detalhes', codigo=obra_ref.codigo_obra) }}"
                         class="custo-obra-nome">
                         {{ obra_ref.nome_obra }}
                     </a>
@@ -138,7 +146,7 @@
                 <div class="custo-obra-subtitle">
                     <span>Total lançado: <strong>{{ formatar_moeda(ns.total) }}</strong></span>
                     <span class="custo-obra-dot">•</span>
-                    <span>Último lançamento: <strong>{{ ns.ultimo }}</strong></span>
+                    <span>Último lançamento: <strong>{{ formatar_data(ns.ultimo) if ns.ultimo != '-' else '-' }}</strong></span>
                 </div>
             </div>
 
@@ -150,11 +158,6 @@
                 <div class="custo-kv">
                     <span class="custo-kv-label">Lançamentos</span>
                     <span class="custo-kv-value">{{ ns.count }}</span>
-                </div>
-                <div class="custo-kv">
-                    <span class="custo-kv-label">Abrir obra</span>
-                    <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra_ref.codigo_obra) }}"
-                        class="custo-detail-link">Ver ficha completa</a>
                 </div>
             </div>
 
@@ -178,11 +181,6 @@
                     <span class="custo-detail-label">Nome da obra</span>
                     <span class="custo-detail-value">{{ obra_ref.nome_obra }}</span>
                 </div>
-                <div class="custo-detail-item">
-                    <span class="custo-detail-label">Ações rápidas</span>
-                    <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra_ref.codigo_obra) }}"
-                        class="custo-detail-link">Abrir detalhes da obra</a>
-                </div>
             </div>
 
             <div class="custo-table-wrap">
@@ -205,28 +203,47 @@
                             <td>{{ custo.descricao }}</td>
                             <td>{{ custo.categoria }}</td>
                             <td>{{ custo.fornecedor or "-" }}</td>
-                            <td>{{ custo.data_lancamento or "-" }}</td>
+                            <td>{{ formatar_data(custo.data_lancamento) }}</td>
                             <td>
                                 {% if custo.status_entrega or custo.data_entrega_prevista %}
                                 {{ custo.status_entrega or "-" }}{% if custo.data_entrega_prevista %} · {{
-                                custo.data_entrega_prevista }}{% endif %}
+                                formatar_data(custo.data_entrega_prevista) }}{% endif %}
                                 {% else %}-{% endif %}
                             </td>
                             <td>{{ formatar_moeda(custo.valor_total) }}</td>
                             <td>{{ custo.nota_fiscal or "-" }}</td>
                             <td>
-                                <div style="display:flex; gap:6px;">
+                                <div class="custo-row-actions">
                                     {% if eh_gestor() %}
-                                    <button class="btn btn-small" type="button"
-                                        onclick="abrirModalEditarCusto('{{ custo.id }}')">
-                                        Editar
+                                    <button class="edit-icon" type="button" onclick="abrirModalEditarCusto('{{ custo.id }}')"
+                                        aria-label="Editar custo" title="Editar">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                            <path d="M12 20h9" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" />
+                                            <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"
+                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                stroke-linejoin="round" />
+                                        </svg>
                                     </button>
                                     {% endif %}
                                     {% if eh_admin() %}
                                     <form method="POST"
                                         action="{{ url_for('custos_bp.excluir_custo', custo_id=custo.id) }}"
                                         onsubmit="return confirm('Deseja realmente excluir este custo?');">
-                                        <button type="submit" class="btn btn-small btn-danger">Excluir</button>
+                                        <button type="submit" class="custo-delete-icon" aria-label="Excluir custo"
+                                            title="Excluir">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                                                aria-hidden="true">
+                                                <path d="M3 6h18" stroke="currentColor" stroke-width="2"
+                                                    stroke-linecap="round" />
+                                                <path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2"
+                                                    stroke-linecap="round" stroke-linejoin="round" />
+                                                <path d="M6 6l1 15h10l1-15" stroke="currentColor" stroke-width="2"
+                                                    stroke-linejoin="round" />
+                                                <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2"
+                                                    stroke-linecap="round" />
+                                            </svg>
+                                        </button>
                                     </form>
                                     {% endif %}
                                 </div>
@@ -625,8 +642,8 @@
                 grupo.itens.push(c);
                 grupo.total += Number(c.valor_total || 0);
 
-                if (c.data_lancamento && c.data_lancamento !== "-") {
-                    grupo.ultimo = c.data_lancamento;
+                if (c.data_lancamento_formatada && c.data_lancamento_formatada !== "-") {
+                    grupo.ultimo = c.data_lancamento_formatada;
                 }
             });
 
@@ -673,9 +690,9 @@
                 ].join(" ").toLowerCase();
 
                 const linhas = grupo.itens.map(c => {
-                    const acoes = `<div style="display:flex; gap:6px;">
-                    ${podeEditar ? `<button class="btn btn-small" type="button" onclick="abrirModalEditarCusto('${esc(String(c.id))}')">Editar</button>` : ""}
-                    ${podeExcluir ? `<form method="POST" action="/custos/excluir/${esc(String(c.id))}" onsubmit="return confirm('Deseja realmente excluir este custo?');"><button type="submit" class="btn btn-small btn-danger">Excluir</button></form>` : ""}
+                    const acoes = `<div class="custo-row-actions">
+                    ${podeEditar ? `<button class="edit-icon" type="button" onclick="abrirModalEditarCusto('${esc(String(c.id))}')" aria-label="Editar custo" title="Editar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg></button>` : ""}
+                    ${podeExcluir ? `<form method="POST" action="/custos/excluir/${esc(String(c.id))}" onsubmit="return confirm('Deseja realmente excluir este custo?');"><button type="submit" class="custo-delete-icon" aria-label="Excluir custo" title="Excluir"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" /><path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /><path d="M6 6l1 15h10l1-15" stroke="currentColor" stroke-width="2" stroke-linejoin="round" /><path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg></button></form>` : ""}
                 </div>`;
 
                     return `
@@ -683,8 +700,8 @@
                         <td>${esc(c.descricao)}</td>
                         <td>${esc(c.categoria)}</td>
                         <td>${esc(c.fornecedor || "-")}</td>
-                        <td>${esc(c.data_lancamento || "-")}</td>
-                        <td>${esc(c.status_entrega || "-")}${c.data_entrega_prevista ? " · " + esc(c.data_entrega_prevista) : ""}</td>
+                        <td>${esc(c.data_lancamento_formatada || "-")}</td>
+                        <td>${esc(c.status_entrega || "-")}${c.data_entrega_prevista_formatada ? " · " + esc(c.data_entrega_prevista_formatada) : ""}</td>
                         <td>${esc(c.valor_formatado)}</td>
                         <td>${esc(c.nota_fiscal || "-")}</td>
                         <td>${acoes}</td>
@@ -699,7 +716,7 @@
                     <div class="custo-obra-main">
                         <div class="custo-obra-identity">
                             <div class="custo-obra-title-row">
-                                <a href="/obra/${encodeURIComponent(grupo.codigo_obra)}" class="custo-obra-nome">${esc(grupo.nome_obra)}</a>
+                                <a href="/obra/${encodeURIComponent(grupo.codigo_obra)}/detalhes" class="custo-obra-nome">${esc(grupo.nome_obra)}</a>
                                 <span class="custo-obra-codigo">${esc(grupo.codigo_obra)}</span>
                                 <span class="custo-obra-count">${grupo.itens.length} lançamento${grupo.itens.length !== 1 ? "s" : ""}</span>
                             </div>
@@ -718,10 +735,6 @@
                             <div class="custo-kv">
                                 <span class="custo-kv-label">Lançamentos</span>
                                 <span class="custo-kv-value">${grupo.itens.length}</span>
-                            </div>
-                            <div class="custo-kv">
-                                <span class="custo-kv-label">Abrir obra</span>
-                                <a href="/obra/${encodeURIComponent(grupo.codigo_obra)}" class="custo-detail-link">Ver ficha completa</a>
                             </div>
                         </div>
 
@@ -744,10 +757,6 @@
                             <div class="custo-detail-item">
                                 <span class="custo-detail-label">Nome da obra</span>
                                 <span class="custo-detail-value">${esc(grupo.nome_obra)}</span>
-                            </div>
-                            <div class="custo-detail-item">
-                                <span class="custo-detail-label">Ações rápidas</span>
-                                <a href="/obra/${encodeURIComponent(grupo.codigo_obra)}" class="custo-detail-link">Abrir detalhes da obra</a>
                             </div>
                         </div>
 
@@ -791,7 +800,7 @@
             if (resumoPeriodo) {
                 let periodo = "livre";
                 if (payload.filtros.data_inicio || payload.filtros.data_fim) {
-                    periodo = `${payload.filtros.data_inicio || "início livre"} até ${payload.filtros.data_fim || "fim livre"}`;
+                    periodo = `${payload.filtros.data_inicio_formatada || "início livre"} até ${payload.filtros.data_fim_formatada || "fim livre"}`;
                 }
                 resumoPeriodo.textContent = periodo;
             }

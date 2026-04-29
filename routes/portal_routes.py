@@ -17,56 +17,16 @@ def portal_obra(token):
     if not obra:
         abort(404)
 
-    # Medições — para mostrar progresso e histórico de etapas
-    medicoes = query_all("""
-        SELECT medicao_nome, etapa, percentual, percentual_acumulado, data_medicao
-        FROM medicoes
-        WHERE obra_id = ?
-        ORDER BY id DESC
-        LIMIT 8
-    """, (obra["id"],))
-
-    # Últimas atualizações do log (apenas ações visíveis ao cliente)
+    # Atualizacoes publicadas para o cliente.
     atualizacoes = query_all("""
-        SELECT l.descricao, l.data_hora, l.acao, u.nome AS autor
+        SELECT l.descricao, l.data_hora, u.nome AS autor
         FROM logs l
         LEFT JOIN usuarios u ON l.usuario_id = u.id
         WHERE l.entidade = 'obra'
           AND l.entidade_id = ?
+          AND l.acao = 'atualizacao_canteiro'
+          AND l.descricao LIKE 'Atualização para o cliente:%'
         ORDER BY l.data_hora DESC
-        LIMIT 10
-    """, (obra["id"],))
-
-    # Engenheiro — primeiro usuário que registrou ação na obra
-    engenheiro = query_one("""
-        SELECT DISTINCT u.nome, u.username
-        FROM usuarios u
-        INNER JOIN logs l ON l.usuario_id = u.id
-        WHERE l.entidade = 'obra'
-          AND l.entidade_id = ?
-        ORDER BY l.id ASC
-        LIMIT 1
-    """, (obra["id"],))
-
-    # Total de profissionais na equipe
-    equipe_count = query_one(
-        "SELECT COUNT(*) AS total FROM equipe WHERE obra_id = ?",
-        (obra["id"],)
-    )
-
-    # Materiais recentes — status de entrega (sem valores)
-    compras = query_all("""
-        SELECT descricao AS material, quantidade, status_entrega AS status, data_entrega_prevista
-        FROM custos
-        WHERE obra_id = ?
-          AND categoria = 'Material'
-          AND (
-              status_entrega IS NOT NULL
-              OR data_entrega_prevista IS NOT NULL
-              OR quantidade > 0
-          )
-        ORDER BY id DESC
-        LIMIT 5
     """, (obra["id"],))
 
     fotos_obra = query_all("""
@@ -80,11 +40,7 @@ def portal_obra(token):
     return render_template(
         "portal_obra.html",
         obra=obra,
-        medicoes=medicoes,
         atualizacoes=atualizacoes,
-        engenheiro=engenheiro,
-        equipe_total=equipe_count["total"] if equipe_count else 0,
-        compras=compras,
         fotos_obra=fotos_obra,
     )
 

@@ -21,7 +21,7 @@
             <tbody>
                 {% for log in logs %}
                 <tr>
-                    <td>{{ log.data_hora }}</td>
+                    <td>{{ formatar_data(log.data_hora, "-", mostrar_hora=True) }}</td>
                     <td>{{ log.acao }}</td>
                     <td>{{ log.entidade }}</td>
                     <td>{{ log.descricao }}</td>

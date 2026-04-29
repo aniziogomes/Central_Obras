@@ -10,7 +10,7 @@ from services.validators import parse_valor_monetario, valor_negativo, validar_i
 from services.validators import CATEGORIAS_CUSTO_VALIDAS
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 from services.log_service import registrar_log
-from utils import formatar_moeda, formatar_tipo_obra
+from utils import formatar_moeda, formatar_tipo_obra, formatar_data
 
 obras_bp = Blueprint("obras_bp", __name__)
 UPLOAD_OBRAS_DIR = Path("static/uploads/obras")
@@ -91,7 +91,9 @@ def serializar_obras(lista_obras):
             "status": o["status"] or "",
             "endereco": o["endereco"] or "",
             "data_inicio": o["data_inicio"] or "",
+            "data_inicio_formatada": formatar_data(o["data_inicio"], ""),
             "data_fim_prevista": o["data_fim_prevista"] or "",
+            "data_fim_prevista_formatada": formatar_data(o["data_fim_prevista"], ""),
             # Campos do canteiro
             "fase_obra": (o["fase_obra"] if "fase_obra" in keys and o["fase_obra"] else ""),
             "observacao_responsavel": (o["observacao_responsavel"] if "observacao_responsavel" in keys and o["observacao_responsavel"] else ""),
@@ -246,6 +248,16 @@ def obra_detalhe(codigo):
         and (c["status_entrega"] or c["data_entrega_prevista"] or c["quantidade"] or c["valor_unitario"])
     ]
     fotos_obra       = query_all("SELECT * FROM fotos_obra WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
+    atualizacoes_cliente = query_all("""
+        SELECT l.id, l.descricao, l.data_hora, u.nome AS autor
+        FROM logs l
+        LEFT JOIN usuarios u ON l.usuario_id = u.id
+        WHERE l.entidade = 'obra'
+          AND l.entidade_id = ?
+          AND l.acao = 'atualizacao_canteiro'
+          AND l.descricao LIKE 'Atualização para o cliente:%'
+        ORDER BY l.data_hora DESC
+    """, (obra["id"],))
     custos_importados = query_all(
         "SELECT * FROM custos_importados_categoria WHERE obra_id = ? ORDER BY categoria ASC",
         (obra["id"],)
@@ -267,6 +279,7 @@ def obra_detalhe(codigo):
         margem=margem,
         lucro_previsto=lucro_previsto,
         fotos_obra=fotos_obra,
+        atualizacoes_cliente=atualizacoes_cliente,
     )
 
 
@@ -514,14 +527,53 @@ def atualizar_canteiro_obra(obra_id):
         )
     )
 
+    mensagem_cliente = observacao or f"Fase atual: {fase_obra or 'Atualização em breve'}."
     registrar_log(
         acao="atualizacao_canteiro",
         entidade="obra",
         entidade_id=obra_id,
-        descricao=f"Canteiro atualizado: {obra['nome']}"
+        descricao=f"Atualização para o cliente: {mensagem_cliente}"
     )
 
     flash("Avanco do canteiro salvo com sucesso.", "sucesso")
+    return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+
+
+@obras_bp.route("/obras/<int:obra_id>/canteiro/atualizacao/<int:log_id>", methods=["POST"])
+def editar_atualizacao_canteiro(obra_id, log_id):
+    if not usuario_logado() or not eh_gestor():
+        flash("Voce nao tem permissao para editar atualizacoes do portal.", "erro")
+        return redirect(url_for("obras_bp.obras"))
+
+    obra = query_one("SELECT id, codigo FROM obras WHERE id = ?", (obra_id,))
+    if not obra:
+        flash("Obra nao encontrada.", "erro")
+        return redirect(url_for("obras_bp.obras"))
+
+    mensagem_cliente = request.form.get("mensagem_cliente", "").strip()
+    if not mensagem_cliente:
+        flash("A atualizacao do cliente nao pode ficar vazia.", "erro")
+        return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+
+    atualizacao = query_one("""
+        SELECT id
+        FROM logs
+        WHERE id = ?
+          AND entidade = 'obra'
+          AND entidade_id = ?
+          AND acao = 'atualizacao_canteiro'
+          AND descricao LIKE 'Atualização para o cliente:%'
+    """, (log_id, obra_id))
+    if not atualizacao:
+        flash("Atualizacao nao encontrada.", "erro")
+        return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+
+    execute(
+        "UPDATE logs SET descricao = ? WHERE id = ?",
+        (f"Atualização para o cliente: {mensagem_cliente}", log_id)
+    )
+
+    flash("Atualizacao do portal editada com sucesso.", "sucesso")
     return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
 

@@ -2,17 +2,18 @@
 <html lang="pt-BR">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Link inválido — Central de Obras</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal indisponível - Central de Obras</title>
   <style>
     :root {
-      --bg: #0d0d0f;
-      --bg2: #141416;
-      --border: rgba(255, 255, 255, .07);
-      --text: #f0f0f0;
-      --text2: #8a8a95;
-      --or: #e8621a;
+      --bg: #11141b;
+      --bg2: #1b202b;
+      --border: rgba(255, 255, 255, .08);
+      --text: #f4f6fb;
+      --text2: #aab3c3;
+      --orange: #e8621a;
+      --orange2: #ff8a4a;
     }
 
     * {
@@ -22,67 +23,68 @@
     }
 
     body {
-      background: var(--bg);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
       color: var(--text);
       font-family: Arial, sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 24px;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(47, 125, 240, .16), transparent 34%),
+        linear-gradient(180deg, #10141c 0%, #151923 100%);
     }
 
     .box {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 40px 32px;
-      max-width: 380px;
-      width: 100%;
+      width: min(420px, 100%);
+      padding: 28px;
       text-align: center;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, .010)),
+        var(--bg2);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, .28);
     }
 
     .ico {
-      width: 56px;
-      height: 56px;
-      background: rgba(232, 98, 26, .12);
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      margin: 0 auto 18px;
+      border: 1px solid rgba(232, 98, 26, .30);
       border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 20px;
+      color: var(--orange2);
+      background: rgba(232, 98, 26, .11);
     }
 
     h1 {
-      font-size: 18px;
-      font-weight: 700;
       margin-bottom: 8px;
+      font-size: 20px;
+      line-height: 1.2;
     }
 
     p {
-      font-size: 13px;
       color: var(--text2);
-      line-height: 1.6;
+      font-size: 13px;
+      line-height: 1.65;
     }
   </style>
 </head>
 
 <body>
-  <div class="box">
+  <main class="box">
     <div class="ico">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#e8621a" stroke-width="2"
-        stroke-linecap="round">
+      <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10" />
-        <line x1="12" y1="8" x2="12" y2="12" />
-        <line x1="12" y1="16" x2="12.01" y2="16" />
+        <path d="M12 8v4" />
+        <path d="M12 16h.01" />
       </svg>
     </div>
-    <h1>Link não encontrado</h1>
-    <p>Este link de acompanhamento não existe ou foi desativado pelo
-      Administrador responsável.<br><br>
-      Entre em contato com o responsável pela sua obra para receber
-      um novo link.</p>
-  </div>
+    <h1>Portal indisponível</h1>
+    <p>Este link de acompanhamento não existe ou foi desativado. Solicite um novo acesso ao responsável pela obra.</p>
+  </main>
 </body>
 
 </html>

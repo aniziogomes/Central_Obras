@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     senha_hash TEXT NOT NULL,
     perfil TEXT NOT NULL DEFAULT 'admin',
     ativo INTEGER NOT NULL DEFAULT 1,
+    foto_perfil TEXT,
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

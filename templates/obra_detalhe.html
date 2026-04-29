@@ -4,114 +4,185 @@
 
 {% block content %}
 {% set fase_atual = obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else 'Nao definida' %}
-{% set observacao_canteiro = obra.observacao_responsavel if obra.observacao_responsavel is defined and obra.observacao_responsavel else '' %}
+{% set observacao_canteiro = obra.observacao_responsavel if obra.observacao_responsavel is defined and
+obra.observacao_responsavel else '' %}
 {% set foto_capa = obra.foto_capa if obra.foto_capa is defined and obra.foto_capa else '' %}
 {% set galeria = fotos_obra if fotos_obra is defined else [] %}
 {% set portal_url = request.host_url ~ 'portal/' ~ obra.token_publico if obra.token_publico else '' %}
-{% set fases_obra = ['Planejamento', 'Fundacao', 'Estrutura', 'Alvenaria', 'Telhado', 'Instalacoes', 'Revestimento', 'Acabamento', 'Vistoria', 'Concluida'] %}
+{% set entrega_real = obra.data_fim_real if obra.data_fim_real is defined and obra.data_fim_real else '' %}
+{% if not entrega_real and (obra.status or '')|lower == 'concluida' %}
+{% set entrega_real = obra.data_fim_prevista %}
+{% endif %}
+{% set fases_obra = ['Planejamento', 'Fundacao', 'Estrutura', 'Alvenaria', 'Telhado', 'Instalacoes', 'Revestimento',
+'Acabamento', 'Vistoria', 'Concluida'] %}
 
 <div class="obra-view-page obra-detalhes-page obra-canteiro-admin-page">
-    <div class="hdr">
+    <div class="hdr portal-cliente-header">
         <div>
-            <h1>Visao do canteiro</h1>
+            <h1>Portal do cliente</h1>
             <p>{{ obra.nome }} · {{ obra.codigo }}</p>
         </div>
         <div class="hdr-right">
             <a href="{{ url_for('obras_bp.obras') }}" class="btn btn-ghost">← Voltar para obras</a>
+            {% if obra.token_publico %}
+            <a href="{{ portal_url }}" target="_blank" class="btn btn-ghost">Abrir portal do cliente</a>
+            {% endif %}
         </div>
     </div>
 
-    <div class="obra-detalhes-hero card">
-        <div>
-            <div class="obra-view-kicker">Portal do cliente</div>
-            <h2>
-                <a href="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}" class="obra-canteiro-title-link">
-                    {{ obra.nome }}
-                </a>
-            </h2>
-            <div class="obra-view-subtitle">
-                <span class="obra-view-code">{{ obra.codigo }}</span>
-                <span>{{ formatar_tipo_obra(obra.tipo_obra) }}</span>
-                <span>{{ obra.tipologia or "-" }}</span>
-                <span class="badge {{ obra.status }}">{{ obra.status or "-" }}</span>
-                <span class="obra-fase-pill">{{ fase_atual }}</span>
+    <section class="portal-cliente-top">
+        <div class="portal-cliente-card portal-cliente-obra-card">
+            <div class="portal-cliente-cover">
+                {% if foto_capa %}
+                <img src="{{ foto_capa }}" alt="{{ obra.nome }}">
+                {% else %}
+                <div class="portal-cliente-cover-placeholder">{{ (obra.nome or 'Obra')[:1] }}</div>
+                {% endif %}
             </div>
-        </div>
-        <div class="obra-detalhes-progress">
-            <span>Conclusao</span>
-            <strong>{{ (obra.progresso_percentual or 0)|round(1) }}%</strong>
-            <div class="progress-bar-bg">
-                <div class="progress-bar-fill progress-dinamica" data-width="{{ obra.progresso_percentual or 0 }}"></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="obra-detalhes-meta-strip">
-        <div class="obra-detalhes-meta-item"><span>Fase atual</span><strong>{{ fase_atual }}</strong></div>
-        <div class="obra-detalhes-meta-item"><span>Status</span><strong>{{ obra.status or "-" }}</strong></div>
-        <div class="obra-detalhes-meta-item"><span>Data inicial</span><strong>{{ obra.data_inicio or "-" }}</strong></div>
-        <div class="obra-detalhes-meta-item"><span>Entrega prevista</span><strong>{{ obra.data_fim_prevista or "-" }}</strong></div>
-    </div>
-
-    <div class="obra-detalhes-kpi-section">
-        <div class="obra-detalhes-section-title">
-            <span>Resumo operacional</span>
-            <small>Mensagem principal que aparece para o cliente no portal.</small>
-        </div>
-        <div class="card obra-section-card obra-section-card--full obra-canteiro-note-card">
-            <div class="obra-canteiro-note-text {% if not observacao_canteiro %}obra-kpi-muted{% endif %}">
-                {{ observacao_canteiro or "Adicione uma observacao do responsavel para orientar o cliente sobre o andamento da obra." }}
-            </div>
-        </div>
-    </div>
-
-    <section class="card obra-portal-card obra-canteiro-portal-card">
-        <div class="card-hdr obra-portal-card-hdr">
-            <div>
-                <div class="card-title">Portal do cliente</div>
-                <div class="obra-card-subtitle">O cliente acessa este link e ve apenas o que voce autorizar.</div>
-            </div>
-            <span class="obra-portal-pill">Conteudo publico</span>
-        </div>
-
-        {% if obra.token_publico %}
-        <div class="obra-portal-grid obra-portal-grid--saas">
-            <div class="obra-portal-copy-box">
-                <div class="obra-portal-copy-label">Link do portal</div>
-                <div class="obra-portal-copy-row">
-                    <input id="link-portal" class="obra-portal-input" type="text" readonly value="{{ portal_url }}">
-                    <button type="button" class="btn btn-primary" onclick="copiarLinkPortal(event)">Copiar</button>
+            <div class="portal-cliente-obra-info">
+                <div class="portal-cliente-title-row">
+                    <h2>
+                        <a href="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}"
+                            class="obra-canteiro-title-link">
+                            {{ obra.nome }}
+                        </a>
+                    </h2>
+                    <span class="obra-view-code">{{ obra.codigo }}</span>
+                </div>
+                <div class="portal-cliente-meta">
+                    <span>{{ formatar_tipo_obra(obra.tipo_obra) }}</span>
+                    <span>{{ obra.tipologia or "-" }}</span>
+                    <span>{{ obra.area_m2 or "0" }} m²</span>
+                </div>
+                <div class="portal-cliente-badges">
+                    <span class="badge {{ obra.status }}">{{ obra.status or "-" }}</span>
+                    <span class="obra-fase-pill">{{ fase_atual }}</span>
+                    {% if obra.token_publico %}
+                    <span class="portal-cliente-link-status">Link ativo</span>
+                    {% else %}
+                    <span class="portal-cliente-link-status portal-cliente-link-status--off">Sem portal</span>
+                    {% endif %}
                 </div>
             </div>
-            <div class="obra-portal-actions obra-portal-actions--saas">
-                <a href="{{ portal_url }}" target="_blank" class="btn btn-primary">Abrir portal</a>
-                <a href="https://wa.me/?text=Acompanhe%20a%20obra%20{{ obra.nome|urlencode }}:%20{{ portal_url|urlencode }}" target="_blank" class="btn obra-whats-btn">Enviar pelo WhatsApp</a>
+        </div>
+
+        <div class="portal-cliente-card portal-cliente-kpis">
+            <div class="portal-cliente-kpi portal-cliente-kpi--progress">
+                <span>Conclusão da obra</span>
+                <strong>{{ (obra.progresso_percentual or 0)|round(1) }}%</strong>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill progress-dinamica" data-width="{{ obra.progresso_percentual or 0 }}">
+                    </div>
+                </div>
+            </div>
+            <div class="portal-cliente-kpi">
+                <span>Início da obra</span>
+                <strong>{{ formatar_data(obra.data_inicio, "-") }}</strong>
+            </div>
+            <div class="portal-cliente-kpi">
+                <span>Entrega prevista</span>
+                <strong>{{ formatar_data(obra.data_fim_prevista, "-") }}</strong>
+            </div>
+            <div class="portal-cliente-kpi">
+                <span>Entrega real</span>
+                <strong>{{ formatar_data(entrega_real, "-") }}</strong>
+            </div>
+        </div>
+
+        <div class="portal-cliente-card portal-cliente-link-card">
+            <div class="portal-cliente-link-title">Link do portal</div>
+            {% if obra.token_publico %}
+            <div class="portal-cliente-link-body">
+                <div class="obra-portal-copy-row">
+                    <input id="link-portal" class="obra-portal-input" type="text" readonly value="{{ portal_url }}">
+                    <button type="button" class="btn btn-ghost" onclick="copiarLinkPortal(event)">Copiar</button>
+                </div>
+                <small>Última atualização: {{ formatar_data(obra.data_fim_prevista, "-") }}</small>
+            </div>
+            {% else %}
+            <div class="portal-cliente-link-empty">
+                <span>Portal ainda não criado</span>
                 {% if eh_gestor() %}
-                <form method="POST" action="{{ url_for('portal_bp.revogar_link', obra_id=obra.id) }}" class="obra-portal-revogar-form" onsubmit="return confirm('Revogar o acesso do cliente?');">
-                    <button type="submit" class="obra-portal-revogar-link">Revogar acesso</button>
+                <form method="POST" action="{{ url_for('portal_bp.gerar_link', obra_id=obra.id) }}">
+                    <button type="submit" class="btn btn-primary">Gerar link</button>
                 </form>
                 {% endif %}
             </div>
-        </div>
-        {% else %}
-        <div class="obra-portal-empty obra-portal-empty--saas">
-            <div class="obra-portal-empty-content">
-                <h3>Portal ainda nao criado</h3>
-                <p>Gere um link para o cliente acompanhar a evolucao da obra sem acessar dados internos.</p>
-            </div>
-            {% if eh_gestor() %}
-            <form method="POST" action="{{ url_for('portal_bp.gerar_link', obra_id=obra.id) }}">
-                <button type="submit" class="btn btn-primary">Gerar link do portal</button>
-            </form>
             {% endif %}
         </div>
-        {% endif %}
     </section>
+
+    <section class="portal-cliente-workspace {% if not eh_gestor() %}portal-cliente-workspace--preview-only{% endif %}">
+    <div class="obra-detalhes-kpi-section">
+        <div class="obra-detalhes-section-title">
+            <span>Visão do cliente</span>
+            <small>Mensagem principal que aparece para o cliente no portal.</small>
+        </div>
+        {% set foto_cliente_preview = foto_capa %}
+        {% if not foto_cliente_preview and galeria %}
+        {% set foto_cliente_preview = galeria[0].caminho %}
+        {% endif %}
+        <div class="portal-cliente-preview-card">
+            <div class="portal-cliente-preview-photo">
+                {% if foto_cliente_preview %}
+                <img src="{{ foto_cliente_preview }}" alt="Foto da obra {{ obra.nome }}">
+                {% else %}
+                <div>Foto da obra em breve</div>
+                {% endif %}
+            </div>
+            <div class="portal-cliente-preview-body">
+                <div class="portal-cliente-preview-field">
+                    <span>Fase atual</span>
+                    <strong>{{ fase_atual }}</strong>
+                </div>
+                <div class="portal-cliente-preview-field">
+                    <span>Observação do responsável</span>
+                    <p class="{% if not observacao_canteiro %}obra-kpi-muted{% endif %}">
+                        {{ observacao_canteiro or "Adicione uma observacao para o cliente." }}
+                    </p>
+                </div>
+                {% if atualizacoes_cliente %}
+                <div class="portal-cliente-preview-field">
+                    <span>Atualizações publicadas</span>
+                    <div class="portal-cliente-updates-list">
+                        {% for atualizacao in atualizacoes_cliente %}
+                        <article class="portal-cliente-update-item">
+                            {% set mensagem_atualizacao = atualizacao.descricao|replace("Atualização para o cliente:", "")|trim %}
+                            <time>{{ formatar_data(atualizacao.data_hora, "", True) }}</time>
+                            {% if eh_gestor() %}
+                            <form method="POST"
+                                action="{{ url_for('obras_bp.editar_atualizacao_canteiro', obra_id=obra.id, log_id=atualizacao.id) }}"
+                                class="portal-cliente-update-edit-form">
+                                <textarea name="mensagem_cliente" rows="3" required>{{ mensagem_atualizacao }}</textarea>
+                                <button type="submit" class="btn btn-ghost">Salvar</button>
+                            </form>
+                            {% else %}
+                            <p>{{ mensagem_atualizacao }}</p>
+                            {% endif %}
+                        </article>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if obra.token_publico and eh_gestor() %}
+    <div class="obra-portal-actions portal-cliente-secondary-actions">
+        <a href="https://wa.me/?text=Acompanhe%20a%20obra%20{{ obra.nome|urlencode }}:%20{{ portal_url|urlencode }}"
+            target="_blank" class="btn obra-whats-btn">Enviar pelo WhatsApp</a>
+        <form method="POST" action="{{ url_for('portal_bp.revogar_link', obra_id=obra.id) }}"
+            class="obra-portal-revogar-form" onsubmit="return confirm('Revogar o acesso do cliente?');">
+            <button type="submit" class="obra-portal-revogar-link">Revogar acesso</button>
+        </form>
+    </div>
+    {% endif %}
 
     <div class="obra-detalhe-tabs" role="tablist" aria-label="Area do canteiro">
         <button type="button" class="obra-detalhe-tab active" data-obra-tab="galeria">Galeria de fotos</button>
         {% if eh_gestor() %}
-        <button type="button" class="obra-detalhe-tab" data-obra-tab="atualizar">Atualizar canteiro</button>
+        <button type="button" class="obra-detalhe-tab" data-obra-tab="atualizar">Atualizar portal</button>
         {% endif %}
     </div>
 
@@ -127,7 +198,10 @@
         </div>
 
         {% if eh_gestor() %}
-        <form method="POST" action="{{ url_for('obras_bp.nova_foto_obra', obra_id=obra.id) }}" enctype="multipart/form-data" class="obra-galeria-upload-form obra-galeria-upload-form--collapsible {% if not galeria %}open{% else %}obra-galeria-upload-form--collapsed{% endif %}" id="formFotoObra">
+        <form method="POST" action="{{ url_for('obras_bp.nova_foto_obra', obra_id=obra.id) }}"
+            enctype="multipart/form-data"
+            class="obra-galeria-upload-form obra-galeria-upload-form--collapsible {% if not galeria %}open{% else %}obra-galeria-upload-form--collapsed{% endif %}"
+            id="formFotoObra">
             <input type="hidden" name="fase" value="{{ fase_atual if fase_atual != 'Nao definida' else '' }}">
             <div class="obra-galeria-upload-grid">
                 <div class="form-group">
@@ -161,15 +235,28 @@
                 <div class="obra-canteiro-photo-info">
                     <div>
                         <strong>{{ foto.fase or fase_atual }}</strong>
-                        <span>{{ foto.data_registro or "Sem data" }}</span>
+                        <span>{{ formatar_data(foto.data_registro, "Sem data") }}</span>
                     </div>
                     {% if eh_gestor() %}
                     <div class="obra-canteiro-photo-actions">
-                        <form method="POST" action="{{ url_for('obras_bp.usar_foto_como_capa', obra_id=obra.id, foto_id=foto.id) }}">
+                        <form method="POST"
+                            action="{{ url_for('obras_bp.usar_foto_como_capa', obra_id=obra.id, foto_id=foto.id) }}">
                             <button type="submit" class="btn btn-small btn-ghost">Usar como capa</button>
                         </form>
-                        <form method="POST" action="{{ url_for('obras_bp.excluir_foto_obra', obra_id=obra.id, foto_id=foto.id) }}" onsubmit="return confirm('Excluir esta foto?');">
-                            <button type="submit" class="btn btn-small btn-danger">Excluir</button>
+                        <form method="POST" class="delete-icon-form"
+                            action="{{ url_for('obras_bp.excluir_foto_obra', obra_id=obra.id, foto_id=foto.id) }}"
+                            onsubmit="return confirm('Excluir esta foto?');">
+                            <button type="submit" class="custo-delete-icon" aria-label="Excluir foto" title="Excluir">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                    <path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" />
+                                    <path d="M6 6l1 15h10l1-15" stroke="currentColor" stroke-width="2"
+                                        stroke-linejoin="round" />
+                                    <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" />
+                                </svg>
+                            </button>
                         </form>
                     </div>
                     {% endif %}
@@ -186,29 +273,32 @@
     <section class="card obra-section-card obra-section-card--full obra-tab-panel" data-obra-panel="atualizar">
         <div class="card-hdr">
             <div>
-                <div class="card-title">Atualizar canteiro</div>
-                <div class="obra-card-subtitle">Ajuste fase, conclusao e a observacao que o cliente vai ler.</div>
+                <div class="card-title">Atualizar portal</div>
+                <div class="obra-card-subtitle">Fase, conclusao e mensagem.</div>
             </div>
         </div>
 
-        <form method="POST" action="{{ url_for('obras_bp.atualizar_canteiro_obra', obra_id=obra.id) }}" class="obra-canteiro-update-form">
+        <form method="POST" action="{{ url_for('obras_bp.atualizar_canteiro_obra', obra_id=obra.id) }}"
+            class="obra-canteiro-update-form">
             <div class="form-grid modal-form-grid">
                 <div class="form-group">
                     <label>Fase da obra</label>
                     <select name="fase_obra" required>
                         <option value="">Selecione...</option>
                         {% for fase in fases_obra %}
-                        <option value="{{ fase }}" {% if fase_atual == fase %}selected{% endif %}>{{ fase }}</option>
+                        <option value="{{ fase }}" {% if fase_atual==fase %}selected{% endif %}>{{ fase }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Conclusao (%)</label>
-                    <input type="number" name="progresso_percentual" min="0" max="100" step="0.01" value="{{ obra.progresso_percentual or 0 }}" required>
+                    <input type="number" name="progresso_percentual" min="0" max="100" step="0.01"
+                        value="{{ obra.progresso_percentual or 0 }}" required>
                 </div>
                 <div class="form-group full">
                     <label>Observacoes do responsavel</label>
-                    <textarea name="observacao_responsavel" rows="6" placeholder="Descreva o andamento atual da obra para o cliente.">{{ observacao_canteiro }}</textarea>
+                    <textarea name="observacao_responsavel" rows="6"
+                        placeholder="Descreva o andamento atual da obra para o cliente.">{{ observacao_canteiro }}</textarea>
                 </div>
             </div>
             <div class="modal-footer obra-avanco-footer">
@@ -217,9 +307,513 @@
         </form>
     </section>
     {% endif %}
+    </section>
 </div>
 
 <style>
+    .portal-cliente-header {
+        align-items: flex-start;
+        margin-bottom: 14px;
+    }
+
+    .portal-cliente-header .hdr-right {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .portal-cliente-top {
+        display: grid;
+        grid-template-columns: minmax(310px, .95fr) minmax(430px, 1.32fr) minmax(290px, .78fr);
+        gap: 14px;
+        margin-bottom: 18px;
+    }
+
+    .portal-cliente-card {
+        min-width: 0;
+        min-height: 116px;
+        padding: 14px;
+        border: 1px solid rgba(120, 170, 255, .16);
+        border-radius: 8px;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, .01)),
+            var(--bg2);
+        box-shadow: var(--premium-shadow);
+    }
+
+    .portal-cliente-obra-card {
+        display: grid;
+        grid-template-columns: 86px minmax(0, 1fr);
+        align-items: center;
+        gap: 14px;
+    }
+
+    .portal-cliente-cover,
+    .portal-cliente-cover img,
+    .portal-cliente-cover-placeholder {
+        width: 86px;
+        height: 86px;
+        border-radius: 8px;
+    }
+
+    .portal-cliente-cover {
+        overflow: hidden;
+        background: var(--bg3);
+    }
+
+    .portal-cliente-cover img {
+        display: block;
+        object-fit: cover;
+    }
+
+    .portal-cliente-cover-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text);
+        font-size: 30px;
+        font-weight: 900;
+        background: linear-gradient(135deg, rgba(36, 104, 204, .38), rgba(232, 98, 26, .24));
+    }
+
+    .portal-cliente-obra-info {
+        min-width: 0;
+    }
+
+    .portal-cliente-title-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        margin-bottom: 8px;
+    }
+
+    .portal-cliente-title-row h2 {
+        min-width: 0;
+        margin: 0;
+        color: var(--text);
+        font-size: 22px;
+        line-height: 1.15;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .portal-cliente-meta,
+    .portal-cliente-badges {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .portal-cliente-meta {
+        margin-bottom: 9px;
+        color: var(--text2);
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .portal-cliente-meta span:not(:last-child)::after {
+        content: "•";
+        margin-left: 8px;
+        color: var(--text3);
+    }
+
+    .portal-cliente-link-status {
+        display: inline-flex;
+        align-items: center;
+        min-height: 22px;
+        padding: 0 9px;
+        border: 1px solid rgba(40, 181, 106, .28);
+        border-radius: 999px;
+        color: #6ee79c;
+        background: rgba(40, 181, 106, .12);
+        font-size: 11px;
+        font-weight: 800;
+    }
+
+    .portal-cliente-link-status--off {
+        border-color: rgba(145, 153, 168, .22);
+        color: var(--text2);
+        background: rgba(255, 255, 255, .045);
+    }
+
+    .portal-cliente-kpis {
+        display: grid;
+        grid-template-columns: 1.25fr repeat(3, minmax(0, 1fr));
+        align-items: center;
+        padding: 0;
+        min-height: 92px;
+    }
+
+    .portal-cliente-kpi {
+        min-width: 0;
+        padding: 12px 16px;
+        border-left: 1px solid rgba(255, 255, 255, .065);
+    }
+
+    .portal-cliente-kpi:first-child {
+        border-left: 0;
+    }
+
+    .portal-cliente-kpi span,
+    .portal-cliente-link-title {
+        display: block;
+        margin-bottom: 7px;
+        color: var(--text2);
+        font-size: 10px;
+        font-weight: 850;
+        letter-spacing: .03em;
+        text-transform: uppercase;
+        line-height: 1.25;
+    }
+
+    .portal-cliente-kpi strong {
+        display: block;
+        color: var(--text);
+        font-size: 15px;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .portal-cliente-kpi--progress strong {
+        margin-bottom: 8px;
+        font-size: 19px;
+    }
+
+    .portal-cliente-kpi--progress .progress-bar-bg {
+        height: 8px;
+    }
+
+    .portal-cliente-link-card {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .portal-cliente-link-body small {
+        display: block;
+        margin-top: 12px;
+        color: var(--text2);
+        font-size: 12px;
+    }
+
+    .portal-cliente-link-card .obra-portal-copy-row {
+        gap: 8px;
+    }
+
+    .portal-cliente-link-card .obra-portal-input {
+        min-width: 0;
+        height: 38px;
+        font-size: 12px;
+    }
+
+    .portal-cliente-link-card .btn {
+        height: 38px;
+        padding-inline: 14px;
+    }
+
+    .portal-cliente-link-empty {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--text2);
+        font-size: 13px;
+        font-weight: 750;
+    }
+
+    .portal-cliente-secondary-actions {
+        justify-content: flex-end;
+        margin: -6px 0 18px;
+    }
+
+    .portal-cliente-workspace {
+        display: grid;
+        grid-template-columns: minmax(420px, .95fr) minmax(360px, 1.05fr);
+        grid-template-areas:
+            "manage preview"
+            "gallery preview"
+            "actions preview";
+        gap: 14px;
+        align-items: start;
+        margin-top: 18px;
+    }
+
+    .portal-cliente-workspace .obra-detalhe-tabs {
+        display: none;
+    }
+
+    .portal-cliente-workspace--preview-only {
+        grid-template-columns: minmax(0, 1fr) minmax(340px, .85fr);
+        grid-template-areas:
+            "gallery preview";
+    }
+
+    .portal-cliente-workspace .obra-detalhes-kpi-section {
+        grid-area: preview;
+        gap: 8px;
+        min-width: 0;
+        padding: 16px;
+        border: 1px solid rgba(46, 133, 255, .24);
+        border-radius: 8px;
+        background:
+            linear-gradient(180deg, rgba(36, 104, 204, .12), rgba(36, 104, 204, .045)),
+            var(--bg2);
+        box-shadow: var(--premium-shadow);
+    }
+
+    .portal-cliente-workspace .obra-detalhes-section-title {
+        min-height: 0;
+    }
+
+    .portal-cliente-workspace .obra-detalhes-section-title span {
+        color: #70a9ff;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+
+    .portal-cliente-workspace .obra-detalhes-section-title small {
+        display: none;
+    }
+
+    .portal-cliente-workspace .obra-canteiro-note-card {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .portal-cliente-workspace .obra-canteiro-note-text {
+        font-size: 13px;
+        font-weight: 650;
+        line-height: 1.55;
+    }
+
+    .portal-cliente-preview-card {
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, .075);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, .025);
+    }
+
+    .portal-cliente-preview-photo {
+        height: 230px;
+        background: var(--bg3);
+    }
+
+    .portal-cliente-preview-photo img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .portal-cliente-preview-photo div {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text2);
+        font-size: 13px;
+        font-weight: 800;
+    }
+
+    .portal-cliente-preview-body {
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+    }
+
+    .portal-cliente-preview-field span {
+        display: block;
+        margin-bottom: 7px;
+        color: var(--text2);
+        font-size: 10px;
+        font-weight: 850;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+    }
+
+    .portal-cliente-preview-field strong {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 0 11px;
+        border: 1px solid rgba(232, 98, 26, .30);
+        border-radius: 999px;
+        color: #ff8a4a;
+        background: rgba(232, 98, 26, .11);
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: .03em;
+        text-transform: uppercase;
+    }
+
+    .portal-cliente-preview-field p {
+        margin: 0;
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 650;
+        line-height: 1.6;
+    }
+
+    .portal-cliente-updates-list {
+        display: grid;
+        gap: 9px;
+    }
+
+    .portal-cliente-update-item {
+        padding: 10px 11px;
+        border: 1px solid rgba(255, 255, 255, .07);
+        border-radius: 8px;
+        background: rgba(8, 13, 20, .28);
+    }
+
+    .portal-cliente-update-item time {
+        display: block;
+        margin-bottom: 5px;
+        color: #8ab8ff;
+        font-size: 10px;
+        font-weight: 850;
+    }
+
+    .portal-cliente-update-item p {
+        color: var(--text);
+        font-size: 12px;
+        line-height: 1.55;
+    }
+
+    .portal-cliente-update-edit-form {
+        display: grid;
+        gap: 8px;
+    }
+
+    .portal-cliente-update-edit-form textarea {
+        width: 100%;
+        min-height: 74px;
+        resize: vertical;
+        padding: 9px 10px;
+        border: 1px solid rgba(65, 132, 245, .22);
+        border-radius: 8px;
+        color: var(--text);
+        background: rgba(9, 13, 20, .45);
+        font-size: 12px;
+        line-height: 1.5;
+    }
+
+    .portal-cliente-update-edit-form .btn {
+        justify-self: end;
+        min-height: 30px;
+        padding: 0 12px;
+        font-size: 11px;
+    }
+
+    .portal-cliente-workspace [data-obra-panel="atualizar"] {
+        display: block !important;
+        grid-area: manage;
+        min-width: 0;
+        padding: 16px;
+        border-radius: 8px;
+        border-color: rgba(240, 117, 53, .24);
+        background:
+            linear-gradient(180deg, rgba(240, 117, 53, .075), rgba(255, 255, 255, .012)),
+            var(--bg2);
+    }
+
+    .portal-cliente-workspace [data-obra-panel="atualizar"] .card-hdr {
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, .07);
+    }
+
+    .portal-cliente-workspace [data-obra-panel="atualizar"] .card-title {
+        color: #ff8a4a;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        font-size: 12px;
+    }
+
+    .portal-cliente-workspace [data-obra-panel="atualizar"] .obra-card-subtitle {
+        margin-top: 4px;
+        font-size: 12px;
+    }
+
+    .portal-cliente-workspace .obra-canteiro-update-form {
+        max-width: none;
+    }
+
+    .portal-cliente-workspace .modal-form-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .portal-cliente-workspace .modal-footer {
+        justify-content: flex-end;
+        padding-top: 12px;
+    }
+
+    .portal-cliente-workspace [data-obra-panel="galeria"] {
+        display: block !important;
+        grid-area: gallery;
+        min-width: 0;
+        padding: 16px;
+        border-radius: 8px;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, .028), rgba(255, 255, 255, .008)),
+            var(--bg2);
+    }
+
+    .portal-cliente-workspace [data-obra-panel="galeria"] .card-hdr {
+        margin-bottom: 14px;
+    }
+
+    .portal-cliente-workspace [data-obra-panel="galeria"] .card-title {
+        color: #70a9ff;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        font-size: 12px;
+    }
+
+    .portal-cliente-workspace .obra-galeria-upload-form {
+        margin-bottom: 14px;
+        padding: 12px;
+        border: 1px solid rgba(255, 255, 255, .07);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, .025);
+    }
+
+    .portal-cliente-workspace .obra-galeria-upload-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .portal-cliente-workspace .obra-canteiro-gallery-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .portal-cliente-workspace .obra-canteiro-photo-card {
+        border-radius: 8px;
+    }
+
+    .portal-cliente-workspace .obra-canteiro-photo-card img {
+        height: 170px;
+    }
+
+    .portal-cliente-workspace .portal-cliente-secondary-actions {
+        grid-area: actions;
+        align-self: start;
+        justify-content: flex-start;
+        margin: 0;
+        padding: 12px;
+        border: 1px solid rgba(255, 255, 255, .07);
+        border-radius: 8px;
+        background: var(--bg2);
+    }
+
     .obra-canteiro-title-link {
         color: inherit;
         text-decoration: none;
@@ -302,12 +896,121 @@
     }
 
     @media (max-width: 1100px) {
+        .portal-cliente-top {
+            grid-template-columns: 1fr;
+        }
+
+        .portal-cliente-workspace {
+            grid-template-columns: 1fr;
+            grid-template-areas:
+                "manage"
+                "preview"
+                "gallery"
+                "actions";
+        }
+
+        .portal-cliente-kpis {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            min-height: 0;
+        }
+
+        .portal-cliente-kpi:nth-child(odd) {
+            border-left: 0;
+        }
+
+        .portal-cliente-kpi:nth-child(n + 3) {
+            border-top: 1px solid rgba(255, 255, 255, .065);
+        }
+
         .obra-canteiro-gallery-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
     }
 
     @media (max-width: 720px) {
+        .portal-cliente-header,
+        .portal-cliente-header .hdr-right {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .portal-cliente-header .hdr-right .btn,
+        .portal-cliente-secondary-actions,
+        .portal-cliente-secondary-actions .btn,
+        .portal-cliente-secondary-actions form {
+            width: 100%;
+        }
+
+        .portal-cliente-obra-card,
+        .portal-cliente-kpis {
+            grid-template-columns: 1fr;
+        }
+
+        .portal-cliente-cover,
+        .portal-cliente-cover img,
+        .portal-cliente-cover-placeholder {
+            width: 100%;
+            height: 160px;
+        }
+
+        .portal-cliente-title-row {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .portal-cliente-title-row h2 {
+            white-space: normal;
+        }
+
+        .portal-cliente-kpi,
+        .portal-cliente-kpi:nth-child(odd) {
+            border-left: 0;
+            border-top: 1px solid rgba(255, 255, 255, .065);
+        }
+
+        .portal-cliente-kpi:first-child {
+            border-top: 0;
+        }
+
+        .portal-cliente-link-card .obra-portal-copy-row,
+        .portal-cliente-link-empty {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .portal-cliente-link-card .btn,
+        .portal-cliente-link-empty .btn,
+        .portal-cliente-link-empty form {
+            width: 100%;
+        }
+
+        .portal-cliente-workspace .obra-galeria-upload-grid,
+        .portal-cliente-workspace .obra-canteiro-gallery-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .portal-cliente-preview-photo {
+            height: 260px;
+        }
+
+        .portal-cliente-preview-body {
+            padding: 12px;
+        }
+
+        .portal-cliente-preview-field strong {
+            max-width: 100%;
+            height: auto;
+            min-height: 28px;
+            padding: 7px 10px;
+            line-height: 1.2;
+            white-space: normal;
+        }
+
+        .portal-cliente-preview-field p {
+            font-size: 13px;
+            line-height: 1.65;
+        }
+
         .obra-canteiro-gallery-grid {
             grid-template-columns: 1fr;
         }

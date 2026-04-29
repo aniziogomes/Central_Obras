@@ -65,7 +65,7 @@
                 <tr>
                     <td class="td-mono">{{ item.id }}</td>
                     <td>{{ item.nome_arquivo }}</td>
-                    <td>{{ item.data_importacao }}</td>
+                    <td>{{ formatar_data(item.data_importacao, "-", mostrar_hora=True) }}</td>
                     <td>{{ item.observacao or "-" }}</td>
                 </tr>
                 {% else %}

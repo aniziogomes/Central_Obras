@@ -7,13 +7,7 @@
     <section class="login-left-panel" aria-label="Apresentação do Canteiro">
         <div class="login-left-top">
             <div class="login-mark" aria-hidden="true">
-                <svg width="34" height="34" viewBox="0 0 40 40" fill="none">
-                    <path d="M10 20.5C10 14.2 14.9 9 21 9s11 5.2 11 11.5v1.8H10v-1.8Z" fill="currentColor" />
-                    <path d="M8 23h26" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
-                    <path d="M16 10.5V7.8c0-.9.7-1.6 1.6-1.6h6.8c.9 0 1.6.7 1.6 1.6v2.7" stroke="#1654B0"
-                        stroke-width="2.2" stroke-linecap="round" />
-                    <path d="M13.4 24.5h17.2l-2.4 7.2H15.8l-2.4-7.2Z" fill="currentColor" opacity=".92" />
-                </svg>
+                <img src="{{ url_for('static', filename='img/logoBranca.png') }}" alt="">
             </div>
             <div>
                 <div class="login-brand-name">Canteiro</div>
@@ -27,46 +21,47 @@
                 <defs>
                     <linearGradient id="loginPanelGrad" x1="130" y1="84" x2="500" y2="335"
                         gradientUnits="userSpaceOnUse">
-                        <stop stop-color="#2468cc" />
-                        <stop offset="1" stop-color="#0f438f" />
+                        <stop stop-color="#363b45" />
+                        <stop offset="1" stop-color="#20232a" />
                     </linearGradient>
                     <linearGradient id="loginOrangeGrad" x1="0" y1="0" x2="1" y2="1">
                         <stop stop-color="#ff9658" />
                         <stop offset="1" stop-color="#e8621a" />
                     </linearGradient>
                     <filter id="loginSoftShadow" x="-20%" y="-20%" width="140%" height="140%">
-                        <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#082d63" flood-opacity=".34" />
+                        <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#08090c" flood-opacity=".42" />
                     </filter>
                 </defs>
 
-                <path d="M41 351C89 226 38 132 151 73c103-54 205 6 296-19 73-20 121-72 154-122"
-                    fill="none" stroke="rgba(255,255,255,.16)" stroke-width="2" />
-                <path d="M520 28c-27 88 34 145 4 214-24 55-103 55-142 99" fill="none"
-                    stroke="rgba(255,255,255,.11)" stroke-width="2" />
+                <path d="M41 351C89 226 38 132 151 73c103-54 205 6 296-19 73-20 121-72 154-122" fill="none"
+                    stroke="rgba(255,255,255,.16)" stroke-width="2" />
+                <path d="M520 28c-27 88 34 145 4 214-24 55-103 55-142 99" fill="none" stroke="rgba(255,255,255,.11)"
+                    stroke-width="2" />
 
                 <g opacity=".18" stroke="#fff" stroke-width="1">
                     <path d="M110 85h394M110 132h394M110 179h394M110 226h394M110 273h394M110 320h394" />
-                    <path d="M110 85v235M157 85v235M204 85v235M251 85v235M298 85v235M345 85v235M392 85v235M439 85v235M486 85v235" />
+                    <path
+                        d="M110 85v235M157 85v235M204 85v235M251 85v235M298 85v235M345 85v235M392 85v235M439 85v235M486 85v235" />
                 </g>
 
                 <g filter="url(#loginSoftShadow)">
                     <rect x="126" y="95" width="354" height="235" rx="26" fill="url(#loginPanelGrad)" />
-                    <rect x="153" y="122" width="300" height="181" rx="16" fill="#1654B0" opacity=".72" />
-                    <path d="M153 176h300M206 122v181M303 122v181M386 122v181" stroke="#79a8ff"
-                        stroke-width="2" opacity=".32" />
+                    <rect x="153" y="122" width="300" height="181" rx="16" fill="#252830" opacity=".86" />
+                    <path d="M153 176h300M206 122v181M303 122v181M386 122v181" stroke="#f07535" stroke-width="2"
+                        opacity=".24" />
                     <path d="M183 154h76v54h-76zM329 151h92v57h-92zM239 230h62v48h-62zM338 234h83v44h-83z"
-                        fill="#2468cc" opacity=".66" />
-                    <path d="M178 226h110M326 222h105M278 148v48M356 148v48" stroke="#d4e4ff" stroke-width="3"
+                        fill="#3a3f48" opacity=".86" />
+                    <path d="M178 226h110M326 222h105M278 148v48M356 148v48" stroke="#f6c3a5" stroke-width="3"
                         stroke-linecap="round" opacity=".55" />
                     <path d="M153 122h300" stroke="#fff" stroke-width="4" opacity=".22" />
                 </g>
 
                 <g>
-                    <rect x="85" y="274" width="112" height="86" rx="18" fill="#0c3c83" opacity=".88" />
-                    <path d="M111 307h58M111 329h34M111 285v58M169 285v58" stroke="#8fb8ff" stroke-width="3"
+                    <rect x="85" y="274" width="112" height="86" rx="18" fill="#181b21" opacity=".92" />
+                    <path d="M111 307h58M111 329h34M111 285v58M169 285v58" stroke="#f07535" stroke-width="3"
                         stroke-linecap="round" />
-                    <rect x="424" y="62" width="93" height="93" rx="22" fill="#2468cc" opacity=".84" />
-                    <path d="M446 118h49M446 92h49M446 92v26M495 92v26" stroke="#d4e4ff" stroke-width="3"
+                    <rect x="424" y="62" width="93" height="93" rx="22" fill="#2d3139" opacity=".94" />
+                    <path d="M446 118h49M446 92h49M446 92v26M495 92v26" stroke="#f6c3a5" stroke-width="3"
                         stroke-linecap="round" />
                     <rect x="420" y="255" width="112" height="42" rx="21" fill="url(#loginOrangeGrad)" />
                     <path d="M447 276h58" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".88" />
@@ -86,7 +81,7 @@
     <section class="login-right-panel" aria-label="Acesso ao sistema">
         <div class="login-form-shell">
             <div class="login-form-head">
-                <span class="login-form-kicker">Acesso restrito</span>
+                <span class="login-form-kicker">Bem-vindo</span>
                 <h2>Entrar no Canteiro</h2>
                 <p>Use seu usuário e senha para acessar o painel.</p>
             </div>
@@ -106,7 +101,8 @@
             <form method="POST" class="login-form">
                 <label class="login-field">
                     <span>Usuário</span>
-                    <input type="text" name="username" placeholder="Digite seu usuário" autocomplete="username" required>
+                    <input type="text" name="username" placeholder="Digite seu usuário" autocomplete="username"
+                        required>
                 </label>
 
                 <label class="login-field">

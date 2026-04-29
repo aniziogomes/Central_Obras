@@ -1,6 +1,6 @@
 from flask import Flask, request, url_for
 from database import init_db
-from utils import formatar_moeda, calcular_media_fornecedor, formatar_tipo_obra
+from utils import formatar_moeda, calcular_media_fornecedor, formatar_tipo_obra, formatar_data
 from services.dashboard_service import calcular_alertas
 
 from auth import (
@@ -57,6 +57,7 @@ def inject_helpers():
 
     return dict(
         formatar_moeda=formatar_moeda,
+        formatar_data=formatar_data,
         calcular_media_fornecedor=calcular_media_fornecedor,
         formatar_tipo_obra=formatar_tipo_obra,
         eh_admin=eh_admin,

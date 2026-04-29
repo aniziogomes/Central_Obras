@@ -3,6 +3,223 @@
 {% block title %}Dashboard - Central de Obras{% endblock %}
 
 {% block content %}
+{% set total_obras_dash = obras|length %}
+{% set status_ns = namespace(concluidas=0, andamento=0, atrasadas=0, nao_definidas=0) %}
+{% for obra in obras %}
+{% set st = (obra.status or '')|lower %}
+{% if st == 'concluida' or st == 'vendida' %}
+{% set status_ns.concluidas = status_ns.concluidas + 1 %}
+{% elif st == 'andamento' or st == 'planejamento' %}
+{% set status_ns.andamento = status_ns.andamento + 1 %}
+{% elif st == 'atrasada' %}
+{% set status_ns.atrasadas = status_ns.atrasadas + 1 %}
+{% else %}
+{% set status_ns.nao_definidas = status_ns.nao_definidas + 1 %}
+{% endif %}
+{% endfor %}
+{% set perc_receita_usada = custo_percentual_receita if custo_percentual_receita < 100 else 100 %}
+{% set perc_saldo = margem_percentual if margem_percentual > 0 else 0 %}
+{% set status_concluidas_pct = (status_ns.concluidas / total_obras_dash * 100) if total_obras_dash > 0 else 0 %}
+{% set status_andamento_pct = (status_ns.andamento / total_obras_dash * 100) if total_obras_dash > 0 else 0 %}
+{% set status_atrasadas_pct = (status_ns.atrasadas / total_obras_dash * 100) if total_obras_dash > 0 else 0 %}
+
+<div class="dashboard-v2">
+    <div class="dashboard-v2-header">
+        <div>
+            <h1>Visão geral</h1>
+            <p>Acompanhe o desempenho geral de todas as suas obras em um só lugar.</p>
+        </div>
+    </div>
+
+    <div class="dashboard-filter-shell">
+        <div class="dashboard-filter-card dashboard-filter-card--clean">
+            <div class="dashboard-filter-top">
+                <div class="dashboard-filter-left">
+                    <div class="dashboard-filter-chip dashboard-filter-chip--soft">
+                        <span>Filtros</span>
+                        <strong id="filtroResumoQuantidade">{{ custos|length }} lançamento(s)</strong>
+                    </div>
+
+                    <div class="dashboard-filter-summary dashboard-filter-summary--soft">
+                        <span>Obra: <strong id="resumoObra">{{ filtro_obra if filtro_obra else "Todas" }}</strong></span>
+                        <span>Período: <strong id="resumoPeriodo">
+                                {% if data_inicio or data_fim %}
+                                {{ formatar_data(data_inicio, "início livre") if data_inicio else "início livre" }} até {{
+                                formatar_data(data_fim, "fim livre") if data_fim else "fim livre" }}
+                                {% else %}livre{% endif %}
+                            </strong></span>
+                    </div>
+                </div>
+                <button type="button" class="dashboard-filter-toggle dashboard-filter-toggle--sm"
+                    id="toggleDashboardFilter">Mostrar filtros</button>
+            </div>
+
+            <div class="dashboard-filter-body" id="dashboardFilterBody">
+                <form method="GET" action="{{ url_for('dashboard_bp.dashboard') }}" id="formFiltrosDashboard">
+                    <div class="dashboard-filter-grid dashboard-filter-grid--clean custos-filter-grid">
+                        <div class="dashboard-filter-field">
+                            <label>Obra</label>
+                            <select name="obra" id="filtroObra">
+                                <option value="">Todas</option>
+                                {% for obra_item in todas_obras %}
+                                <option value="{{ obra_item.codigo }}" {% if filtro_obra==obra_item.codigo %}selected{% endif %}>
+                                    {{ obra_item.codigo }} - {{ obra_item.nome }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="dashboard-filter-field">
+                            <label>Data inicial</label>
+                            <input type="date" name="data_inicio" id="filtroDataInicio" value="{{ data_inicio }}">
+                        </div>
+                        <div class="dashboard-filter-field">
+                            <label>Data final</label>
+                            <input type="date" name="data_fim" id="filtroDataFim" value="{{ data_fim }}">
+                        </div>
+                    </div>
+                    <div class="dashboard-filter-actions dashboard-filter-actions--compact">
+                        <button type="button" id="btnLimparFiltros" class="btn btn-ghost btn-xs">Limpar</button>
+                        <button type="submit" class="btn btn-primary btn-xs">Aplicar filtros</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <section class="dashboard-v2-kpis">
+        <div class="dashboard-v2-kpi dashboard-v2-kpi--blue">
+            <span>Valor total dos contratos</span>
+            <strong id="kpiReceita">{{ formatar_moeda(total_receita) }}</strong>
+            <small id="kpiReceitaSub">{{ obras|length }} obra{% if obras|length != 1 %}s{% endif %}</small>
+            <span id="kpiReceitaObras" hidden>{{ obras|length }} obras</span>
+            <span id="kpiReceitaMedicoes" hidden>{{ total_medicoes }} medições</span>
+        </div>
+        <div class="dashboard-v2-kpi dashboard-v2-kpi--orange">
+            <span>Custo total realizado</span>
+            <strong id="kpiCusto">{{ formatar_moeda(total_custo) }}</strong>
+            <small id="kpiCustoSub">{{ custos|length }} lançamento{% if custos|length != 1 %}s{% endif %}</small>
+            <span id="kpiCustosLancados" hidden>{{ custos|length }} lançamentos</span>
+        </div>
+        <div class="dashboard-v2-kpi dashboard-v2-kpi--green">
+            <span>Saldo disponível</span>
+            <strong id="kpiMargem">{{ formatar_moeda(margem) }}</strong>
+            <small id="kpiMargemPercentual">Disponível para novas despesas</small>
+        </div>
+        <div class="dashboard-v2-kpi dashboard-v2-kpi--green dashboard-v2-kpi--obra">
+            <span>Obras concluídas</span>
+            <strong id="kpiObrasConcluidas">{{ status_ns.concluidas }}</strong>
+            <small id="kpiObrasConcluidasSub">{{ status_ns.concluidas }} concluída{% if status_ns.concluidas != 1 %}s{% endif %} de {{ total_obras_dash }}</small>
+        </div>
+        <div class="dashboard-v2-kpi dashboard-v2-kpi--yellow dashboard-v2-kpi--obra">
+            <span>Obras em andamento</span>
+            <strong id="kpiObrasAtivas">{{ status_ns.andamento }}</strong>
+            <small id="kpiObrasAtivasSub">{{ status_ns.andamento }} em acompanhamento</small>
+        </div>
+        <div class="dashboard-v2-kpi dashboard-v2-kpi--red dashboard-v2-kpi--obra">
+            <span>Obras atrasadas</span>
+            <strong id="kpiObrasAtrasadas">{{ obras_atrasadas }}</strong>
+            <small id="kpiObrasAtrasadasSub">{{ obras_atrasadas }} com atenção</small>
+        </div>
+        <span id="kpiObrasFiltradas" hidden>{{ obras|length }}</span>
+        <span id="kpiAlertas" hidden>{{ alertas|length }}</span>
+        <span id="quickExecucaoMedia" hidden>{{ '%.1f'|format(execucao_media) }}%</span>
+        <span id="quickCustoReceita" hidden>{{ '%.1f'|format(custo_percentual_receita) }}%</span>
+        <span id="quickAlertasAtivos" hidden>{{ alertas|length }}</span>
+    </section>
+
+    <section class="dashboard-v2-main-grid">
+        <div class="card dashboard-v2-panel dashboard-v2-finance">
+            <div class="card-title">Desempenho financeiro geral</div>
+            <div class="dashboard-v2-finance-bars">
+                <div class="dashboard-v2-finance-row">
+                    <span>Valor total dos contratos</span>
+                    <div class="dashboard-v2-bar"><i style="width: 100%;"></i></div>
+                    <strong id="financeReceita">{{ formatar_moeda(total_receita) }}</strong>
+                </div>
+                <div class="dashboard-v2-finance-row">
+                    <span>Custo total realizado</span>
+                    <div class="dashboard-v2-bar dashboard-v2-bar--red"><i id="financeCustoBar"
+                            style="width: {{ perc_receita_usada }}%;"></i></div>
+                    <strong id="financeCusto">{{ formatar_moeda(total_custo) }}</strong>
+                    <em id="financeCustoPct">{{ '%.1f'|format(custo_percentual_receita) }}%</em>
+                </div>
+                <div class="dashboard-v2-finance-row">
+                    <span>Saldo disponível</span>
+                    <div class="dashboard-v2-bar dashboard-v2-bar--green"><i id="financeSaldoBar"
+                            style="width: {{ perc_saldo }}%;"></i></div>
+                    <strong id="financeSaldo">{{ formatar_moeda(margem) }}</strong>
+                    <em id="financeSaldoPct">{{ '%.1f'|format(margem_percentual) }}%</em>
+                </div>
+            </div>
+            <div class="dashboard-v2-note">
+                Você ainda tem <strong id="financeNotaPct">{{ '%.1f'|format(margem_percentual) }}%</strong> do valor
+                total disponível para novas despesas.
+            </div>
+        </div>
+
+        <div class="card dashboard-v2-panel dashboard-v2-status">
+            <div class="card-title">Status das obras</div>
+            <div class="dashboard-v2-status-body">
+                <div class="dashboard-v2-donut" id="statusDonut"
+                    style="--done: {{ status_concluidas_pct * 3.6 }}deg; --doing: {{ status_andamento_pct * 3.6 }}deg; --late: {{ status_atrasadas_pct * 3.6 }}deg;">
+                    <div class="dashboard-v2-donut-center">
+                        <strong id="statusTotal">{{ total_obras_dash }}</strong>
+                        <span>Total de obras</span>
+                    </div>
+                </div>
+                <div class="dashboard-v2-status-list">
+                    <div><span class="dot green"></span>Concluídas <strong id="statusConcluidas">{{ status_ns.concluidas }} ({{ '%.1f'|format(status_concluidas_pct) }}%)</strong></div>
+                    <div><span class="dot yellow"></span>Em andamento <strong id="statusAndamento">{{ status_ns.andamento }} ({{ '%.1f'|format(status_andamento_pct) }}%)</strong></div>
+                    <div><span class="dot red"></span>Atrasadas <strong id="statusAtrasadas">{{ status_ns.atrasadas }} ({{ '%.1f'|format(status_atrasadas_pct) }}%)</strong></div>
+                    <div><span class="dot muted"></span>Não definidas <strong id="statusNaoDefinidas">{{ status_ns.nao_definidas }} ({{ '%.1f'|format((status_ns.nao_definidas / total_obras_dash * 100) if total_obras_dash > 0 else 0) }}%)</strong></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="card dashboard-v2-table-card">
+        <div class="card-hdr">
+            <div class="card-title">Situação das obras</div>
+            <a href="{{ url_for('obras_bp.obras') }}" class="btn btn-small btn-ghost">Ver todas as obras</a>
+        </div>
+        <div class="dashboard-v2-table">
+            <div class="dashboard-v2-table-head">
+                <span>Obra</span><span>Tipo</span><span>Fase atual</span><span>Conclusão</span><span>Orçamento</span><span>Gasto até hoje</span><span>Saldo disponível</span><span>Status</span><span>Portal</span>
+            </div>
+            <div id="resumoObrasBody">
+                {% for obra in margem_por_obra %}
+                <div class="dashboard-v2-table-row">
+                    <a href="/obra/{{ obra.codigo }}" class="dashboard-v2-obra-cell">
+                        <strong>{{ obra.nome }}</strong>
+                        <small>{{ obra.codigo }}</small>
+                    </a>
+                    <span>{{ "Para venda" if obra.tipo_obra == "venda" else "Por contrato" }}<small>{{ obra.tipologia or "-" }}</small></span>
+                    <span>{{ obra.fase_obra or obra.status or "-" }}</span>
+                    <span>
+                        <div class="dashboard-v2-mini-progress"><i style="width: {{ obra.execucao or 0 }}%;"></i></div>
+                        {{ obra.execucao or 0 }}%
+                    </span>
+                    <span>{{ formatar_moeda(obra.receita_total) }}</span>
+                    <span>{{ formatar_moeda(obra.custo_realizado) }}</span>
+                    <strong class="{% if obra.margem_valor >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">{{ formatar_moeda(obra.margem_valor) }}</strong>
+                    <span class="badge {{ obra.status }}">{{ obra.status or "-" }}</span>
+                    <a href="/obra/{{ obra.codigo }}" class="btn btn-small btn-ghost">Abrir portal</a>
+                </div>
+                {% else %}
+                <div class="dashboard-summary-empty">Nenhuma obra cadastrada.</div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="dashboard-v2-table-foot">
+            <span><small>Total de obras</small><strong id="tableTotalObras">{{ obras|length }}</strong></span>
+            <span><small>Orçamento</small><strong id="tableTotalReceita">{{ formatar_moeda(total_receita) }}</strong></span>
+            <span><small>Gasto até hoje</small><strong id="tableTotalCusto">{{ formatar_moeda(total_custo) }}</strong></span>
+            <span><small>Saldo disponível</small><strong id="tableTotalMargem">{{ formatar_moeda(margem) }}</strong></span>
+        </div>
+    </section>
+</div>
+
+<div class="dashboard-legacy-hidden">
 <div class="hdr hdr-hero dashboard-page-header">
     <div>
         <h1>Dashboard Executivo</h1>
@@ -10,161 +227,64 @@
     </div>
 </div>
 
-<div class="dashboard-filter-shell dashboard-filter-shell--executive">
-    <div class="dashboard-filter-card dashboard-filter-card--clean">
-        <div class="dashboard-filter-top">
-            <div class="dashboard-filter-left dashboard-filter-left--executive">
-                <div class="dashboard-filter-chip dashboard-filter-chip--soft">
-                    <span>Filtros</span>
-                    <strong id="filtroResumoQuantidade">{{ obras|length }} obra(s)</strong>
-                </div>
-                <div
-                    class="dashboard-filter-summary dashboard-filter-summary--soft dashboard-filter-summary--executive">
-                    <span>Obra: <strong id="resumoObra">{{ filtro_obra if filtro_obra else "Todas" }}</strong></span>
-                    <span>Tipo: <strong id="resumoTipo">{{ filtro_tipo_obra if filtro_tipo_obra else "Todos"
-                            }}</strong></span>
-                    <span>Categoria: <strong id="resumoCategoria">{{ filtro_categoria if filtro_categoria else "Todas"
-                            }}</strong></span>
-                    <span>Status: <strong id="resumoStatus">{{ filtro_status if filtro_status else "Todos"
-                            }}</strong></span>
-                    <span>Período: <strong id="resumoPeriodo">
-                            {% if data_inicio or data_fim %}
-                            {{ data_inicio if data_inicio else "início livre" }} até {{ data_fim if data_fim else "fim
-                            livre" }}
-                            {% else %}
-                            livre
-                            {% endif %}
-                        </strong></span>
-                </div>
+<section class="dashboard-executive-summary">
+    <div class="dashboard-executive-hero card {% if margem >= 0 %}dashboard-executive-hero--positive{% else %}dashboard-executive-hero--negative{% endif %}">
+        <div class="dashboard-executive-top">
+            <div>
+                <div class="dashboard-main-kpi-label">Saldo disponível</div>
+                <div class="dashboard-executive-value" id="kpiMargem">{{ formatar_moeda(margem) }}</div>
+                <div class="dashboard-main-kpi-sub" id="kpiMargemPercentual">{{ '%.1f'|format(margem_percentual) }}% da
+                    receita</div>
             </div>
-            <button type="button" class="dashboard-filter-toggle dashboard-filter-toggle--sm"
-                id="toggleDashboardFilter">
-                Mostrar filtros
-            </button>
+            <div class="dashboard-executive-badge">
+                <span id="kpiObrasFiltradas">{{ obras|length }}</span>
+                <small>obras filtradas</small>
+            </div>
         </div>
 
-        <div class="dashboard-filter-body" id="dashboardFilterBody">
-            <form method="GET" action="{{ url_for('dashboard_bp.dashboard') }}" id="formFiltrosDashboard">
-                <div class="dashboard-filter-grid dashboard-filter-grid--clean">
-                    <div class="dashboard-filter-field">
-                        <label>Obra</label>
-                        <select name="obra" id="filtroObra">
-                            <option value="">Todas</option>
-                            {% for obra_item in todas_obras %}
-                            <option value="{{ obra_item.codigo }}" {% if filtro_obra==obra_item.codigo %}selected{%
-                                endif %}>
-                                {{ obra_item.codigo }} - {{ obra_item.nome }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="dashboard-filter-field">
-                        <label>Tipo da obra</label>
-                        <select name="tipo_obra" id="filtroTipoObra">
-                            <option value="">Todos</option>
-                            <option value="contrato" {% if filtro_tipo_obra=='contrato' %}selected{% endif %}>Por
-                                contrato / reforma</option>
-                            <option value="venda" {% if filtro_tipo_obra=='venda' %}selected{% endif %}>Para venda
-                            </option>
-                        </select>
-                    </div>
-                    <div class="dashboard-filter-field">
-                        <label>Categoria</label>
-                        <select name="categoria" id="filtroCategoria">
-                            <option value="">Todas</option>
-                            {% for categoria_item in todas_categorias %}
-                            <option value="{{ categoria_item }}" {% if filtro_categoria==categoria_item %}selected{%
-                                endif %}>
-                                {{ categoria_item }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="dashboard-filter-field">
-                        <label>Status</label>
-                        <select name="status" id="filtroStatus">
-                            <option value="">Todos</option>
-                            <option value="planejamento" {% if filtro_status=='planejamento' %}selected{% endif %}>
-                                planejamento</option>
-                            <option value="andamento" {% if filtro_status=='andamento' %}selected{% endif %}>andamento
-                            </option>
-                            <option value="atrasada" {% if filtro_status=='atrasada' %}selected{% endif %}>atrasada
-                            </option>
-                            <option value="concluida" {% if filtro_status=='concluida' %}selected{% endif %}>concluida
-                            </option>
-                            <option value="vendida" {% if filtro_status=='vendida' %}selected{% endif %}>vendida
-                            </option>
-                        </select>
-                    </div>
-                    <div class="dashboard-filter-field">
-                        <label>Data inicial</label>
-                        <input type="date" name="data_inicio" id="filtroDataInicio" value="{{ data_inicio }}">
-                    </div>
-                    <div class="dashboard-filter-field">
-                        <label>Data final</label>
-                        <input type="date" name="data_fim" id="filtroDataFim" value="{{ data_fim }}">
-                    </div>
-                </div>
-                <div class="dashboard-filter-actions dashboard-filter-actions--compact">
-                    <button type="button" id="btnLimparFiltros" class="btn btn-ghost btn-xs">Limpar</button>
-                    <button type="submit" class="btn btn-primary btn-xs">Aplicar filtros</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<div class="dashboard-main-kpis">
-    <div class="dashboard-main-kpi dashboard-main-kpi--neutral">
-        <div class="dashboard-main-kpi-label">Obras filtradas</div>
-        <div class="dashboard-main-kpi-value" id="kpiObrasFiltradas">{{ obras|length }}</div>
-        <div class="dashboard-main-kpi-sub">Base atual considerada no painel</div>
-    </div>
-
-    <div class="dashboard-main-kpi dashboard-main-kpi--blue">
-        <div class="dashboard-main-kpi-label">Receita prevista</div>
-        <div class="dashboard-main-kpi-value" id="kpiReceita">{{ formatar_moeda(total_receita) }}</div>
-        <div class="dashboard-main-kpi-sub"><span id="kpiReceitaObras">{{ obras|length }} obras</span> <span
-                class="dashboard-main-kpi-sep">•</span> <span id="kpiReceitaMedicoes">{{ total_medicoes }}
-                medições</span></div>
-    </div>
-
-    <div class="dashboard-main-kpi dashboard-main-kpi--green">
-        <div class="dashboard-main-kpi-label">Resultado atual</div>
-        <div class="dashboard-main-kpi-value" id="kpiMargem">{{ formatar_moeda(margem) }}</div>
-        <div class="dashboard-main-kpi-sub" id="kpiMargemPercentual">{{ '%.1f'|format(margem_percentual) }}% da receita
+        <div class="dashboard-executive-metrics">
+            <div class="dashboard-executive-metric dashboard-executive-metric--orange">
+                <div class="dashboard-main-kpi-label">Valor do contrato</div>
+                <strong id="kpiReceita">{{ formatar_moeda(total_receita) }}</strong>
+                <small><span id="kpiReceitaObras">{{ obras|length }} obras</span> <span
+                        class="dashboard-main-kpi-sep">•</span> <span id="kpiReceitaMedicoes">{{ total_medicoes }}
+                        medições</span></small>
+            </div>
+            <div class="dashboard-executive-metric dashboard-executive-metric--red">
+                <div class="dashboard-main-kpi-label">Gasto até hoje</div>
+                <strong id="kpiCusto">{{ formatar_moeda(total_custo) }}</strong>
+                <small><span id="kpiCustosLancados">{{ custos|length }} lançamentos</span></small>
+            </div>
         </div>
     </div>
 
-    <div class="dashboard-main-kpi dashboard-main-kpi--red">
-        <div class="dashboard-main-kpi-label">Obras em atenção</div>
-        <div class="dashboard-main-kpi-value" id="kpiAlertas">{{ alertas|length }}</div>
-        <div class="dashboard-main-kpi-sub"><span id="kpiObrasAtrasadas">{{ obras_atrasadas }} atrasadas</span> <span
-                class="dashboard-main-kpi-sep">•</span> <span id="kpiObrasAtivas">{{ obras_ativas }} ativas</span></div>
-    </div>
-</div>
-
-<div class="dashboard-secondary-strip">
-    <div class="dashboard-secondary-item">
-        <div class="dashboard-secondary-label">Execução média</div>
-        <div class="dashboard-secondary-value" id="quickExecucaoMedia">{{ '%.1f'|format(execucao_media) }}%</div>
-    </div>
-    <div class="dashboard-secondary-item">
-        <div class="dashboard-secondary-label">Custo / receita</div>
-        <div class="dashboard-secondary-value" id="quickCustoReceita">{{ '%.1f'|format(custo_percentual_receita) }}%
+    <div class="dashboard-executive-side">
+        <div class="dashboard-executive-section-title">Operação</div>
+        <div class="dashboard-secondary-strip">
+            <div class="dashboard-secondary-item">
+                <div class="dashboard-secondary-label">Execução média</div>
+                <div class="dashboard-secondary-value" id="quickExecucaoMedia">{{ '%.1f'|format(execucao_media) }}%</div>
+            </div>
+            <div class="dashboard-secondary-item">
+                <div class="dashboard-secondary-label">Custo / receita</div>
+                <div class="dashboard-secondary-value" id="quickCustoReceita">{{
+                    '%.1f'|format(custo_percentual_receita) }}%</div>
+            </div>
+            <div class="dashboard-secondary-item dashboard-secondary-item--attention">
+                <div class="dashboard-secondary-label">Obras em atenção</div>
+                <div class="dashboard-secondary-value" id="kpiAlertas">{{ alertas|length }}</div>
+                <div class="dashboard-secondary-sub"><span id="kpiObrasAtrasadas">{{ obras_atrasadas }} atrasadas</span>
+                    <span class="dashboard-main-kpi-sep">•</span> <span id="kpiObrasAtivas">{{ obras_ativas }}
+                        ativas</span></div>
+            </div>
+            <div class="dashboard-secondary-item">
+                <div class="dashboard-secondary-label">Alertas ativos</div>
+                <div class="dashboard-secondary-value" id="quickAlertasAtivos">{{ alertas|length }}</div>
+                <div class="dashboard-secondary-sub">Painel de acompanhamento</div>
+            </div>
         </div>
     </div>
-    <div class="dashboard-secondary-item">
-        <div class="dashboard-secondary-label">Custo realizado</div>
-        <div class="dashboard-secondary-value" id="kpiCusto">{{ formatar_moeda(total_custo) }}</div>
-        <div class="dashboard-secondary-sub"><span id="kpiCustosLancados">{{ custos|length }} lançamentos</span></div>
-    </div>
-    <div class="dashboard-secondary-item">
-        <div class="dashboard-secondary-label">Alertas ativos</div>
-        <div class="dashboard-secondary-value" id="quickAlertasAtivos">{{ alertas|length }}</div>
-        <div class="dashboard-secondary-sub">Painel de acompanhamento</div>
-    </div>
-</div>
+</section>
 
 <div class="dashboard-alerts-card" id="alertasContainer" hidden>
     {% if alertas and alertas|length > 0 %}
@@ -305,6 +425,551 @@
     </div>
 </div>
 
+    </div>
+
+<style>
+    .dashboard-legacy-hidden {
+        display: none !important;
+    }
+
+    .dashboard-v2 {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .dashboard-v2 [hidden] {
+        display: none !important;
+    }
+
+    .dashboard-v2-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        padding-right: 130px;
+        margin-bottom: 2px;
+    }
+
+    .dashboard-v2-header h1 {
+        margin: 0;
+        color: var(--text);
+        font-size: 28px;
+        line-height: 1.15;
+    }
+
+    .dashboard-v2-header p {
+        margin: 6px 0 0;
+        color: var(--text2);
+        font-size: 13px;
+    }
+
+    .dashboard-v2-filter {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        flex-wrap: wrap;
+        max-width: 704px;
+    }
+
+    .dashboard-v2-filter select,
+    .dashboard-v2-filter input {
+        flex: 0 0 auto;
+        height: 34px;
+        width: 132px;
+        min-width: 0;
+        max-width: 132px;
+        padding: 0 10px;
+        border: 1px solid rgba(255, 255, 255, .11);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, .035);
+        color: var(--text);
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .dashboard-v2-filter input {
+        width: 132px;
+        max-width: 132px;
+    }
+
+    .dashboard-v2-filter .btn {
+        height: 34px;
+        padding-inline: 14px;
+    }
+
+    .dashboard-v2-kpis {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .dashboard-v2-kpi {
+        position: relative;
+        min-width: 0;
+        min-height: 88px;
+        padding: 18px 20px 16px;
+        border: 1px solid rgba(255, 255, 255, .08);
+        border-radius: 9px;
+        background:
+            linear-gradient(180deg, rgba(36, 104, 204, .075), rgba(255, 255, 255, .010)),
+            var(--bg2);
+        box-shadow:
+            0 14px 30px rgba(0, 0, 0, .18),
+            0 1px 0 rgba(255, 255, 255, .025) inset;
+        overflow: hidden;
+    }
+
+    .dashboard-v2-kpi::before {
+        content: "";
+        position: absolute;
+        inset: 0 0 auto;
+        height: 3px;
+        background: linear-gradient(90deg, rgba(36, 104, 204, .95), rgba(126, 175, 255, .18));
+    }
+
+    .dashboard-v2-kpi--red::before {
+        background: linear-gradient(90deg, rgba(232, 66, 78, .95), rgba(232, 66, 78, .18));
+    }
+
+    .dashboard-v2-kpi--green::before {
+        background: linear-gradient(90deg, rgba(40, 181, 106, .95), rgba(40, 181, 106, .18));
+    }
+
+    .dashboard-v2-kpi--orange::before,
+    .dashboard-v2-kpi--yellow::before {
+        background: linear-gradient(90deg, rgba(232, 98, 26, .95), rgba(232, 98, 26, .18));
+    }
+
+    .dashboard-v2-kpi span {
+        display: block;
+        color: var(--text2);
+        font-size: 10px;
+        font-weight: 850;
+        letter-spacing: .03em;
+        line-height: 1.25;
+    }
+
+    .dashboard-v2-kpi strong {
+        display: block;
+        margin-top: 9px;
+        color: var(--text);
+        font-size: 20px;
+        line-height: 1.15;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .dashboard-v2-kpi small {
+        display: none;
+        margin-top: 8px;
+        color: var(--text2);
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    .dashboard-v2-kpi--obra {
+        min-height: 68px;
+        padding: 12px 18px;
+    }
+
+    .dashboard-v2-kpi--obra strong {
+        margin-top: 5px;
+        font-size: 18px;
+        line-height: 1;
+    }
+
+    .dashboard-v2-main-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.08fr) minmax(340px, .92fr);
+        gap: 18px;
+        align-items: stretch;
+    }
+
+    .dashboard-v2-panel,
+    .dashboard-v2-table-card {
+        border-radius: 8px;
+        padding: 18px 22px;
+    }
+
+    .dashboard-v2-panel {
+        min-height: 278px;
+    }
+
+    .dashboard-v2-finance-bars {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        margin-top: 24px;
+    }
+
+    .dashboard-v2-finance-row {
+        display: grid;
+        grid-template-columns: 174px minmax(150px, 1fr) 132px 48px;
+        align-items: center;
+        gap: 12px;
+        color: var(--text);
+        font-size: 12px;
+        min-height: 34px;
+    }
+
+    .dashboard-v2-finance-row>span {
+        color: var(--text2);
+    }
+
+    .dashboard-v2-finance-row strong,
+    .dashboard-v2-finance-row em {
+        color: var(--text);
+        font-style: normal;
+        font-weight: 800;
+        text-align: right;
+    }
+
+    .dashboard-v2-bar {
+        height: 8px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, .075);
+    }
+
+    .dashboard-v2-bar i {
+        display: block;
+        height: 100%;
+        max-width: 100%;
+        border-radius: inherit;
+        background: #2f7df0;
+    }
+
+    .dashboard-v2-bar--red i {
+        background: #ff4d5a;
+    }
+
+    .dashboard-v2-bar--green i {
+        background: #38bf72;
+    }
+
+    .dashboard-v2-note {
+        margin-top: 22px;
+        padding: 12px 14px;
+        border: 1px solid rgba(255, 255, 255, .08);
+        border-radius: 8px;
+        color: var(--text2);
+        background: rgba(255, 255, 255, .018);
+        font-size: 12px;
+    }
+
+    .dashboard-v2-note strong {
+        color: var(--text);
+    }
+
+    .dashboard-v2-status-body {
+        display: grid;
+        grid-template-columns: 158px minmax(0, 1fr);
+        align-items: center;
+        gap: 28px;
+        max-width: 620px;
+        min-height: 178px;
+        margin: 28px auto 0;
+    }
+
+    .dashboard-v2-donut {
+        width: 136px;
+        height: 136px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        justify-self: center;
+        text-align: center;
+        background:
+            radial-gradient(circle, var(--bg2) 0 52%, transparent 53%),
+            conic-gradient(#38bf72 0 var(--done),
+                #f59e0b var(--done) calc(var(--done) + var(--doing)),
+                #ef4444 calc(var(--done) + var(--doing)) calc(var(--done) + var(--doing) + var(--late)),
+                rgba(255,255,255,.12) 0);
+    }
+
+    .dashboard-v2-donut-center {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 74px;
+        height: 74px;
+        border-radius: 50%;
+        line-height: 1;
+        transform: translateY(-1px);
+    }
+
+    .dashboard-v2-donut-center strong {
+        display: block;
+        color: var(--text);
+        font-size: 25px;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .dashboard-v2-donut-center span {
+        display: block;
+        margin-top: 7px;
+        color: var(--text2);
+        font-size: 10px;
+        line-height: 1.1;
+        white-space: nowrap;
+    }
+
+    .dashboard-v2-status-list {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-width: 0;
+    }
+
+    .dashboard-v2-status-list div {
+        display: grid;
+        grid-template-columns: 12px minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+        min-height: 36px;
+        border-bottom: 1px solid rgba(255, 255, 255, .06);
+        color: var(--text2);
+        font-size: 12px;
+    }
+
+    .dashboard-v2-status-list strong {
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 750;
+        margin-left: 16px;
+        white-space: nowrap;
+    }
+
+    .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--text3);
+    }
+
+    .dot.green { background: #38bf72; }
+    .dot.yellow { background: #f59e0b; }
+    .dot.red { background: #ef4444; }
+
+    .dashboard-v2-table-card {
+        overflow: hidden;
+        padding: 18px 20px 0;
+    }
+
+    .dashboard-v2-table {
+        overflow-x: visible;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(148, 163, 184, .55) rgba(255, 255, 255, .045);
+    }
+
+    .dashboard-v2-table::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .dashboard-v2-table::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, .045);
+        border-radius: 999px;
+    }
+
+    .dashboard-v2-table::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, .55);
+        border-radius: 999px;
+    }
+
+    .dashboard-v2-table-head,
+    .dashboard-v2-table-row {
+        display: grid;
+        grid-template-columns: minmax(150px, 1.25fr) minmax(106px, .78fr) minmax(104px, .72fr) minmax(104px, .72fr) minmax(108px, .76fr) minmax(108px, .76fr) minmax(120px, .84fr) 96px 96px;
+        align-items: center;
+        column-gap: 10px;
+        min-width: 0;
+    }
+
+    .dashboard-v2-table-head {
+        min-height: 40px;
+        padding: 0 10px;
+        border-radius: 6px 6px 0 0;
+        color: var(--text2);
+        background: rgba(255, 255, 255, .035);
+        font-size: 10px;
+        font-weight: 850;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+
+    .dashboard-v2-table-row {
+        min-height: 56px;
+        padding: 0 10px;
+        border-top: 1px solid rgba(255, 255, 255, .055);
+        color: var(--text);
+        font-size: 12px;
+    }
+
+    .dashboard-v2-table-head span:nth-child(n+5):nth-child(-n+7),
+    .dashboard-v2-table-row>span:nth-child(n+5):nth-child(-n+6),
+    .dashboard-v2-table-row>strong {
+        text-align: right;
+        justify-self: end;
+    }
+
+    .dashboard-v2-table-head span:nth-child(8),
+    .dashboard-v2-table-head span:nth-child(9),
+    .dashboard-v2-table-row>.badge,
+    .dashboard-v2-table-row>.btn {
+        justify-self: center;
+    }
+
+    .dashboard-v2-table-row>.btn {
+        min-width: 88px;
+        min-height: 30px;
+        padding-inline: 10px;
+    }
+
+    .dashboard-v2-table-row span small,
+    .dashboard-v2-obra-cell small {
+        display: block;
+        margin-top: 3px;
+        color: var(--text2);
+        font-size: 11px;
+    }
+
+    .dashboard-v2-obra-cell {
+        color: var(--text);
+        text-decoration: none;
+        transition: color .16s ease;
+    }
+
+    .dashboard-v2-obra-cell strong {
+        transition: color .16s ease;
+    }
+
+    .dashboard-v2-obra-cell:hover,
+    .dashboard-v2-obra-cell:hover strong {
+        color: #8ab8ff;
+    }
+
+    .dashboard-v2-mini-progress {
+        display: block;
+        width: 82px;
+        height: 6px;
+        margin: 0 0 5px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, .08);
+    }
+
+    .dashboard-v2-mini-progress i {
+        display: block;
+        height: 100%;
+        max-width: 100%;
+        border-radius: inherit;
+        background: #2f7df0;
+    }
+
+    .dashboard-v2-table-foot {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px 12px;
+        border-top: 1px solid rgba(255, 255, 255, .06);
+        background: rgba(255, 255, 255, .010);
+        color: var(--text2);
+        font-size: 12px;
+        flex-wrap: wrap;
+    }
+
+    .dashboard-v2-table-foot span {
+        display: grid;
+        gap: 3px;
+        min-width: 116px;
+        padding: 6px 10px;
+        border-radius: 7px;
+        background: rgba(255, 255, 255, .016);
+        border: 1px solid rgba(255, 255, 255, .045);
+    }
+
+    .dashboard-v2-table-foot small {
+        color: var(--text2);
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+
+    .dashboard-v2-table-foot strong {
+        color: var(--text);
+        font-weight: 800;
+        font-size: 11px;
+        line-height: 1.15;
+    }
+
+    @media (max-width: 1280px) {
+        .dashboard-v2-header {
+            padding-right: 0;
+            flex-direction: column;
+        }
+
+        .dashboard-v2-main-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 980px) {
+        .dashboard-v2-kpis {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .dashboard-v2-table {
+            overflow-x: auto;
+        }
+
+        .dashboard-v2-table-head,
+        .dashboard-v2-table-row {
+            min-width: 920px;
+        }
+    }
+
+    @media (max-width: 760px) {
+        .dashboard-v2-header {
+            flex-direction: column;
+        }
+
+        .dashboard-v2-panel,
+        .dashboard-v2-table-card {
+            padding: 16px;
+        }
+
+        .dashboard-v2-filter,
+        .dashboard-v2-filter select,
+        .dashboard-v2-filter input,
+        .dashboard-v2-filter .btn {
+            width: 100%;
+            max-width: none;
+        }
+
+        .dashboard-v2-kpis {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-v2-finance-row,
+        .dashboard-v2-status-body {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-v2-finance-row strong,
+        .dashboard-v2-finance-row em {
+            text-align: left;
+        }
+    }
+</style>
 <div id="dashboard-data" data-margem-labels='{{ chart_margem_labels | default([], true) | tojson | safe }}'
     data-margem-valores='{{ chart_margem_valores | default([], true) | tojson | safe }}'
     data-tipologia-labels='{{ chart_tipologia_labels | default([], true) | tojson | safe }}'
@@ -483,34 +1148,76 @@
         }
 
         function atualizarResumoFiltros(p) {
-            document.getElementById("filtroResumoQuantidade").textContent = `${p.quick_strip.obras_filtradas} obra(s)`;
-            document.getElementById("resumoObra").textContent = p.filtros.obra || "Todas";
-            document.getElementById("resumoTipo").textContent = p.filtros.tipo_obra || "Todos";
-            document.getElementById("resumoCategoria").textContent = p.filtros.categoria || "Todas";
-            document.getElementById("resumoStatus").textContent = p.filtros.status || "Todos";
+            const setText = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value;
+            };
+            setText("filtroResumoQuantidade", `${p.kpis.total_custos_lancados} lançamento(s)`);
+            setText("resumoObra", p.filtros.obra || "Todas");
+            setText("resumoTipo", p.filtros.tipo_obra || "Todos");
+            setText("resumoCategoria", p.filtros.categoria || "Todas");
+            setText("resumoStatus", p.filtros.status || "Todos");
             let periodo = "livre";
             if (p.filtros.data_inicio || p.filtros.data_fim) {
-                periodo = `${p.filtros.data_inicio || "início livre"} até ${p.filtros.data_fim || "fim livre"}`;
+                periodo = `${p.filtros.data_inicio_formatada || "início livre"} até ${p.filtros.data_fim_formatada || "fim livre"}`;
             }
-            document.getElementById("resumoPeriodo").textContent = periodo;
+            setText("resumoPeriodo", periodo);
         }
 
         function atualizarKpis(p) {
+            const totalObras = Number(p.kpis.total_obras || 0);
+            const concluidas = (p.margem_por_obra || []).filter(o => ["concluida", "vendida"].includes(String(o.status || "").toLowerCase())).length;
+            const andamento = (p.margem_por_obra || []).filter(o => ["andamento", "planejamento"].includes(String(o.status || "").toLowerCase())).length;
+            const atrasadas = Number(p.kpis.obras_atrasadas || 0);
+            const naoDefinidas = Math.max(0, totalObras - concluidas - andamento - atrasadas);
+            const pct = totalObras > 0 ? (v) => (v / totalObras * 100) : () => 0;
+            const custoPct = Number(p.quick_strip.custo_percentual_receita || 0);
+            const margemPct = Number(p.kpis.margem_percentual || 0);
+
             document.getElementById("kpiObrasFiltradas").textContent = p.quick_strip.obras_filtradas;
             document.getElementById("kpiReceita").textContent = p.kpis.total_receita_formatado;
             document.getElementById("kpiReceitaObras").textContent = `${p.kpis.total_obras} obras`;
             document.getElementById("kpiReceitaMedicoes").textContent = `${p.kpis.total_medicoes} medições`;
+            document.getElementById("kpiReceitaSub").textContent = `${p.kpis.total_obras} ${totalObras === 1 ? "obra" : "obras"}`;
             document.getElementById("kpiMargem").textContent = p.kpis.margem_formatada;
-            document.getElementById("kpiMargemPercentual").textContent = `${p.kpis.margem_percentual.toFixed(1)}% da receita`;
+            document.getElementById("kpiMargemPercentual").textContent = "Disponível para novas despesas";
             document.getElementById("kpiCusto").textContent = p.kpis.total_custo_formatado;
             document.getElementById("kpiCustosLancados").textContent = `${p.kpis.total_custos_lancados} lançamentos`;
+            document.getElementById("kpiCustoSub").textContent = `${p.kpis.total_custos_lancados} ${Number(p.kpis.total_custos_lancados || 0) === 1 ? "lançamento" : "lançamentos"}`;
             document.getElementById("kpiAlertas").textContent = p.kpis.total_alertas;
-            document.getElementById("kpiObrasAtrasadas").textContent = `${p.kpis.obras_atrasadas} atrasadas`;
-            document.getElementById("kpiObrasAtivas").textContent = `${p.kpis.obras_ativas} ativas`;
+            document.getElementById("kpiObrasAtrasadas").textContent = p.kpis.obras_atrasadas;
+            document.getElementById("kpiObrasAtivas").textContent = andamento;
+            document.getElementById("kpiObrasConcluidas").textContent = concluidas;
+            document.getElementById("kpiObrasConcluidasSub").textContent = `${concluidas} ${concluidas === 1 ? "concluída" : "concluídas"} de ${totalObras}`;
+            document.getElementById("kpiObrasAtivasSub").textContent = `${andamento} em acompanhamento`;
+            document.getElementById("kpiObrasAtrasadasSub").textContent = `${atrasadas} com atenção`;
 
             document.getElementById("quickExecucaoMedia").textContent = `${p.quick_strip.execucao_media.toFixed(1)}%`;
             document.getElementById("quickCustoReceita").textContent = `${p.quick_strip.custo_percentual_receita.toFixed(1)}%`;
             document.getElementById("quickAlertasAtivos").textContent = p.quick_strip.alertas_ativos;
+
+            document.getElementById("financeReceita").textContent = p.kpis.total_receita_formatado;
+            document.getElementById("financeCusto").textContent = p.kpis.total_custo_formatado;
+            document.getElementById("financeSaldo").textContent = p.kpis.margem_formatada;
+            document.getElementById("financeCustoPct").textContent = `${custoPct.toFixed(1)}%`;
+            document.getElementById("financeSaldoPct").textContent = `${margemPct.toFixed(1)}%`;
+            document.getElementById("financeNotaPct").textContent = `${margemPct.toFixed(1)}%`;
+            document.getElementById("financeCustoBar").style.width = `${Math.max(0, Math.min(100, custoPct))}%`;
+            document.getElementById("financeSaldoBar").style.width = `${Math.max(0, Math.min(100, margemPct))}%`;
+            document.getElementById("tableTotalObras").textContent = totalObras;
+            document.getElementById("tableTotalReceita").textContent = p.kpis.total_receita_formatado;
+            document.getElementById("tableTotalCusto").textContent = p.kpis.total_custo_formatado;
+            document.getElementById("tableTotalMargem").textContent = p.kpis.margem_formatada;
+
+            document.getElementById("statusTotal").textContent = totalObras;
+            document.getElementById("statusConcluidas").textContent = `${concluidas} (${pct(concluidas).toFixed(1)}%)`;
+            document.getElementById("statusAndamento").textContent = `${andamento} (${pct(andamento).toFixed(1)}%)`;
+            document.getElementById("statusAtrasadas").textContent = `${atrasadas} (${pct(atrasadas).toFixed(1)}%)`;
+            document.getElementById("statusNaoDefinidas").textContent = `${naoDefinidas} (${pct(naoDefinidas).toFixed(1)}%)`;
+            const donut = document.getElementById("statusDonut");
+            donut.style.setProperty("--done", `${pct(concluidas) * 3.6}deg`);
+            donut.style.setProperty("--doing", `${pct(andamento) * 3.6}deg`);
+            donut.style.setProperty("--late", `${pct(atrasadas) * 3.6}deg`);
         }
 
         function atualizarAlertas(p) {
@@ -565,44 +1272,25 @@
                 return;
             }
             b.innerHTML = p.margem_por_obra.map(o => `
-            <a href="/obra/${encodeURIComponent(o.codigo)}" class="dashboard-summary-card">
-                <div class="dashboard-summary-top">
-                    <div>
-                        <div class="dashboard-summary-code">${esc(o.codigo)}</div>
-                        <div class="dashboard-summary-name">${esc(o.nome)}</div>
-                        <div class="dashboard-summary-meta">
-                            <span>${o.tipo_obra === 'venda' ? 'Para venda' : 'Por contrato'}</span>
-                            <span class="dashboard-summary-dot">•</span>
-                            <span>${esc(o.tipologia || '-')}</span>
-                        </div>
-                    </div>
-                    <span class="badge ${esc(o.status)}">${esc(o.status)}</span>
-                </div>
-
-                <div class="dashboard-summary-progress">
-                    <div class="dashboard-summary-progress-top">
-                        <span>Execução</span>
-                        <strong>${Number(o.execucao || 0).toFixed(1)}%</strong>
-                    </div>
-                    <div class="progress-bar-bg">
-                        <div class="progress-bar-fill progress-dinamica" data-width="${Number(o.execucao || 0)}"></div>
-                    </div>
-                </div>
-
-                <div class="dashboard-summary-metrics">
-                    <div class="dashboard-summary-metric">
-                        <span class="dashboard-summary-metric-label">Lucro previsto</span>
-                        <strong>${esc(o.lucro_previsto_formatado)}</strong>
-                    </div>
-                    <div class="dashboard-summary-metric">
-                        <span class="dashboard-summary-metric-label">Resultado atual</span>
-                        <strong>${esc(o.margem_valor_formatado)}</strong>
-                    </div>
-                </div>
-            </a>`).join("");
+            <div class="dashboard-v2-table-row">
+                <a href="/obra/${encodeURIComponent(o.codigo)}" class="dashboard-v2-obra-cell">
+                    <strong>${esc(o.nome)}</strong>
+                    <small>${esc(o.codigo)}</small>
+                </a>
+                <span>${o.tipo_obra === 'venda' ? 'Para venda' : 'Por contrato'}<small>${esc(o.tipologia || '-')}</small></span>
+                <span>${esc(o.fase_obra || o.status || '-')}</span>
+                <span>
+                    <div class="dashboard-v2-mini-progress"><i style="width: ${Number(o.execucao || 0)}%;"></i></div>
+                    ${Number(o.execucao || 0).toFixed(1)}%
+                </span>
+                <span>${esc(o.receita_total_formatada || fmt(o.receita_total))}</span>
+                <span>${esc(o.custo_realizado_formatado || fmt(o.custo_realizado))}</span>
+                <strong class="${Number(o.margem_valor || 0) >= 0 ? 'valor-positivo' : 'valor-negativo'}">${esc(o.margem_valor_formatado)}</strong>
+                <span class="badge ${esc(o.status)}">${esc(o.status || '-')}</span>
+                <a href="/obra/${encodeURIComponent(o.codigo)}" class="btn btn-small btn-ghost">Abrir portal</a>
+            </div>`).join("");
             aplicarBarrasResumo();
         }
-
         function atualizarLinkExcel(p) {
             const params = new URLSearchParams();
             if (p.filtros.obra) params.set("obra", p.filtros.obra);

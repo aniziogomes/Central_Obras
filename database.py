@@ -41,6 +41,13 @@ def init_db():
     except Exception:
         pass
 
+    # usuarios.foto_perfil
+    try:
+        conn.execute("ALTER TABLE usuarios ADD COLUMN foto_perfil TEXT")
+        conn.commit()
+    except Exception:
+        pass
+
     # obras.tipo_obra
     try:
         conn.execute("ALTER TABLE obras ADD COLUMN tipo_obra TEXT NOT NULL DEFAULT 'contrato'")
