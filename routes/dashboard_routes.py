@@ -4,6 +4,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, send_f
 from database import query_all
 from services.dashboard_service import calcular_kpis_dashboard, calcular_alertas, serializar_dashboard_json
 from auth import usuario_logado, eh_leitura
+from services.tenant import where_empresa
 
 dashboard_bp = Blueprint("dashboard_bp", __name__)
 
@@ -35,9 +36,19 @@ def dashboard():
         data_fim=filtros["data_fim"]
     )
 
-    todas_obras = query_all("SELECT * FROM obras ORDER BY codigo ASC")
+    where_obras, params_obras = where_empresa()
+    todas_obras = query_all(f"SELECT * FROM obras {where_obras} ORDER BY codigo ASC", params_obras)
+    where_custos, params_custos = where_empresa()
     todas_categorias_rows = query_all(
-        "SELECT DISTINCT categoria FROM custos WHERE categoria IS NOT NULL AND categoria != '' ORDER BY categoria ASC"
+        f"""
+        SELECT DISTINCT categoria
+        FROM custos
+        {where_custos}
+        {'AND' if where_custos else 'WHERE'} categoria IS NOT NULL
+          AND categoria != ''
+        ORDER BY categoria ASC
+        """,
+        params_custos,
     )
     todas_categorias = [row["categoria"] for row in todas_categorias_rows]
 
@@ -134,5 +145,6 @@ def logs():
     if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
-    logs_lista = query_all("SELECT * FROM logs ORDER BY data_hora DESC")
+    where_logs, params_logs = where_empresa()
+    logs_lista = query_all(f"SELECT * FROM logs {where_logs} ORDER BY data_hora DESC", params_logs)
     return render_template("logs.html", logs=logs_lista)

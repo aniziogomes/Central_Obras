@@ -4,6 +4,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from database import query_all, execute
 from services.validators import caminho_redirecionamento_seguro, limpar_texto, parse_int_positivo, parse_valor_monetario, valor_negativo
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
+from services.tenant import and_empresa, listar_obras_acessiveis, obter_obra_acessivel, obter_registro_acessivel
 
 equipe_bp = Blueprint("equipe_bp", __name__)
 
@@ -13,14 +14,16 @@ def equipe():
     if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
-    lista_equipe = query_all("""
+    filtro_empresa, params_empresa = and_empresa("o")
+    lista_equipe = query_all(f"""
         SELECT e.*, o.codigo AS codigo_obra, o.nome AS nome_obra
         FROM equipe e
         JOIN obras o ON e.obra_id = o.id
+        WHERE 1 = 1 {filtro_empresa}
         ORDER BY e.id DESC
-    """)
+    """, params_empresa)
 
-    obras = query_all("SELECT * FROM obras ORDER BY nome ASC")
+    obras = listar_obras_acessiveis(order_by="o.nome ASC", campos="o.*")
     return render_template("equipe.html", equipe=lista_equipe, obras=obras)
 
 
@@ -50,6 +53,9 @@ def novo_membro_equipe():
         valor_contratado_float = parse_valor_monetario(valor_contratado)
         valor_pago_float = parse_valor_monetario(valor_pago)
         obra_id_int = parse_int_positivo(obra_id, "Obra")
+        obra = obter_obra_acessivel(obra_id=obra_id_int, campos="o.id, o.empresa_id")
+        if not obra:
+            raise ValueError("Obra nao encontrada para este usuario.")
 
         if valor_negativo(valor_contratado_float):
             raise ValueError("Valor contratado não pode ser negativo.")
@@ -63,11 +69,12 @@ def novo_membro_equipe():
     execute(
         """
         INSERT INTO equipe (
-            obra_id, nome, funcao, valor_contratado, valor_pago
+            empresa_id, obra_id, nome, funcao, valor_contratado, valor_pago
         )
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
+            obra["empresa_id"],
             obra_id_int,
             nome,
             funcao,
@@ -84,6 +91,11 @@ def novo_membro_equipe():
 def editar_equipe(equipe_id):
     if not usuario_logado() or not eh_gestor():
         flash("Você não tem permissão para editar equipe.", "erro")
+        return redirect(url_for("equipe_bp.equipe"))
+
+    membro = obter_registro_acessivel("equipe", equipe_id, campos="id")
+    if not membro:
+        flash("Profissional nao encontrado.", "erro")
         return redirect(url_for("equipe_bp.equipe"))
 
     try:
@@ -116,6 +128,11 @@ def excluir_equipe(equipe_id):
         flash("Você não tem permissão para excluir equipe.", "erro")
         return redirect(url_for("equipe_bp.equipe"))
 
+    membro = obter_registro_acessivel("equipe", equipe_id, campos="id")
+    if not membro:
+        flash("Profissional nao encontrado.", "erro")
+        return redirect(url_for("equipe_bp.equipe"))
+
     execute("DELETE FROM equipe WHERE id = ?", (equipe_id,))
     flash("Profissional excluído com sucesso.", "sucesso")
     return redirect(url_for("equipe_bp.equipe"))
@@ -126,12 +143,14 @@ def equipe_exportar():
     if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
-    lista = query_all("""
+    filtro_empresa, params_empresa = and_empresa("o")
+    lista = query_all(f"""
         SELECT e.*, o.codigo AS codigo_obra, o.nome AS nome_obra
         FROM equipe e
         JOIN obras o ON e.obra_id = o.id
+        WHERE 1 = 1 {filtro_empresa}
         ORDER BY e.id DESC
-    """)
+    """, params_empresa)
 
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:

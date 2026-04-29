@@ -2,11 +2,14 @@ from datetime import datetime
 from database import query_all, query_one
 from utils import calcular_media_fornecedor, formatar_moeda, formatar_data
 from services.validators import data_no_periodo
+from services.tenant import where_empresa
 
 
 def calcular_alertas(obra_ids_filtradas=None):
-    obras = query_all("SELECT * FROM obras")
-    equipe = query_all("SELECT * FROM equipe")
+    where_obras, params_obras = where_empresa()
+    where_equipe, params_equipe = where_empresa()
+    obras = query_all(f"SELECT * FROM obras {where_obras}", params_obras)
+    equipe = query_all(f"SELECT * FROM equipe {where_equipe}", params_equipe)
 
     if obra_ids_filtradas:
         obras = [o for o in obras if o["id"] in obra_ids_filtradas]
@@ -142,11 +145,19 @@ def calcular_alertas(obra_ids_filtradas=None):
 
 
 def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="", filtro_tipo_obra="", data_inicio="", data_fim=""):
-    obras = query_all("SELECT * FROM obras ORDER BY id DESC")
-    custos = query_all("SELECT * FROM custos ORDER BY id DESC")
-    fornecedores = query_all("SELECT * FROM fornecedores ORDER BY id DESC")
-    medicoes = query_all("SELECT * FROM medicoes ORDER BY id DESC")
-    custos_importados = query_all("SELECT * FROM custos_importados_categoria ORDER BY id DESC")
+    where_obras, params_obras = where_empresa()
+    where_custos, params_custos = where_empresa()
+    where_fornecedores, params_fornecedores = where_empresa()
+    where_medicoes, params_medicoes = where_empresa()
+    where_importados, params_importados = where_empresa()
+    obras = query_all(f"SELECT * FROM obras {where_obras} ORDER BY id DESC", params_obras)
+    custos = query_all(f"SELECT * FROM custos {where_custos} ORDER BY id DESC", params_custos)
+    fornecedores = query_all(f"SELECT * FROM fornecedores {where_fornecedores} ORDER BY id DESC", params_fornecedores)
+    medicoes = query_all(f"SELECT * FROM medicoes {where_medicoes} ORDER BY id DESC", params_medicoes)
+    custos_importados = query_all(
+        f"SELECT * FROM custos_importados_categoria {where_importados} ORDER BY id DESC",
+        params_importados,
+    )
 
     if filtro_obra:
         obras = [o for o in obras if o["codigo"] == filtro_obra]

@@ -25,7 +25,7 @@ def ler_celula(ws, referencia):
         return None
 
 
-def importar_planilha(caminho_arquivo, codigo_obra, nome_obra):
+def importar_planilha(caminho_arquivo, codigo_obra, nome_obra, empresa_id=None):
     """
     Importa dados principais da planilha para o banco:
     - cria/atualiza obra
@@ -40,18 +40,22 @@ def importar_planilha(caminho_arquivo, codigo_obra, nome_obra):
     # 1. GARANTIR A OBRA
     # --------------------------------------------------
     obra = query_one("SELECT * FROM obras WHERE codigo = ?", (codigo_obra,))
+    if obra and empresa_id is not None and obra["empresa_id"] != empresa_id:
+        raise ValueError("Este codigo de obra ja pertence a outra empresa.")
     if obra:
         obra_id = obra["id"]
+        empresa_id_obra = obra["empresa_id"] if "empresa_id" in obra.keys() else empresa_id
     else:
         obra_id = execute(
             """
             INSERT INTO obras (
-                codigo, nome, tipologia, status, receita_total,
+                empresa_id, codigo, nome, tipologia, status, receita_total,
                 orcamento, progresso_percentual
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
+                empresa_id,
                 codigo_obra,
                 nome_obra,
                 "Casa Térrea",
@@ -61,16 +65,17 @@ def importar_planilha(caminho_arquivo, codigo_obra, nome_obra):
                 0
             )
         )
+        empresa_id_obra = empresa_id
 
     # --------------------------------------------------
     # 2. REGISTRAR IMPORTAÇÃO
     # --------------------------------------------------
     execute(
         """
-        INSERT INTO importacoes (nome_arquivo, observacao)
-        VALUES (?, ?)
+        INSERT INTO importacoes (empresa_id, nome_arquivo, observacao)
+        VALUES (?, ?, ?)
         """,
-        (caminho_arquivo, f"Importação vinculada à obra {codigo_obra}")
+        (empresa_id_obra, caminho_arquivo, f"Importação vinculada à obra {codigo_obra}")
     )
 
     # --------------------------------------------------
@@ -134,11 +139,11 @@ def importar_planilha(caminho_arquivo, codigo_obra, nome_obra):
                 execute(
                     """
                     INSERT INTO custos_importados_categoria (
-                        obra_id, categoria, valor_total, origem
+                        empresa_id, obra_id, categoria, valor_total, origem
                     )
-                    VALUES (?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?)
                     """,
-                    (obra_id, categoria_nome, subtotal, "planilha")
+                    (empresa_id_obra, obra_id, categoria_nome, subtotal, "planilha")
                 )
 
     # --------------------------------------------------
@@ -160,13 +165,14 @@ def importar_planilha(caminho_arquivo, codigo_obra, nome_obra):
                 execute(
                     """
                     INSERT INTO medicoes (
-                        obra_id, mes, medicao_nome, etapa,
+                        empresa_id, obra_id, mes, medicao_nome, etapa,
                         percentual, percentual_acumulado,
                         valor_realizado, data_medicao, observacao
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
+                        empresa_id_obra,
                         obra_id,
                         mes,
                         medicao_nome,

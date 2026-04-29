@@ -7,6 +7,7 @@ from importar_planilha import importar_planilha
 from auth import usuario_logado, eh_gestor, eh_leitura
 from services.validators import limpar_texto
 from services.log_service import registrar_log
+from services.tenant import and_empresa, empresa_id_para_insert, listar_obras_acessiveis, where_empresa
 
 importacao_bp = Blueprint("importacao_bp", __name__)
 UPLOAD_IMPORTACAO_DIR = Path("uploads")
@@ -22,8 +23,9 @@ def importacao():
     if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
-    obras = query_all("SELECT * FROM obras ORDER BY id DESC")
-    importacoes = query_all("SELECT * FROM importacoes ORDER BY id DESC")
+    obras = listar_obras_acessiveis(order_by="o.id DESC", campos="o.*")
+    where_importacoes, params_importacoes = where_empresa()
+    importacoes = query_all(f"SELECT * FROM importacoes {where_importacoes} ORDER BY id DESC", params_importacoes)
 
     return render_template(
         "importacao.html",
@@ -61,7 +63,7 @@ def importar_planilha_route():
     arquivo.save(caminho)
 
     try:
-        importar_planilha(str(caminho), codigo_obra, nome_obra)
+        importar_planilha(str(caminho), codigo_obra, nome_obra, empresa_id_para_insert())
 
         # LOG
         registrar_log(
@@ -84,14 +86,16 @@ def orcamento_importado():
     if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
-    obras = query_all("SELECT * FROM obras ORDER BY id DESC")
+    obras = listar_obras_acessiveis(order_by="o.id DESC", campos="o.*")
 
-    categorias_importadas = query_all("""
+    filtro_empresa, params_empresa = and_empresa("o")
+    categorias_importadas = query_all(f"""
         SELECT cic.*, o.codigo AS codigo_obra, o.nome AS nome_obra
         FROM custos_importados_categoria cic
         JOIN obras o ON cic.obra_id = o.id
+        WHERE 1 = 1 {filtro_empresa}
         ORDER BY o.id DESC, cic.categoria ASC
-    """)
+    """, params_empresa)
 
     return render_template(
         "orcamento_importado.html",

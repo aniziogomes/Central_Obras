@@ -1,5 +1,13 @@
+CREATE TABLE IF NOT EXISTS empresas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL UNIQUE,
+    ativo INTEGER NOT NULL DEFAULT 1,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS usuarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    empresa_id INTEGER,
     nome TEXT NOT NULL,
     username TEXT NOT NULL UNIQUE,
     senha_hash TEXT NOT NULL,
@@ -7,11 +15,13 @@ CREATE TABLE IF NOT EXISTS usuarios (
     ativo INTEGER NOT NULL DEFAULT 1,
     onboarding_completo INTEGER DEFAULT 0,
     foto_perfil TEXT,
-    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
 );
 
 CREATE TABLE IF NOT EXISTS obras (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    empresa_id INTEGER,
     codigo TEXT NOT NULL UNIQUE,
     nome TEXT NOT NULL,
     endereco TEXT,
@@ -27,11 +37,13 @@ CREATE TABLE IF NOT EXISTS obras (
     token_publico TEXT UNIQUE,
     portal_expira_em TEXT,
     portal_revogado_em TEXT,
-    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
 );
 
 CREATE TABLE IF NOT EXISTS custos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    empresa_id INTEGER,
     obra_id INTEGER NOT NULL,
     descricao TEXT NOT NULL,
     categoria TEXT NOT NULL,
@@ -51,6 +63,7 @@ CREATE TABLE IF NOT EXISTS custos (
 
 CREATE TABLE IF NOT EXISTS fornecedores (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    empresa_id INTEGER,
     codigo TEXT NOT NULL UNIQUE,
     nome TEXT NOT NULL,
     categoria TEXT,
@@ -65,6 +78,7 @@ CREATE TABLE IF NOT EXISTS fornecedores (
 
 CREATE TABLE IF NOT EXISTS compras (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    empresa_id INTEGER,
     obra_id INTEGER NOT NULL,
     fornecedor_id INTEGER,
     material TEXT NOT NULL,
@@ -80,6 +94,7 @@ CREATE TABLE IF NOT EXISTS compras (
 
 CREATE TABLE IF NOT EXISTS equipe (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    empresa_id INTEGER,
     obra_id INTEGER NOT NULL,
     nome TEXT NOT NULL,
     funcao TEXT,
@@ -94,6 +109,7 @@ CREATE TABLE IF NOT EXISTS equipe (
 
 CREATE TABLE IF NOT EXISTS medicoes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    empresa_id INTEGER,
     obra_id INTEGER NOT NULL,
     mes TEXT,
     medicao_nome TEXT,
@@ -108,6 +124,7 @@ CREATE TABLE IF NOT EXISTS medicoes (
 
 CREATE TABLE IF NOT EXISTS importacoes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    empresa_id INTEGER,
     nome_arquivo TEXT NOT NULL,
     data_importacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     observacao TEXT
@@ -115,6 +132,7 @@ CREATE TABLE IF NOT EXISTS importacoes (
 
 CREATE TABLE IF NOT EXISTS custos_importados_categoria (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    empresa_id INTEGER,
     obra_id INTEGER NOT NULL,
     categoria TEXT NOT NULL,
     valor_total REAL DEFAULT 0,
@@ -124,6 +142,7 @@ CREATE TABLE IF NOT EXISTS custos_importados_categoria (
 
 CREATE TABLE IF NOT EXISTS fotos_obra (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    empresa_id INTEGER,
     obra_id INTEGER NOT NULL,
     caminho TEXT NOT NULL,
     titulo TEXT,
@@ -135,6 +154,7 @@ CREATE TABLE IF NOT EXISTS fotos_obra (
 
 CREATE TABLE IF NOT EXISTS logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    empresa_id INTEGER,
     usuario_id INTEGER,
     acao TEXT,
     entidade TEXT,

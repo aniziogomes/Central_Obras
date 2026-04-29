@@ -7,6 +7,7 @@ from database import query_all, query_one, execute
 from auth import verificar_senha, gerar_hash_senha, eh_admin, gerar_csrf_token, PERFIS_VALIDOS
 from services.validators import limpar_texto
 from services.log_service import registrar_log
+from services.tenant import empresa_usuario_por_form, listar_empresas
 
 auth_bp = Blueprint("auth_bp", __name__)
 UPLOAD_USUARIOS_DIR = Path("static/uploads/usuarios")
@@ -128,6 +129,7 @@ def login():
                 descricao=f"Usuário {usuario['username']} fez login")
             session["usuario_nome"] = usuario["nome"]
             session["usuario_perfil"] = usuario["perfil"]
+            session["empresa_id"] = usuario["empresa_id"] if "empresa_id" in usuario.keys() else None
             session["usuario_foto"] = usuario["foto_perfil"] if "foto_perfil" in usuario.keys() and usuario["foto_perfil"] else ""
             limpar_falhas_login(username)
             return redirect(url_for("dashboard_bp.dashboard"))
@@ -143,14 +145,14 @@ def perfil():
     if not usuario_logado():
         return redirect(url_for("auth_bp.login"))
 
-    usuario = query_one("SELECT id, nome, username, perfil, ativo, foto_perfil FROM usuarios WHERE id = ?", (session["usuario_id"],))
+    usuario = query_one("SELECT id, empresa_id, nome, username, perfil, ativo, foto_perfil FROM usuarios WHERE id = ?", (session["usuario_id"],))
     if not usuario:
         session.clear()
         return redirect(url_for("auth_bp.login"))
 
     usuarios = []
     if eh_admin():
-        usuarios = query_all("SELECT id, nome, username, perfil, ativo, foto_perfil, criado_em FROM usuarios ORDER BY nome ASC")
+        usuarios = query_all("SELECT id, empresa_id, nome, username, perfil, ativo, foto_perfil, criado_em FROM usuarios ORDER BY nome ASC")
 
     return render_template("perfil.html", usuario=usuario, usuarios=usuarios)
 
@@ -211,10 +213,13 @@ def usuarios():
         return redirect(url_for("dashboard_bp.dashboard"))
 
     usuarios_lista = query_all("""
-        SELECT id, nome, username, perfil, ativo, foto_perfil, criado_em
-        FROM usuarios
-        WHERE perfil != 'cliente'
-        ORDER BY ativo DESC, nome ASC
+        SELECT
+            u.id, u.empresa_id, u.nome, u.username, u.perfil, u.ativo,
+            u.foto_perfil, u.criado_em, e.nome AS empresa_nome
+        FROM usuarios u
+        LEFT JOIN empresas e ON e.id = u.empresa_id
+        WHERE u.perfil != 'cliente'
+        ORDER BY u.ativo DESC, u.nome ASC
     """)
     kpis = {
         "total": len(usuarios_lista),
@@ -222,10 +227,12 @@ def usuarios():
         "admins": sum(1 for usuario in usuarios_lista if usuario["perfil"] == "admin"),
     }
     credenciais_usuario = session.pop("credenciais_usuario", None)
+    empresas = listar_empresas()
 
     return render_template(
         "usuarios.html",
         usuarios=usuarios_lista,
+        empresas=empresas,
         kpis=kpis,
         credenciais_usuario=credenciais_usuario,
         sistema_url=url_sistema(),
@@ -263,6 +270,16 @@ def novo_usuario():
     if perfil not in PERFIS_ADMINISTRAVEIS:
         perfil = "leitura"
 
+    try:
+        empresa_id = empresa_usuario_por_form(
+            perfil,
+            request.form.get("empresa_id", ""),
+            request.form.get("empresa_nome", ""),
+        )
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirecionar_usuarios()
+
     if not nome or not username or len(senha) < 6:
         flash("Informe nome, username e uma senha com pelo menos 6 caracteres.", "erro")
         return redirecionar_usuarios()
@@ -277,10 +294,10 @@ def novo_usuario():
 
     usuario_id = execute(
         """
-        INSERT INTO usuarios (nome, username, senha_hash, perfil, ativo)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO usuarios (empresa_id, nome, username, senha_hash, perfil, ativo)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (nome, username, gerar_hash_senha(senha), perfil, ativo)
+        (empresa_id, nome, username, gerar_hash_senha(senha), perfil, ativo)
     )
     registrar_log("criar_usuario", "usuario", usuario_id, f"Usuario {username} criado")
     guardar_credenciais_usuario(nome, username, senha, "criado")
@@ -349,6 +366,16 @@ def editar_usuario(usuario_id):
     if perfil not in PERFIS_ADMINISTRAVEIS:
         perfil = "leitura"
 
+    try:
+        empresa_id = empresa_usuario_por_form(
+            perfil,
+            request.form.get("empresa_id", ""),
+            request.form.get("empresa_nome", ""),
+        )
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirecionar_usuarios()
+
     if usuario_id == session.get("usuario_id") and ativo == 0:
         flash("Voce nao pode desativar sua propria conta.", "erro")
         return redirecionar_usuarios()
@@ -358,12 +385,13 @@ def editar_usuario(usuario_id):
         return redirecionar_usuarios()
 
     execute(
-        "UPDATE usuarios SET nome = ?, username = ?, perfil = ?, ativo = ? WHERE id = ?",
-        (nome, username, perfil, ativo, usuario_id)
+        "UPDATE usuarios SET empresa_id = ?, nome = ?, username = ?, perfil = ?, ativo = ? WHERE id = ?",
+        (empresa_id, nome, username, perfil, ativo, usuario_id)
     )
     if usuario_id == session.get("usuario_id"):
         session["usuario_nome"] = nome
         session["usuario_perfil"] = perfil
+        session["empresa_id"] = empresa_id
 
     registrar_log("editar_usuario", "usuario", usuario_id, f"Usuario atualizado: {username}")
     flash("Usuario atualizado com sucesso.", "sucesso")

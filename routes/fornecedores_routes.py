@@ -5,6 +5,7 @@ from database import query_one, query_all, execute
 from services.validators import limpar_texto, parse_int_nao_negativo, validar_nota
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 from services.log_service import registrar_log
+from services.tenant import empresa_id_para_insert, obter_registro_acessivel, where_empresa
 
 fornecedores_bp = Blueprint("fornecedores_bp", __name__)
 
@@ -14,7 +15,8 @@ def fornecedores():
     if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
-    lista_fornecedores = query_all("SELECT * FROM fornecedores ORDER BY id DESC")
+    where, params = where_empresa()
+    lista_fornecedores = query_all(f"SELECT * FROM fornecedores {where} ORDER BY id DESC", params)
     return render_template("fornecedores.html", fornecedores=lista_fornecedores)
 
 
@@ -57,16 +59,18 @@ def novo_fornecedor():
         flash(str(e), "erro")
         return redirect(url_for("fornecedores_bp.fornecedores"))
 
+    empresa_id = empresa_id_para_insert()
     fornecedor_id = execute(
         """
         INSERT INTO fornecedores (
-            codigo, nome, categoria, contato, documento,
+            empresa_id, codigo, nome, categoria, contato, documento,
             prazo_medio, nota_qualidade, nota_preco,
             nota_prazo, observacao
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
+            empresa_id,
             codigo,
             nome,
             categoria,
@@ -95,6 +99,11 @@ def novo_fornecedor():
 def editar_fornecedor(fornecedor_id):
     if not usuario_logado() or not eh_gestor():
         flash("Você não tem permissão para editar fornecedores.", "erro")
+        return redirect(url_for("fornecedores_bp.fornecedores"))
+
+    fornecedor_atual = obter_registro_acessivel("fornecedores", fornecedor_id, campos="id")
+    if not fornecedor_atual:
+        flash("Fornecedor nao encontrado.", "erro")
         return redirect(url_for("fornecedores_bp.fornecedores"))
 
     try:
@@ -159,7 +168,10 @@ def excluir_fornecedor(fornecedor_id):
         flash("Você não tem permissão para excluir fornecedores.", "erro")
         return redirect(url_for("fornecedores_bp.fornecedores"))
 
-    fornecedor = query_one("SELECT * FROM fornecedores WHERE id = ?", (fornecedor_id,))
+    fornecedor = obter_registro_acessivel("fornecedores", fornecedor_id)
+    if not fornecedor:
+        flash("Fornecedor nao encontrado.", "erro")
+        return redirect(url_for("fornecedores_bp.fornecedores"))
     nome_fornecedor = fornecedor["nome"] if fornecedor else f"ID {fornecedor_id}"
 
     execute("DELETE FROM fornecedores WHERE id = ?", (fornecedor_id,))
@@ -180,7 +192,8 @@ def fornecedores_exportar():
     if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
-    lista = query_all("SELECT * FROM fornecedores ORDER BY id DESC")
+    where, params = where_empresa()
+    lista = query_all(f"SELECT * FROM fornecedores {where} ORDER BY id DESC", params)
 
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:

@@ -231,6 +231,16 @@ obra.observacao_responsavel else '' %}
                     <label>Nome da Obra *</label>
                     <input type="text" name="nome" value="{{ obra.nome }}" required>
                 </div>
+                {% if eh_admin() %}
+                <div class="form-group full">
+                    <label>Empresa / cliente</label>
+                    <select name="empresa_id">
+                        {% for empresa in empresas %}
+                        <option value="{{ empresa.id }}" {% if obra.empresa_id == empresa.id %}selected{% endif %}>{{ empresa.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
                 <div class="form-group">
                     <label>Endereço</label>
                     <input type="text" name="endereco" value="{{ obra.endereco or '' }}">
@@ -351,6 +361,16 @@ obra.observacao_responsavel else '' %}
                     <label>Nome da Obra *</label>
                     <input type="text" name="nome" placeholder="Residência Silva" required>
                 </div>
+                {% if eh_admin() %}
+                <div class="form-group full">
+                    <label>Empresa / cliente</label>
+                    <select name="empresa_id">
+                        {% for empresa in empresas %}
+                        <option value="{{ empresa.id }}">{{ empresa.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
                 <div class="form-group full">
                     <label>Endereço</label>
                     <input type="text" name="endereco" placeholder="Rua das Flores, 123">

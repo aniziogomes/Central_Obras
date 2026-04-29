@@ -57,6 +57,7 @@
         <tr>
           <th>Nome</th>
           <th>Username</th>
+          <th>Empresa</th>
           <th>Perfil</th>
           <th>Status</th>
           <th>Data de criação</th>
@@ -80,6 +81,7 @@
             </div>
           </td>
           <td><span class="usuarios-username">@{{ usuario.username }}</span></td>
+          <td><span class="usuarios-company-name">{{ usuario.empresa_nome or "Sem empresa" }}</span></td>
           <td><span class="profile-role-badge profile-role-badge--{{ usuario.perfil }}">{{ perfil_label }}</span></td>
           <td>
             <span class="status-pill {{ 'ok' if usuario.ativo else 'danger' }}">
@@ -111,7 +113,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="6" class="usuarios-empty">Nenhum usuário cadastrado.</td>
+          <td colspan="7" class="usuarios-empty">Nenhum usuário cadastrado.</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -134,6 +136,20 @@
         <label class="form-field">
           <span>Username</span>
           <input type="text" name="username" required autocomplete="off">
+        </label>
+        <label class="form-field">
+          <span>Empresa / cliente</span>
+          <select name="empresa_id">
+            <option value="">Sem empresa (admin global)</option>
+            {% for empresa in empresas %}
+            <option value="{{ empresa.id }}">{{ empresa.nome }}</option>
+            {% endfor %}
+          </select>
+          <small class="usuarios-field-help">Obrigatorio para Gestor e Leitura.</small>
+        </label>
+        <label class="form-field">
+          <span>Nova empresa</span>
+          <input type="text" name="empresa_nome" autocomplete="off" placeholder="Criar empresa ao salvar">
         </label>
         <label class="form-field">
           <span>Senha temporária</span>
@@ -189,6 +205,20 @@
         <label class="form-field">
           <span>Username</span>
           <input type="text" name="username" value="{{ usuario.username }}" required>
+        </label>
+        <label class="form-field">
+          <span>Empresa / cliente</span>
+          <select name="empresa_id">
+            <option value="">Sem empresa (admin global)</option>
+            {% for empresa in empresas %}
+            <option value="{{ empresa.id }}" {% if usuario.empresa_id == empresa.id %}selected{% endif %}>{{ empresa.nome }}</option>
+            {% endfor %}
+          </select>
+          <small class="usuarios-field-help">Obrigatorio para Gestor e Leitura.</small>
+        </label>
+        <label class="form-field">
+          <span>Nova empresa</span>
+          <input type="text" name="empresa_nome" autocomplete="off" placeholder="Criar empresa ao salvar">
         </label>
         <label class="form-field">
           <span>Perfil</span>

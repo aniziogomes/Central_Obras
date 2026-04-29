@@ -1,7 +1,7 @@
 import pandas as pd
 from io import BytesIO
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, jsonify
-from database import query_all, query_one, execute
+from database import query_all, execute
 from services.validators import (
     parse_valor_monetario,
     valor_negativo,
@@ -13,6 +13,7 @@ from services.validators import (
 )
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 from services.log_service import registrar_log
+from services.tenant import aplicar_filtro_empresa, listar_obras_acessiveis, obter_obra_acessivel, obter_registro_acessivel
 from utils import formatar_moeda, formatar_data
 
 custos_bp = Blueprint("custos_bp", __name__)
@@ -60,6 +61,7 @@ def obter_filtros_custos():
 def montar_query_custos(filtro_obra, data_inicio, data_fim, filtro_categoria=""):
     clausulas = []
     params = []
+    aplicar_filtro_empresa(clausulas, params, "o")
 
     if filtro_obra:
         clausulas.append("o.codigo = ?")
@@ -105,7 +107,7 @@ def buscar_obras_com_custos(data_inicio="", data_fim="", filtro_categoria="", fi
     """, params)
 
     if filtro_obra and not any(obra["codigo"] == filtro_obra for obra in obras):
-        obra_atual = query_one("SELECT * FROM obras WHERE codigo = ?", (filtro_obra,))
+        obra_atual = obter_obra_acessivel(codigo=filtro_obra)
         if obra_atual:
             obras = [obra_atual] + list(obras)
 
@@ -156,7 +158,7 @@ def custos():
         data_fim=filtros["data_fim"],
         filtro_obra=filtros["filtro_obra"],
     )
-    obras = query_all("SELECT * FROM obras ORDER BY nome ASC")
+    obras = listar_obras_acessiveis(order_by="o.nome ASC", campos="o.*")
     cards_categorias = gerar_cards_categorias(lista_custos)
 
     return render_template(
@@ -270,6 +272,9 @@ def novo_custo():
         obra_id_int = parse_int_positivo(obra_id, "Obra")
         validar_categoria_custo(categoria)
         valor_total_float, quantidade_float, valor_unitario_float = calcular_valores_custo(valor_total, quantidade, valor_unitario)
+        obra = obter_obra_acessivel(obra_id=obra_id_int, campos="o.id, o.empresa_id")
+        if not obra:
+            raise ValueError("Obra nao encontrada para este usuario.")
         if valor_negativo(valor_total_float):
             raise ValueError("Valor do custo não pode ser negativo.")
         if valor_negativo(quantidade_float):
@@ -285,13 +290,14 @@ def novo_custo():
     custo_id = execute(
         """
         INSERT INTO custos (
-            obra_id, descricao, categoria, fornecedor,
+            empresa_id, obra_id, descricao, categoria, fornecedor,
             data_lancamento, valor_total, quantidade, valor_unitario,
             status_entrega, data_entrega_prevista, data_entrega_realizada,
             nota_fiscal, observacao
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
+            obra["empresa_id"],
             obra_id_int,
             descricao,
             categoria,
@@ -323,6 +329,11 @@ def novo_custo():
 def editar_custo(custo_id):
     if not usuario_logado() or not eh_gestor():
         flash("Você não tem permissão para editar custos.", "erro")
+        return redirect(url_for("custos_bp.custos"))
+
+    custo_atual = obter_registro_acessivel("custos", custo_id, campos="id")
+    if not custo_atual:
+        flash("Custo nao encontrado.", "erro")
         return redirect(url_for("custos_bp.custos"))
 
     try:
@@ -400,7 +411,10 @@ def excluir_custo(custo_id):
         flash("Você não tem permissão para excluir custos.", "erro")
         return redirect(url_for("custos_bp.custos"))
 
-    custo = query_one("SELECT * FROM custos WHERE id = ?", (custo_id,))
+    custo = obter_registro_acessivel("custos", custo_id)
+    if not custo:
+        flash("Custo nao encontrado.", "erro")
+        return redirect(url_for("custos_bp.custos"))
     descricao_custo = custo["descricao"] if custo else f"ID {custo_id}"
 
     execute("DELETE FROM custos WHERE id = ?", (custo_id,))

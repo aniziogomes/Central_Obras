@@ -7,6 +7,7 @@ from database import execute, query_one
 from routes.obras_routes import gerar_codigo_obra
 from routes.portal_routes import calcular_expiracao_portal, gerar_token_portal
 from services.log_service import registrar_log
+from services.tenant import and_empresa, empresa_id_para_insert, obter_obra_acessivel
 from services.validators import (
     CATEGORIAS_CUSTO_VALIDAS,
     limpar_texto,
@@ -40,14 +41,15 @@ def _usuario_onboarding_completo():
 
 
 def _total_obras():
-    total = query_one("SELECT COUNT(*) AS total FROM obras")
+    filtro_empresa, params_empresa = and_empresa()
+    total = query_one(f"SELECT COUNT(*) AS total FROM obras WHERE 1 = 1 {filtro_empresa}", params_empresa)
     return int(total["total"] if total else 0)
 
 
 def _obra_onboarding():
     obra_id = session.get("onboarding_obra_id")
     if obra_id:
-        obra = query_one("SELECT * FROM obras WHERE id = ?", (obra_id,))
+        obra = obter_obra_acessivel(obra_id=obra_id)
         if obra:
             return obra
     return None
@@ -147,12 +149,13 @@ def criar_primeira_obra():
         status = "planejamento"
 
     codigo = gerar_codigo_obra()
+    empresa_id = empresa_id_para_insert()
     obra_id = execute(
         """
-        INSERT INTO obras (codigo, nome, tipo_obra, status, progresso_percentual)
-        VALUES (?, ?, ?, ?, 0)
+        INSERT INTO obras (empresa_id, codigo, nome, tipo_obra, status, progresso_percentual)
+        VALUES (?, ?, ?, ?, ?, 0)
         """,
-        (codigo, nome, tipo_obra, status),
+        (empresa_id, codigo, nome, tipo_obra, status),
     )
 
     registrar_log(
@@ -191,10 +194,10 @@ def criar_primeiro_custo():
 
     custo_id = execute(
         """
-        INSERT INTO custos (obra_id, descricao, categoria, valor_total)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO custos (empresa_id, obra_id, descricao, categoria, valor_total)
+        VALUES (?, ?, ?, ?, ?)
         """,
-        (obra["id"], descricao, categoria, valor_total),
+        (obra["empresa_id"], obra["id"], descricao, categoria, valor_total),
     )
 
     registrar_log(

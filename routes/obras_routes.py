@@ -10,6 +10,13 @@ from services.validators import limpar_texto, parse_valor_monetario, valor_negat
 from services.validators import CATEGORIAS_CUSTO_VALIDAS
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 from services.log_service import registrar_log
+from services.tenant import (
+    empresa_id_para_insert,
+    listar_empresas,
+    obter_obra_acessivel,
+    sincronizar_empresa_filhos_obra,
+    where_empresa,
+)
 from utils import formatar_moeda, formatar_tipo_obra, formatar_data
 
 obras_bp = Blueprint("obras_bp", __name__)
@@ -45,7 +52,17 @@ def extensao_permitida(filename):
 
 
 def buscar_obras_filtradas(busca="", status=""):
-    lista_obras = query_all("SELECT * FROM obras ORDER BY id DESC")
+    where, params = where_empresa("o")
+    lista_obras = query_all(
+        f"""
+        SELECT o.*, e.nome AS empresa_nome
+        FROM obras o
+        LEFT JOIN empresas e ON e.id = o.empresa_id
+        {where}
+        ORDER BY o.id DESC
+        """,
+        params,
+    )
 
     if busca:
         termo = busca.lower()
@@ -113,10 +130,12 @@ def obras():
     filtros = obter_filtros_obras()
     lista_obras = buscar_obras_filtradas(busca=filtros["busca"], status=filtros["status"])
     proximo_codigo = gerar_codigo_obra()
+    empresas = listar_empresas(apenas_ativas=True) if eh_admin() else []
 
     return render_template(
         "obras.html",
         obras=lista_obras,
+        empresas=empresas,
         proximo_codigo=proximo_codigo,
         filtro_busca=filtros["busca"],
         filtro_status=filtros["status"]
@@ -181,6 +200,8 @@ def nova_obra():
     if tipo_obra not in ["venda", "contrato"]:
         tipo_obra = "contrato"
 
+    empresa_id = empresa_id_para_insert(request.form.get("empresa_id"))
+
     existe = query_one("SELECT id FROM obras WHERE codigo = ?", (codigo,))
     if existe:
         flash("Já existe uma obra com esse código.", "erro")
@@ -206,14 +227,14 @@ def nova_obra():
     obra_id = execute(
         """
         INSERT INTO obras (
-            codigo, nome, endereco, tipologia, tipo_obra, fase_obra, area_m2,
+            empresa_id, codigo, nome, endereco, tipologia, tipo_obra, fase_obra, area_m2,
             data_inicio, data_fim_prevista, orcamento, receita_total,
             progresso_percentual, status, observacao_responsavel, foto_capa
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
-            codigo, nome, endereco, tipologia, tipo_obra, fase_obra or None,
+            empresa_id, codigo, nome, endereco, tipologia, tipo_obra, fase_obra or None,
             area_valor, data_inicio or None, data_fim_prevista or None,
             orcamento_valor, receita_valor, progresso_valor, status,
             observacao or None, foto_capa or None
@@ -238,7 +259,7 @@ def obra_detalhe(codigo):
     if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
-    obra = query_one("SELECT * FROM obras WHERE codigo = ?", (codigo,))
+    obra = obter_obra_acessivel(codigo=codigo)
     if not obra:
         flash("Obra não encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
@@ -292,7 +313,7 @@ def obra_detalhes(codigo):
     if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
-    obra = query_one("SELECT * FROM obras WHERE codigo = ?", (codigo,))
+    obra = obter_obra_acessivel(codigo=codigo)
     if not obra:
         flash("Obra nao encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
@@ -305,7 +326,11 @@ def obra_detalhes(codigo):
         if (c["categoria"] or "") == "Material"
         and (c["status_entrega"] or c["data_entrega_prevista"] or c["quantidade"] or c["valor_unitario"])
     ]
-    fornecedores = query_all("SELECT * FROM fornecedores ORDER BY nome ASC")
+    fornecedores_where, fornecedores_params = where_empresa()
+    fornecedores = query_all(
+        f"SELECT * FROM fornecedores {fornecedores_where} ORDER BY nome ASC",
+        fornecedores_params,
+    )
     fotos_obra = query_all("SELECT * FROM fotos_obra WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
     custos_importados = query_all(
         "SELECT * FROM custos_importados_categoria WHERE obra_id = ? ORDER BY categoria ASC",
@@ -359,7 +384,7 @@ def nova_foto_obra(obra_id):
         flash("Voce nao tem permissao para adicionar fotos.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
-    obra = query_one("SELECT id, codigo, nome FROM obras WHERE id = ?", (obra_id,))
+    obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.nome, o.empresa_id")
     if not obra:
         flash("Obra nao encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
@@ -393,10 +418,11 @@ def nova_foto_obra(obra_id):
 
     foto_id = execute(
         """
-        INSERT INTO fotos_obra (obra_id, caminho, titulo, fase, data_registro)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO fotos_obra (empresa_id, obra_id, caminho, titulo, fase, data_registro)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
+            obra["empresa_id"],
             obra_id,
             caminho,
             titulo or None,
@@ -428,7 +454,7 @@ def usar_foto_como_capa(obra_id, foto_id):
         flash("Voce nao tem permissao para alterar a capa.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
-    obra = query_one("SELECT id, codigo, nome FROM obras WHERE id = ?", (obra_id,))
+    obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.nome, o.empresa_id")
     if not obra:
         flash("Obra nao encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
@@ -461,7 +487,7 @@ def excluir_foto_obra(obra_id, foto_id):
         flash("Voce nao tem permissao para excluir fotos.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
-    obra = query_one("SELECT id, codigo, nome, foto_capa FROM obras WHERE id = ?", (obra_id,))
+    obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.nome, o.foto_capa, o.empresa_id")
     if not obra:
         flash("Obra nao encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
@@ -505,7 +531,7 @@ def atualizar_canteiro_obra(obra_id):
         flash("Voce nao tem permissao para atualizar o canteiro.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
-    obra = query_one("SELECT id, codigo, nome FROM obras WHERE id = ?", (obra_id,))
+    obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.nome, o.empresa_id")
     if not obra:
         flash("Obra nao encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
@@ -557,7 +583,7 @@ def editar_atualizacao_canteiro(obra_id, log_id):
         flash("Voce nao tem permissao para editar atualizacoes do portal.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
-    obra = query_one("SELECT id, codigo FROM obras WHERE id = ?", (obra_id,))
+    obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.empresa_id")
     if not obra:
         flash("Obra nao encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
@@ -602,7 +628,10 @@ def editar_obra(obra_id):
         return redirect(url_for("obras_bp.obras"))
 
     # Busca a obra para saber o codigo (para redirecionar de volta)
-    obra = query_one("SELECT codigo FROM obras WHERE id = ?", (obra_id,))
+    obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.empresa_id")
+    if not obra:
+        flash("Obra nao encontrada.", "erro")
+        return redirect(url_for("obras_bp.obras"))
 
     # Descobre de onde veio o request para redirecionar corretamente
     veio_do_detalhe = obra and (
@@ -634,6 +663,8 @@ def editar_obra(obra_id):
     if tipo_obra not in ["venda", "contrato"]:
         tipo_obra = "contrato"
 
+    empresa_id = empresa_id_para_insert(request.form.get("empresa_id")) if eh_admin() else obra["empresa_id"]
+
     try:
         area_valor       = float(area_m2) if area_m2 else 0
         orcamento_valor  = parse_valor_monetario(orcamento)
@@ -656,20 +687,23 @@ def editar_obra(obra_id):
     execute(
         """
         UPDATE obras
-        SET nome = ?, endereco = ?, tipologia = ?, tipo_obra = ?, fase_obra = ?,
+        SET empresa_id = ?, nome = ?, endereco = ?, tipologia = ?, tipo_obra = ?, fase_obra = ?,
             area_m2 = ?, data_inicio = ?, data_fim_prevista = ?,
             orcamento = ?, receita_total = ?, progresso_percentual = ?,
             status = ?, observacao_responsavel = ?, foto_capa = ?
         WHERE id = ?
         """,
         (
-            nome, endereco, tipologia, tipo_obra, fase_obra or None,
+            empresa_id, nome, endereco, tipologia, tipo_obra, fase_obra or None,
             area_valor, data_inicio or None, data_fim_prevista or None,
             orcamento_valor, receita_valor, progresso_valor,
             status, observacao or None, foto_capa or None,
             obra_id
         )
     )
+
+    if empresa_id != obra["empresa_id"]:
+        sincronizar_empresa_filhos_obra(obra_id, empresa_id)
 
     registrar_log(
         acao="edição",

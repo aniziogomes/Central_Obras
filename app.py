@@ -6,6 +6,7 @@ from flask import Flask, request, url_for, redirect, jsonify, session, abort
 from database import init_db, query_one
 from utils import formatar_moeda, calcular_media_fornecedor, formatar_tipo_obra, formatar_data
 from services.dashboard_service import calcular_alertas
+from services.tenant import and_empresa
 
 from auth import (
     criar_usuario_admin,
@@ -76,7 +77,8 @@ def _resposta_nao_autorizado():
 def _deve_exibir_onboarding(usuario):
     if not usuario or usuario["perfil"] not in {"admin", "gestor"}:
         return False
-    total_obras = query_one("SELECT COUNT(*) AS total FROM obras")
+    filtro_empresa, params_empresa = and_empresa()
+    total_obras = query_one(f"SELECT COUNT(*) AS total FROM obras WHERE 1 = 1 {filtro_empresa}", params_empresa)
     if int(total_obras["total"] if total_obras else 0) == 0:
         return True
     if session.get("onboarding_ativo"):
@@ -112,6 +114,7 @@ def aplicar_seguranca_minima():
     session["usuario_id"] = usuario["id"]
     session["usuario_nome"] = usuario["nome"]
     session["usuario_perfil"] = usuario["perfil"]
+    session["empresa_id"] = usuario["empresa_id"]
     session["usuario_foto"] = usuario["foto_perfil"] if "foto_perfil" in usuario.keys() and usuario["foto_perfil"] else ""
 
     if endpoint not in ROTAS_ONBOARDING and _deve_exibir_onboarding(usuario):

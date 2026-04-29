@@ -69,7 +69,11 @@ def usuario_atual():
     if not usuario_id:
         return None
     return query_one(
-        "SELECT id, nome, username, perfil, ativo, onboarding_completo, foto_perfil FROM usuarios WHERE id = ?",
+        """
+        SELECT id, empresa_id, nome, username, perfil, ativo, onboarding_completo, foto_perfil
+        FROM usuarios
+        WHERE id = ?
+        """,
         (usuario_id,)
     )
 

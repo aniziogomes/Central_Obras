@@ -1,7 +1,7 @@
 import pandas as pd
 from io import BytesIO
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
-from database import query_all, query_one, execute
+from database import query_all, execute
 from services.validators import (
     caminho_redirecionamento_seguro,
     limpar_texto,
@@ -12,6 +12,7 @@ from services.validators import (
 )
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 from services.log_service import registrar_log
+from services.tenant import and_empresa, listar_obras_acessiveis, obter_obra_acessivel, obter_registro_acessivel
 
 medicoes_bp = Blueprint("medicoes_bp", __name__)
 
@@ -21,14 +22,16 @@ def medicoes():
     if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
-    lista_medicoes = query_all("""
+    filtro_empresa, params_empresa = and_empresa("o")
+    lista_medicoes = query_all(f"""
         SELECT m.*, o.codigo AS codigo_obra, o.nome AS nome_obra
         FROM medicoes m
         JOIN obras o ON m.obra_id = o.id
+        WHERE 1 = 1 {filtro_empresa}
         ORDER BY m.id DESC
-    """)
+    """, params_empresa)
 
-    obras = query_all("SELECT * FROM obras ORDER BY nome ASC")
+    obras = listar_obras_acessiveis(order_by="o.nome ASC", campos="o.*")
     return render_template("medicoes.html", medicoes=lista_medicoes, obras=obras)
 
 
@@ -62,6 +65,9 @@ def nova_medicao():
         percentual_acumulado_float = parse_valor_monetario(percentual_acumulado)
         valor_realizado_float = parse_valor_monetario(valor_realizado)
         obra_id_int = parse_int_positivo(obra_id, "Obra")
+        obra = obter_obra_acessivel(obra_id=obra_id_int, campos="o.id, o.empresa_id")
+        if not obra:
+            raise ValueError("Obra nao encontrada para este usuario.")
 
         validar_intervalo_percentual(percentual_float, "Percentual")
         validar_intervalo_percentual(percentual_acumulado_float, "Percentual acumulado")
@@ -75,12 +81,13 @@ def nova_medicao():
     medicao_id = execute(
         """
         INSERT INTO medicoes (
-            obra_id, mes, medicao_nome, etapa, percentual,
+            empresa_id, obra_id, mes, medicao_nome, etapa, percentual,
             percentual_acumulado, valor_realizado, data_medicao, observacao
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
+            obra["empresa_id"],
             obra_id_int,
             mes,
             medicao_nome,
@@ -108,6 +115,11 @@ def nova_medicao():
 def editar_medicao(medicao_id):
     if not usuario_logado() or not eh_gestor():
         flash("Você não tem permissão para editar medições.", "erro")
+        return redirect(url_for("medicoes_bp.medicoes"))
+
+    medicao_atual = obter_registro_acessivel("medicoes", medicao_id, campos="id")
+    if not medicao_atual:
+        flash("Medicao nao encontrada.", "erro")
         return redirect(url_for("medicoes_bp.medicoes"))
 
     try:
@@ -174,7 +186,10 @@ def excluir_medicao(medicao_id):
         flash("Você não tem permissão para excluir medições.", "erro")
         return redirect(url_for("medicoes_bp.medicoes"))
 
-    medicao = query_one("SELECT * FROM medicoes WHERE id = ?", (medicao_id,))
+    medicao = obter_registro_acessivel("medicoes", medicao_id)
+    if not medicao:
+        flash("Medicao nao encontrada.", "erro")
+        return redirect(url_for("medicoes_bp.medicoes"))
     nome_medicao = medicao["medicao_nome"] if medicao else f"ID {medicao_id}"
 
     execute("DELETE FROM medicoes WHERE id = ?", (medicao_id,))
@@ -195,12 +210,14 @@ def medicoes_exportar():
     if not usuario_logado() or not eh_leitura():
         return redirect(url_for("auth_bp.login"))
 
-    lista = query_all("""
+    filtro_empresa, params_empresa = and_empresa("o")
+    lista = query_all(f"""
         SELECT m.*, o.codigo AS codigo_obra, o.nome AS nome_obra
         FROM medicoes m
         JOIN obras o ON m.obra_id = o.id
+        WHERE 1 = 1 {filtro_empresa}
         ORDER BY m.id DESC
-    """)
+    """, params_empresa)
 
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:

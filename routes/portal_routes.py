@@ -6,6 +6,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from database import query_one, query_all, execute
 from auth import usuario_logado, eh_gestor
 from services.log_service import registrar_log
+from services.tenant import obter_obra_acessivel
 
 portal_bp = Blueprint("portal_bp", __name__)
 TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{32,128}$")
@@ -98,7 +99,7 @@ def gerar_link(obra_id):
         flash("Você não tem permissão para gerar links.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
-    obra = query_one("SELECT * FROM obras WHERE id = ?", (obra_id,))
+    obra = obter_obra_acessivel(obra_id=obra_id)
     if not obra:
         flash("Obra não encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
@@ -129,7 +130,7 @@ def revogar_link(obra_id):
         flash("Você não tem permissão.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
-    obra = query_one("SELECT * FROM obras WHERE id = ?", (obra_id,))
+    obra = obter_obra_acessivel(obra_id=obra_id)
     if not obra:
         flash("Obra não encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
