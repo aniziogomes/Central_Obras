@@ -1,23 +1,61 @@
-import uuid
+import os
+import re
+import secrets
+from datetime import datetime, timedelta
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
 from database import query_one, query_all, execute
 from auth import usuario_logado, eh_gestor
 from services.log_service import registrar_log
 
 portal_bp = Blueprint("portal_bp", __name__)
+TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{32,128}$")
+
+
+def gerar_token_portal():
+    return secrets.token_urlsafe(32)
+
+
+def calcular_expiracao_portal():
+    dias = int(os.environ.get("PORTAL_TOKEN_DAYS", "0") or 0)
+    if dias <= 0:
+        return None
+    return (datetime.utcnow() + timedelta(days=dias)).isoformat(timespec="seconds")
+
+
+def token_portal_valido(token):
+    return bool(token and TOKEN_RE.fullmatch(token))
 
 
 # ─── Rota pública — sem login ────────────────────────────────────────────────
 
 @portal_bp.route("/portal/<token>")
 def portal_obra(token):
-    obra = query_one(
-        "SELECT * FROM obras WHERE token_publico = ?", (token,)
-    )
+    if not token_portal_valido(token):
+        abort(404)
+
+    obra = query_one("""
+        SELECT
+            id, codigo, nome, tipologia, area_m2, data_inicio,
+            data_fim_prevista, progresso_percentual, status, fase_obra,
+            observacao_responsavel, foto_capa, token_publico, portal_expira_em,
+            portal_revogado_em
+        FROM obras
+        WHERE token_publico = ?
+          AND token_publico IS NOT NULL
+          AND portal_revogado_em IS NULL
+    """, (token,))
     if not obra:
         abort(404)
 
-    # Atualizacoes publicadas para o cliente.
+    if obra["portal_expira_em"]:
+        try:
+            if datetime.fromisoformat(obra["portal_expira_em"]) < datetime.utcnow():
+                abort(404)
+        except ValueError:
+            abort(404)
+
+    # LGPD: o portal publico recebe apenas atualizacoes e fotos publicadas ao cliente.
+    # Custos, fornecedores, equipe, documentos e valores internos nao sao consultados aqui.
     atualizacoes = query_all("""
         SELECT l.descricao, l.data_hora, u.nome AS autor
         FROM logs l
@@ -65,10 +103,11 @@ def gerar_link(obra_id):
         flash("Obra não encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
-    novo_token = uuid.uuid4().hex[:16]
+    novo_token = gerar_token_portal()
+    expira_em = calcular_expiracao_portal()
     execute(
-        "UPDATE obras SET token_publico = ? WHERE id = ?",
-        (novo_token, obra_id)
+        "UPDATE obras SET token_publico = ?, portal_expira_em = ?, portal_revogado_em = NULL WHERE id = ?",
+        (novo_token, expira_em, obra_id)
     )
 
     registrar_log(
@@ -96,7 +135,7 @@ def revogar_link(obra_id):
         return redirect(url_for("obras_bp.obras"))
 
     execute(
-        "UPDATE obras SET token_publico = NULL WHERE id = ?",
+        "UPDATE obras SET token_publico = NULL, portal_expira_em = NULL, portal_revogado_em = CURRENT_TIMESTAMP WHERE id = ?",
         (obra_id,)
     )
 

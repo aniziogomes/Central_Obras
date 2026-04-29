@@ -98,6 +98,16 @@ obra.observacao_responsavel else '' %}
                     <button type="button" class="btn btn-ghost" onclick="copiarLinkPortal(event)">Copiar</button>
                 </div>
                 <small>Última atualização: {{ formatar_data(obra.data_fim_prevista, "-") }}</small>
+                {% if eh_gestor() %}
+                <div class="portal-cliente-link-actions">
+                    <a href="https://wa.me/?text=Acompanhe%20a%20obra%20{{ obra.nome|urlencode }}:%20{{ portal_url|urlencode }}"
+                        target="_blank" class="btn obra-whats-btn">Enviar pelo WhatsApp</a>
+                    <form method="POST" action="{{ url_for('portal_bp.revogar_link', obra_id=obra.id) }}"
+                        class="obra-portal-revogar-form" onsubmit="return confirm('Revogar o acesso do cliente?');">
+                        <button type="submit" class="obra-portal-revogar-link">Revogar acesso</button>
+                    </form>
+                </div>
+                {% endif %}
             </div>
             {% else %}
             <div class="portal-cliente-link-empty">
@@ -167,17 +177,6 @@ obra.observacao_responsavel else '' %}
             </div>
         </div>
     </div>
-
-    {% if obra.token_publico and eh_gestor() %}
-    <div class="obra-portal-actions portal-cliente-secondary-actions">
-        <a href="https://wa.me/?text=Acompanhe%20a%20obra%20{{ obra.nome|urlencode }}:%20{{ portal_url|urlencode }}"
-            target="_blank" class="btn obra-whats-btn">Enviar pelo WhatsApp</a>
-        <form method="POST" action="{{ url_for('portal_bp.revogar_link', obra_id=obra.id) }}"
-            class="obra-portal-revogar-form" onsubmit="return confirm('Revogar o acesso do cliente?');">
-            <button type="submit" class="obra-portal-revogar-link">Revogar acesso</button>
-        </form>
-    </div>
-    {% endif %}
 
     <div class="obra-detalhe-tabs" role="tablist" aria-label="Area do canteiro">
         <button type="button" class="obra-detalhe-tab active" data-obra-tab="galeria">Galeria de fotos</button>
@@ -515,6 +514,34 @@ obra.observacao_responsavel else '' %}
     .portal-cliente-link-card .btn {
         height: 38px;
         padding-inline: 14px;
+    }
+
+    .portal-cliente-link-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 12px;
+    }
+
+    .portal-cliente-link-actions .obra-whats-btn {
+        flex: 1;
+        justify-content: center;
+        height: 34px;
+        padding-inline: 12px;
+        border-color: rgba(37, 211, 102, .42);
+        background: rgba(37, 211, 102, .16);
+        color: #42e983;
+        font-size: 12px;
+    }
+
+    .portal-cliente-link-actions .obra-whats-btn:hover {
+        border-color: rgba(37, 211, 102, .62);
+        background: rgba(37, 211, 102, .24);
+        color: #ffffff;
+    }
+
+    .portal-cliente-link-actions .obra-portal-revogar-form {
+        margin: 0;
     }
 
     .portal-cliente-link-empty {
@@ -973,6 +1000,7 @@ obra.observacao_responsavel else '' %}
         }
 
         .portal-cliente-link-card .obra-portal-copy-row,
+        .portal-cliente-link-actions,
         .portal-cliente-link-empty {
             align-items: stretch;
             flex-direction: column;

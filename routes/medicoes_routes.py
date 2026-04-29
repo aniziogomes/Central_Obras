@@ -2,7 +2,14 @@ import pandas as pd
 from io import BytesIO
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from database import query_all, query_one, execute
-from services.validators import parse_valor_monetario, valor_negativo, validar_intervalo_percentual
+from services.validators import (
+    caminho_redirecionamento_seguro,
+    limpar_texto,
+    parse_int_positivo,
+    parse_valor_monetario,
+    valor_negativo,
+    validar_intervalo_percentual,
+)
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 from services.log_service import registrar_log
 
@@ -27,20 +34,24 @@ def medicoes():
 
 @medicoes_bp.route("/medicoes/nova", methods=["POST"])
 def nova_medicao():
-    redirect_to = request.form.get("redirect_to") or url_for("medicoes_bp.medicoes")
+    redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), url_for("medicoes_bp.medicoes"))
     if not usuario_logado() or not eh_gestor():
         flash("Você não tem permissão para cadastrar medições.", "erro")
         return redirect(redirect_to)
 
     obra_id = request.form.get("obra_id", "").strip()
-    mes = request.form.get("mes", "").strip()
-    medicao_nome = request.form.get("medicao_nome", "").strip()
-    etapa = request.form.get("etapa", "").strip()
+    try:
+        mes = limpar_texto(request.form.get("mes", ""), max_len=20)
+        medicao_nome = limpar_texto(request.form.get("medicao_nome", ""), max_len=120, obrigatorio=True, campo="Medicao")
+        etapa = limpar_texto(request.form.get("etapa", ""), max_len=120, obrigatorio=True, campo="Etapa")
+        data_medicao = limpar_texto(request.form.get("data_medicao", ""), max_len=10)
+        observacao = limpar_texto(request.form.get("observacao", ""), max_len=1000)
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirect(redirect_to)
     percentual = request.form.get("percentual", "").strip()
     percentual_acumulado = request.form.get("percentual_acumulado", "").strip()
     valor_realizado = request.form.get("valor_realizado", "").strip()
-    data_medicao = request.form.get("data_medicao", "").strip()
-    observacao = request.form.get("observacao", "").strip()
 
     if not obra_id or not medicao_nome or not etapa:
         flash("Preencha os campos obrigatórios da medição.", "erro")
@@ -50,6 +61,7 @@ def nova_medicao():
         percentual_float = parse_valor_monetario(percentual)
         percentual_acumulado_float = parse_valor_monetario(percentual_acumulado)
         valor_realizado_float = parse_valor_monetario(valor_realizado)
+        obra_id_int = parse_int_positivo(obra_id, "Obra")
 
         validar_intervalo_percentual(percentual_float, "Percentual")
         validar_intervalo_percentual(percentual_acumulado_float, "Percentual acumulado")
@@ -69,7 +81,7 @@ def nova_medicao():
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
-            int(obra_id),
+            obra_id_int,
             mes,
             medicao_nome,
             etapa,
@@ -98,14 +110,18 @@ def editar_medicao(medicao_id):
         flash("Você não tem permissão para editar medições.", "erro")
         return redirect(url_for("medicoes_bp.medicoes"))
 
-    mes = request.form.get("mes", "").strip()
-    medicao_nome = request.form.get("medicao_nome", "").strip()
-    etapa = request.form.get("etapa", "").strip()
+    try:
+        mes = limpar_texto(request.form.get("mes", ""), max_len=20)
+        medicao_nome = limpar_texto(request.form.get("medicao_nome", ""), max_len=120, obrigatorio=True, campo="Medicao")
+        etapa = limpar_texto(request.form.get("etapa", ""), max_len=120, obrigatorio=True, campo="Etapa")
+        data_medicao = limpar_texto(request.form.get("data_medicao", ""), max_len=10)
+        observacao = limpar_texto(request.form.get("observacao", ""), max_len=1000)
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirect(url_for("medicoes_bp.medicoes"))
     percentual = request.form.get("percentual", "").strip()
     percentual_acumulado = request.form.get("percentual_acumulado", "").strip()
     valor_realizado = request.form.get("valor_realizado", "").strip()
-    data_medicao = request.form.get("data_medicao", "").strip()
-    observacao = request.form.get("observacao", "").strip()
 
     try:
         percentual_float = parse_valor_monetario(percentual)

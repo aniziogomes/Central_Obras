@@ -2,7 +2,7 @@ import pandas as pd
 from io import BytesIO
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from database import query_all, execute
-from services.validators import parse_valor_monetario, valor_negativo
+from services.validators import caminho_redirecionamento_seguro, limpar_texto, parse_int_positivo, parse_valor_monetario, valor_negativo
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 
 equipe_bp = Blueprint("equipe_bp", __name__)
@@ -26,14 +26,18 @@ def equipe():
 
 @equipe_bp.route("/equipe/novo", methods=["POST"])
 def novo_membro_equipe():
-    redirect_to = request.form.get("redirect_to") or url_for("equipe_bp.equipe")
+    redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), url_for("equipe_bp.equipe"))
     if not usuario_logado() or not eh_gestor():
         flash("Você não tem permissão para cadastrar equipe.", "erro")
         return redirect(redirect_to)
 
     obra_id = request.form.get("obra_id", "").strip()
-    nome = request.form.get("nome", "").strip()
-    funcao = request.form.get("funcao", "").strip()
+    try:
+        nome = limpar_texto(request.form.get("nome", ""), max_len=120, obrigatorio=True, campo="Nome")
+        funcao = limpar_texto(request.form.get("funcao", ""), max_len=100)
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirect(redirect_to)
 
     if not obra_id or not nome:
         flash("Preencha os campos obrigatórios da equipe.", "erro")
@@ -45,6 +49,7 @@ def novo_membro_equipe():
     try:
         valor_contratado_float = parse_valor_monetario(valor_contratado)
         valor_pago_float = parse_valor_monetario(valor_pago)
+        obra_id_int = parse_int_positivo(obra_id, "Obra")
 
         if valor_negativo(valor_contratado_float):
             raise ValueError("Valor contratado não pode ser negativo.")
@@ -63,7 +68,7 @@ def novo_membro_equipe():
         VALUES (?, ?, ?, ?, ?)
         """,
         (
-            int(obra_id),
+            obra_id_int,
             nome,
             funcao,
             valor_contratado_float,
@@ -81,8 +86,12 @@ def editar_equipe(equipe_id):
         flash("Você não tem permissão para editar equipe.", "erro")
         return redirect(url_for("equipe_bp.equipe"))
 
-    nome = request.form.get("nome", "").strip()
-    funcao = request.form.get("funcao", "").strip()
+    try:
+        nome = limpar_texto(request.form.get("nome", ""), max_len=120, obrigatorio=True, campo="Nome")
+        funcao = limpar_texto(request.form.get("funcao", ""), max_len=100)
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirect(url_for("equipe_bp.equipe"))
 
     execute(
         """

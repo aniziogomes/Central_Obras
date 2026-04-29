@@ -6,7 +6,7 @@ from uuid import uuid4
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, jsonify
 from werkzeug.utils import secure_filename
 from database import query_one, query_all, execute
-from services.validators import parse_valor_monetario, valor_negativo, validar_intervalo_percentual
+from services.validators import limpar_texto, parse_valor_monetario, valor_negativo, validar_intervalo_percentual
 from services.validators import CATEGORIAS_CUSTO_VALIDAS
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 from services.log_service import registrar_log
@@ -151,21 +151,25 @@ def nova_obra():
         flash("Você não tem permissão para cadastrar obras.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
-    codigo              = request.form.get("codigo", "").strip()
-    nome                = request.form.get("nome", "").strip()
-    endereco            = request.form.get("endereco", "").strip()
-    tipologia           = request.form.get("tipologia", "").strip()
-    tipo_obra           = request.form.get("tipo_obra", "contrato").strip().lower()
-    fase_obra           = request.form.get("fase_obra", "").strip()
+    try:
+        codigo              = limpar_texto(request.form.get("codigo", ""), max_len=40)
+        nome                = limpar_texto(request.form.get("nome", ""), max_len=140, obrigatorio=True, campo="Nome")
+        endereco            = limpar_texto(request.form.get("endereco", ""), max_len=240)
+        tipologia           = limpar_texto(request.form.get("tipologia", ""), max_len=100, obrigatorio=True, campo="Tipologia")
+        tipo_obra           = limpar_texto(request.form.get("tipo_obra", "contrato"), max_len=30).lower()
+        fase_obra           = limpar_texto(request.form.get("fase_obra", ""), max_len=120)
+        data_inicio         = limpar_texto(request.form.get("data_inicio", ""), max_len=10)
+        data_fim_prevista   = limpar_texto(request.form.get("data_fim_prevista", ""), max_len=10)
+        status              = limpar_texto(request.form.get("status", ""), max_len=60, obrigatorio=True, campo="Status")
+        observacao          = limpar_texto(request.form.get("observacao_responsavel", ""), max_len=1000)
+        foto_capa           = limpar_texto(request.form.get("foto_capa", ""), max_len=500)
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirect(url_for("obras_bp.obras"))
     area_m2             = request.form.get("area_m2", "").strip()
-    data_inicio         = request.form.get("data_inicio", "").strip()
-    data_fim_prevista   = request.form.get("data_fim_prevista", "").strip()
     orcamento           = request.form.get("orcamento", "").strip()
     receita_total       = request.form.get("receita_total", "").strip()
     progresso_percentual= request.form.get("progresso_percentual", "").strip()
-    status              = request.form.get("status", "").strip()
-    observacao          = request.form.get("observacao_responsavel", "").strip()
-    foto_capa           = request.form.get("foto_capa", "").strip()
 
     if not codigo:
         codigo = gerar_codigo_obra()
@@ -361,10 +365,14 @@ def nova_foto_obra(obra_id):
         return redirect(url_for("obras_bp.obras"))
 
     arquivo = request.files.get("foto_arquivo")
-    caminho = request.form.get("caminho", "").strip()
-    titulo = request.form.get("titulo", "").strip()
-    fase = request.form.get("fase", "").strip()
-    data_registro = request.form.get("data_registro", "").strip()
+    try:
+        caminho = limpar_texto(request.form.get("caminho", ""), max_len=500)
+        titulo = limpar_texto(request.form.get("titulo", ""), max_len=140)
+        fase = limpar_texto(request.form.get("fase", ""), max_len=120)
+        data_registro = limpar_texto(request.form.get("data_registro", ""), max_len=10)
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
     usar_como_capa = request.form.get("usar_como_capa") == "1"
 
     if arquivo and arquivo.filename:
@@ -502,9 +510,13 @@ def atualizar_canteiro_obra(obra_id):
         flash("Obra nao encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
-    fase_obra = request.form.get("fase_obra", "").strip()
+    try:
+        fase_obra = limpar_texto(request.form.get("fase_obra", ""), max_len=120)
+        observacao = limpar_texto(request.form.get("observacao_responsavel", ""), max_len=1000)
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
     progresso_percentual = request.form.get("progresso_percentual", "").strip()
-    observacao = request.form.get("observacao_responsavel", "").strip()
 
     try:
         progresso_valor = parse_valor_monetario(progresso_percentual)
@@ -550,9 +562,15 @@ def editar_atualizacao_canteiro(obra_id, log_id):
         flash("Obra nao encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
-    mensagem_cliente = request.form.get("mensagem_cliente", "").strip()
-    if not mensagem_cliente:
-        flash("A atualizacao do cliente nao pode ficar vazia.", "erro")
+    try:
+        mensagem_cliente = limpar_texto(
+            request.form.get("mensagem_cliente", ""),
+            max_len=1000,
+            obrigatorio=True,
+            campo="Atualizacao do cliente",
+        )
+    except ValueError as e:
+        flash(str(e), "erro")
         return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
     atualizacao = query_one("""
@@ -586,26 +604,32 @@ def editar_obra(obra_id):
     # Busca a obra para saber o codigo (para redirecionar de volta)
     obra = query_one("SELECT codigo FROM obras WHERE id = ?", (obra_id,))
 
-    nome                = request.form.get("nome", "").strip()
-    endereco            = request.form.get("endereco", "").strip()
-    tipologia           = request.form.get("tipologia", "").strip()
-    tipo_obra           = request.form.get("tipo_obra", "contrato").strip().lower()
-    fase_obra           = request.form.get("fase_obra", "").strip()
-    area_m2             = request.form.get("area_m2", "").strip()
-    data_inicio         = request.form.get("data_inicio", "").strip()
-    data_fim_prevista   = request.form.get("data_fim_prevista", "").strip()
-    orcamento           = request.form.get("orcamento", "").strip()
-    receita_total       = request.form.get("receita_total", "").strip()
-    progresso_percentual= request.form.get("progresso_percentual", "").strip()
-    status              = request.form.get("status", "").strip()
-    observacao          = request.form.get("observacao_responsavel", "").strip()
-    foto_capa           = request.form.get("foto_capa", "").strip()
-
     # Descobre de onde veio o request para redirecionar corretamente
     veio_do_detalhe = obra and (
         "obra_detalhe" in (request.referrer or "") or
         f"/obra/" in (request.referrer or "")
     )
+
+    try:
+        nome                = limpar_texto(request.form.get("nome", ""), max_len=140, obrigatorio=True, campo="Nome")
+        endereco            = limpar_texto(request.form.get("endereco", ""), max_len=240)
+        tipologia           = limpar_texto(request.form.get("tipologia", ""), max_len=100, obrigatorio=True, campo="Tipologia")
+        tipo_obra           = limpar_texto(request.form.get("tipo_obra", "contrato"), max_len=30).lower()
+        fase_obra           = limpar_texto(request.form.get("fase_obra", ""), max_len=120)
+        data_inicio         = limpar_texto(request.form.get("data_inicio", ""), max_len=10)
+        data_fim_prevista   = limpar_texto(request.form.get("data_fim_prevista", ""), max_len=10)
+        status              = limpar_texto(request.form.get("status", ""), max_len=60, obrigatorio=True, campo="Status")
+        observacao          = limpar_texto(request.form.get("observacao_responsavel", ""), max_len=1000)
+        foto_capa           = limpar_texto(request.form.get("foto_capa", ""), max_len=500)
+    except ValueError as e:
+        flash(str(e), "erro")
+        if obra and veio_do_detalhe:
+            return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+        return redirect(url_for("obras_bp.obras"))
+    area_m2             = request.form.get("area_m2", "").strip()
+    orcamento           = request.form.get("orcamento", "").strip()
+    receita_total       = request.form.get("receita_total", "").strip()
+    progresso_percentual= request.form.get("progresso_percentual", "").strip()
 
     if tipo_obra not in ["venda", "contrato"]:
         tipo_obra = "contrato"

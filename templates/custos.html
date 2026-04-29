@@ -144,8 +144,6 @@
                     <span class="custo-obra-count">{{ ns.count }} lançamento{% if ns.count != 1 %}s{% endif %}</span>
                 </div>
                 <div class="custo-obra-subtitle">
-                    <span>Total lançado: <strong>{{ formatar_moeda(ns.total) }}</strong></span>
-                    <span class="custo-obra-dot">•</span>
                     <span>Último lançamento: <strong>{{ formatar_data(ns.ultimo) if ns.ultimo != '-' else '-' }}</strong></span>
                 </div>
             </div>
@@ -721,8 +719,6 @@
                                 <span class="custo-obra-count">${grupo.itens.length} lançamento${grupo.itens.length !== 1 ? "s" : ""}</span>
                             </div>
                             <div class="custo-obra-subtitle">
-                                <span>Total lançado: <strong>${esc(new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(grupo.total || 0))}</strong></span>
-                                <span class="custo-obra-dot">•</span>
                                 <span>Último lançamento: <strong>${esc(grupo.ultimo || "-")}</strong></span>
                             </div>
                         </div>

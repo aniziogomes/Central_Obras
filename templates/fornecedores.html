@@ -161,10 +161,6 @@ risco_qtd=0) %}
                 </div>
 
                 <div class="fornecedor-card-actions">
-                    <span class="fornecedor-score-pill fornecedor-score-pill--{{ faixa }}">
-                        {{ 'Destaque' if faixa == 'alto' else ('Acompanhar' if faixa == 'medio' else 'Atenção') }}
-                    </span>
-
                     <button type="button" class="fornecedor-expand-btn"
                         data-target="fornecedorDetalhes{{ fornecedor.id }}" aria-label="Expandir fornecedor">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -181,13 +177,9 @@ risco_qtd=0) %}
                         <span class="fornecedor-detail-label">Documento</span>
                         <span class="fornecedor-detail-value">{{ fornecedor.documento or '-' }}</span>
                     </div>
-                    <div class="fornecedor-detail-item">
-                        <span class="fornecedor-detail-label">Prazo médio</span>
-                        <span class="fornecedor-detail-value">{{ fornecedor.prazo_medio or 0 }} dia(s)</span>
-                    </div>
-                    <div class="fornecedor-detail-item">
-                        <span class="fornecedor-detail-label">Média geral</span>
-                        <span class="fornecedor-detail-value">{{ media }}</span>
+                    <div class="fornecedor-detail-item fornecedor-detail-item--wide">
+                        <span class="fornecedor-detail-label">Observação</span>
+                        <span class="fornecedor-detail-value">{{ fornecedor.observacao or 'Sem observações cadastradas.' }}</span>
                     </div>
                 </div>
 
@@ -227,12 +219,6 @@ risco_qtd=0) %}
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <div class="fornecedor-observacao-box">
-                    <span class="fornecedor-detail-label">Observação</span>
-                    <p class="fornecedor-observacao-text">{{ fornecedor.observacao or 'Sem observações cadastradas.' }}
-                    </p>
                 </div>
 
                 <div class="fornecedor-detail-actions">

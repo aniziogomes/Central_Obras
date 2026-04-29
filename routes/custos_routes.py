@@ -6,6 +6,9 @@ from services.validators import (
     parse_valor_monetario,
     valor_negativo,
     validar_categoria_custo,
+    caminho_redirecionamento_seguro,
+    limpar_texto,
+    parse_int_positivo,
     CATEGORIAS_CUSTO_VALIDAS
 )
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
@@ -236,30 +239,35 @@ def custos_dados():
 
 @custos_bp.route("/custos/novo", methods=["POST"])
 def novo_custo():
-    redirect_to = request.form.get("redirect_to") or url_for("custos_bp.custos")
+    redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), url_for("custos_bp.custos"))
     if not usuario_logado() or not eh_gestor():
         flash("Você não tem permissão para cadastrar custos.", "erro")
         return redirect(redirect_to)
 
     obra_id = request.form.get("obra_id", "").strip()
-    descricao = request.form.get("descricao", "").strip()
-    categoria = request.form.get("categoria", "").strip()
-    fornecedor = request.form.get("fornecedor", "").strip()
-    data_lancamento = request.form.get("data_lancamento", "").strip()
+    try:
+        descricao = limpar_texto(request.form.get("descricao", ""), max_len=180, obrigatorio=True, campo="Descricao")
+        categoria = limpar_texto(request.form.get("categoria", ""), max_len=60, obrigatorio=True, campo="Categoria")
+        fornecedor = limpar_texto(request.form.get("fornecedor", ""), max_len=140)
+        data_lancamento = limpar_texto(request.form.get("data_lancamento", ""), max_len=10)
+        status_entrega = normalizar_status_entrega(limpar_texto(request.form.get("status_entrega", ""), max_len=60))
+        data_entrega_prevista = limpar_texto(request.form.get("data_entrega_prevista", ""), max_len=10)
+        data_entrega_realizada = limpar_texto(request.form.get("data_entrega_realizada", ""), max_len=10)
+        nota_fiscal = limpar_texto(request.form.get("nota_fiscal", ""), max_len=80)
+        observacao = limpar_texto(request.form.get("observacao", ""), max_len=1000)
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirect(redirect_to)
     valor_total = request.form.get("valor_total", "").strip()
     quantidade = request.form.get("quantidade", "").strip()
     valor_unitario = request.form.get("valor_unitario", "").strip()
-    status_entrega = normalizar_status_entrega(request.form.get("status_entrega", ""))
-    data_entrega_prevista = request.form.get("data_entrega_prevista", "").strip()
-    data_entrega_realizada = request.form.get("data_entrega_realizada", "").strip()
-    nota_fiscal = request.form.get("nota_fiscal", "").strip()
-    observacao = request.form.get("observacao", "").strip()
 
     if not obra_id or not descricao or not categoria:
         flash("Preencha os campos obrigatórios do custo.", "erro")
         return redirect(redirect_to)
 
     try:
+        obra_id_int = parse_int_positivo(obra_id, "Obra")
         validar_categoria_custo(categoria)
         valor_total_float, quantidade_float, valor_unitario_float = calcular_valores_custo(valor_total, quantidade, valor_unitario)
         if valor_negativo(valor_total_float):
@@ -284,7 +292,7 @@ def novo_custo():
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
-            int(obra_id),
+            obra_id_int,
             descricao,
             categoria,
             fornecedor,
@@ -317,18 +325,22 @@ def editar_custo(custo_id):
         flash("Você não tem permissão para editar custos.", "erro")
         return redirect(url_for("custos_bp.custos"))
 
-    descricao = request.form.get("descricao", "").strip()
-    categoria = request.form.get("categoria", "").strip()
-    fornecedor = request.form.get("fornecedor", "").strip()
-    data_lancamento = request.form.get("data_lancamento", "").strip()
+    try:
+        descricao = limpar_texto(request.form.get("descricao", ""), max_len=180, obrigatorio=True, campo="Descricao")
+        categoria = limpar_texto(request.form.get("categoria", ""), max_len=60, obrigatorio=True, campo="Categoria")
+        fornecedor = limpar_texto(request.form.get("fornecedor", ""), max_len=140)
+        data_lancamento = limpar_texto(request.form.get("data_lancamento", ""), max_len=10)
+        status_entrega = normalizar_status_entrega(limpar_texto(request.form.get("status_entrega", ""), max_len=60))
+        data_entrega_prevista = limpar_texto(request.form.get("data_entrega_prevista", ""), max_len=10)
+        data_entrega_realizada = limpar_texto(request.form.get("data_entrega_realizada", ""), max_len=10)
+        nota_fiscal = limpar_texto(request.form.get("nota_fiscal", ""), max_len=80)
+        observacao = limpar_texto(request.form.get("observacao", ""), max_len=1000)
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirect(url_for("custos_bp.custos"))
     valor_total = request.form.get("valor_total", "").strip()
     quantidade = request.form.get("quantidade", "").strip()
     valor_unitario = request.form.get("valor_unitario", "").strip()
-    status_entrega = normalizar_status_entrega(request.form.get("status_entrega", ""))
-    data_entrega_prevista = request.form.get("data_entrega_prevista", "").strip()
-    data_entrega_realizada = request.form.get("data_entrega_realizada", "").strip()
-    nota_fiscal = request.form.get("nota_fiscal", "").strip()
-    observacao = request.form.get("observacao", "").strip()
 
     try:
         validar_categoria_custo(categoria)

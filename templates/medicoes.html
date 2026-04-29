@@ -30,13 +30,14 @@
     {% set total_medicoes = lista|length %}
     {% set valor_total = lista|sum(attribute='valor_realizado') %}
     {% set ultimo_percentual = primeira.percentual_acumulado or 0 %}
+    {% set progresso_visual = 100 if ultimo_percentual > 100 else (0 if ultimo_percentual < 0 else ultimo_percentual) %}
     <div class="medicao-obra-card"
         data-search="{{ (primeira.codigo_obra or '')|lower }} {{ (primeira.nome_obra or '')|lower }} {% for item in lista %}{{ (item.mes or '')|lower }} {{ (item.medicao_nome or '')|lower }} {{ (item.etapa or '')|lower }} {% endfor %}">
 
         <div class="medicao-card-main">
             <div class="medicao-card-identity">
                 <div class="medicao-card-title-row">
-                    <a href="{{ url_for('obras_bp.obra_detalhe', codigo=primeira.codigo_obra) }}"
+                    <a href="{{ url_for('obras_bp.obra_detalhes', codigo=primeira.codigo_obra) }}"
                         class="medicao-card-nome">
                         {{ primeira.nome_obra }}
                     </a>
@@ -46,22 +47,11 @@
                 </div>
 
                 <div class="medicao-card-subtitle">
-                    <span>Última referência: {{ primeira.mes or "—" }}</span>
-                    <span class="medicao-card-dot">·</span>
-                    <span>{{ primeira.medicao_nome or "—" }}</span>
-                    {% if primeira.etapa %}
-                    <span class="medicao-card-dot">·</span>
-                    <span>{{ primeira.etapa }}</span>
-                    {% endif %}
+                    <span>Última referência: <strong>{{ primeira.mes or "—" }}</strong></span>
                 </div>
             </div>
 
             <div class="medicao-card-kpis">
-                <div class="medicao-kv">
-                    <div class="medicao-kv-label">Qtd. medições</div>
-                    <div class="medicao-kv-value">{{ total_medicoes }}</div>
-                </div>
-
                 <div class="medicao-kv">
                     <div class="medicao-kv-label">Acumulado atual</div>
                     <div class="medicao-kv-value">{{ ultimo_percentual }}%</div>
@@ -86,21 +76,35 @@
         <div class="medicao-card-details">
             <div class="medicao-detail-grid">
                 <div class="medicao-detail-item">
-                    <div class="medicao-detail-label">ID da obra</div>
-                    <div class="medicao-detail-value">{{ primeira.codigo_obra }}</div>
+                    <div class="medicao-detail-label">Medição atual</div>
+                    <div class="medicao-detail-value">{{ primeira.medicao_nome or '-' }}</div>
                 </div>
                 <div class="medicao-detail-item">
-                    <div class="medicao-detail-label">Obra</div>
-                    <div class="medicao-detail-value">{{ primeira.nome_obra }}</div>
+                    <div class="medicao-detail-label">Etapa atual</div>
+                    <div class="medicao-detail-value">{{ primeira.etapa or '-' }}</div>
+                </div>
+                <div class="medicao-detail-item">
+                    <div class="medicao-detail-label">Data da medição</div>
+                    <div class="medicao-detail-value">{{ formatar_data(primeira.data_medicao) }}</div>
                 </div>
                 <div class="medicao-detail-item">
                     <div class="medicao-detail-label">Ficha completa</div>
                     <div class="medicao-detail-value">
-                        <a href="{{ url_for('obras_bp.obra_detalhe', codigo=primeira.codigo_obra) }}"
+                        <a href="{{ url_for('obras_bp.obra_detalhes', codigo=primeira.codigo_obra) }}"
                             class="medicao-detail-link">
                             Abrir obra →
                         </a>
                     </div>
+                </div>
+            </div>
+
+            <div class="medicao-progress-wrap">
+                <div class="medicao-progress-top">
+                    <span>Progresso acumulado</span>
+                    <strong>{{ ultimo_percentual }}%</strong>
+                </div>
+                <div class="medicao-progress-bar-bg">
+                    <div class="medicao-progress-bar-fill" style="width: {{ progresso_visual }}%;"></div>
                 </div>
             </div>
 

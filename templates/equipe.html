@@ -136,7 +136,7 @@
         <div class="equipe-obra-main">
             <div class="equipe-obra-identity">
                 <div class="equipe-obra-title-row">
-                    <a href="{{ url_for('obras_bp.obra_detalhe', codigo=obra_codigo) }}" class="equipe-obra-nome">
+                    <a href="{{ url_for('obras_bp.obra_detalhes', codigo=obra_codigo) }}" class="equipe-obra-nome">
                         {{ primeira.nome_obra }}
                     </a>
                     <span class="equipe-obra-codigo">{{ obra_codigo }}</span>
@@ -145,10 +145,6 @@
                 </div>
 
                 <div class="equipe-obra-subtitle">
-                    <span>Pago: <strong>{{ formatar_moeda(soma_pago) }}</strong></span>
-                    <span class="equipe-obra-dot">•</span>
-                    <span>Saldo: <strong>{{ formatar_moeda(saldo_obra) }}</strong></span>
-                    <span class="equipe-obra-dot">•</span>
                     <span>Último início: <strong>{{ formatar_data(ultima_data.valor) if ultima_data.valor != '-' else '-' }}</strong></span>
                 </div>
             </div>
@@ -169,7 +165,6 @@
             </div>
 
             <div class="equipe-obra-actions">
-                <span class="equipe-saldo-pill equipe-saldo-pill--{{ status_classe }}">{{ status_obra }}</span>
                 <button type="button" class="equipe-expand-btn" data-target="equipeDetalhes{{ loop.index }}"
                     aria-label="Expandir equipe da obra">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -183,46 +178,49 @@
         <div class="equipe-obra-details" id="equipeDetalhes{{ loop.index }}">
             <div class="equipe-detail-grid">
                 <div class="equipe-detail-item">
-                    <span class="equipe-detail-label">Obra</span>
-                    <span class="equipe-detail-value">{{ primeira.nome_obra }}</span>
-                </div>
-                <div class="equipe-detail-item">
-                    <span class="equipe-detail-label">Profissionais</span>
-                    <span class="equipe-detail-value">{{ total_obra }}</span>
-                </div>
-                <div class="equipe-detail-item">
                     <span class="equipe-detail-label">Status predominante</span>
                     <span class="equipe-detail-value">{{ status_obra }}</span>
                 </div>
                 <div class="equipe-detail-item">
-                    <span class="equipe-detail-label">Profissionais pagos</span>
-                    <span class="equipe-detail-value">{{ pagos_obra }}</span>
-                </div>
-                <div class="equipe-detail-item">
-                    <span class="equipe-detail-label">Profissionais parciais</span>
-                    <span class="equipe-detail-value">{{ parciais_obra }}</span>
-                </div>
-                <div class="equipe-detail-item">
-                    <span class="equipe-detail-label">Profissionais pendentes</span>
-                    <span class="equipe-detail-value">{{ pendentes_obra }}</span>
-                </div>
-                <div class="equipe-detail-item">
-                    <span class="equipe-detail-label">Total contratado</span>
-                    <span class="equipe-detail-value">{{ formatar_moeda(soma_contratado) }}</span>
-                </div>
-                <div class="equipe-detail-item">
-                    <span class="equipe-detail-label">Total pago</span>
-                    <span class="equipe-detail-value">{{ formatar_moeda(soma_pago) }}</span>
-                </div>
-                <div class="equipe-detail-item">
-                    <span class="equipe-detail-label">Saldo pendente</span>
-                    <span class="equipe-detail-value">{{ formatar_moeda(saldo_obra) }}</span>
-                </div>
-                <div class="equipe-detail-item">
                     <span class="equipe-detail-label">Abrir obra</span>
-                    <a class="equipe-detail-link" href="{{ url_for('obras_bp.obra_detalhe', codigo=obra_codigo) }}">
+                    <a class="equipe-detail-link" href="{{ url_for('obras_bp.obra_detalhes', codigo=obra_codigo) }}">
                         Ver todos os detalhes
                     </a>
+                </div>
+            </div>
+
+            <div class="equipe-status-wrap">
+                <div class="equipe-status-metrica">
+                    <div class="equipe-status-top">
+                        <span>Pagos</span>
+                        <strong>{{ pagos_obra }}</strong>
+                    </div>
+                    <div class="equipe-status-bar-bg">
+                        <div class="equipe-status-bar-fill equipe-status-bar-fill--pago"
+                            style="width: {{ (pagos_obra * 100 / total_obra)|round(0, 'floor') if total_obra else 0 }}%;"></div>
+                    </div>
+                </div>
+
+                <div class="equipe-status-metrica">
+                    <div class="equipe-status-top">
+                        <span>Parciais</span>
+                        <strong>{{ parciais_obra }}</strong>
+                    </div>
+                    <div class="equipe-status-bar-bg">
+                        <div class="equipe-status-bar-fill equipe-status-bar-fill--parcial"
+                            style="width: {{ (parciais_obra * 100 / total_obra)|round(0, 'floor') if total_obra else 0 }}%;"></div>
+                    </div>
+                </div>
+
+                <div class="equipe-status-metrica">
+                    <div class="equipe-status-top">
+                        <span>Pendentes</span>
+                        <strong>{{ pendentes_obra }}</strong>
+                    </div>
+                    <div class="equipe-status-bar-bg">
+                        <div class="equipe-status-bar-fill equipe-status-bar-fill--pendente"
+                            style="width: {{ (pendentes_obra * 100 / total_obra)|round(0, 'floor') if total_obra else 0 }}%;"></div>
+                    </div>
                 </div>
             </div>
 

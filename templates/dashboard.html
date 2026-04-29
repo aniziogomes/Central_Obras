@@ -189,7 +189,7 @@
             <div id="resumoObrasBody">
                 {% for obra in margem_por_obra %}
                 <div class="dashboard-v2-table-row">
-                    <a href="/obra/{{ obra.codigo }}" class="dashboard-v2-obra-cell">
+                    <a href="/obra/{{ obra.codigo }}/detalhes" class="dashboard-v2-obra-cell">
                         <strong>{{ obra.nome }}</strong>
                         <small>{{ obra.codigo }}</small>
                     </a>
@@ -384,7 +384,7 @@
 
     <div class="dashboard-summary-grid" id="resumoObrasBody">
         {% for obra in margem_por_obra %}
-        <a href="/obra/{{ obra.codigo }}" class="dashboard-summary-card">
+        <a href="/obra/{{ obra.codigo }}/detalhes" class="dashboard-summary-card">
             <div class="dashboard-summary-top">
                 <div>
                     <div class="dashboard-summary-code">{{ obra.codigo }}</div>
@@ -1273,7 +1273,7 @@
             }
             b.innerHTML = p.margem_por_obra.map(o => `
             <div class="dashboard-v2-table-row">
-                <a href="/obra/${encodeURIComponent(o.codigo)}" class="dashboard-v2-obra-cell">
+                <a href="/obra/${encodeURIComponent(o.codigo)}/detalhes" class="dashboard-v2-obra-cell">
                     <strong>${esc(o.nome)}</strong>
                     <small>${esc(o.codigo)}</small>
                 </a>

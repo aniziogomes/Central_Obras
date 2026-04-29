@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Onboarding - Central de Obras</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body class="onboarding-page">
+  <main class="onboarding-shell">
+    <div class="onboarding-brand" aria-label="Canteiro Inteligência de Obras">
+      <strong>Canteiro</strong>
+      <span>Inteligência de Obras</span>
+    </div>
+
+    <section class="onboarding-card">
+      <div class="onboarding-progress" aria-label="Progresso do onboarding">
+        {% for item in [1, 2, 3] %}
+        <div class="onboarding-progress-step {% if item < passo %}is-done{% elif item == passo %}is-current{% endif %}">
+          <span>{{ item }}</span>
+        </div>
+        {% if item < 3 %}
+        <div class="onboarding-progress-line {% if item < passo %}is-done{% endif %}"></div>
+        {% endif %}
+        {% endfor %}
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="onboarding-flashes">
+        {% for categoria, mensagem in messages %}
+        <div class="onboarding-flash {% if categoria == 'erro' %}is-error{% else %}is-success{% endif %}">
+          {{ mensagem }}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      {% if passo == 1 %}
+      <header class="onboarding-header">
+        <h1>Crie sua primeira obra</h1>
+        <p>Comece com o mínimo necessário. Você pode completar os detalhes depois.</p>
+      </header>
+
+      <form method="post" action="{{ url_for('onboarding_bp.criar_primeira_obra') }}" class="onboarding-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <label class="onboarding-field">
+          <span>Nome da obra</span>
+          <input type="text" name="nome" required autocomplete="off" placeholder="Ex: Reforma Casa Jardim">
+        </label>
+
+        <label class="onboarding-field">
+          <span>Tipo</span>
+          <select name="tipo_obra" required>
+            {% for valor, label in tipos_obra %}
+            <option value="{{ valor }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label class="onboarding-field">
+          <span>Status</span>
+          <select name="status" required>
+            {% for valor, label in status_obra %}
+            <option value="{{ valor }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <button type="submit" class="onboarding-primary">Continuar &rarr;</button>
+      </form>
+      {% elif passo == 2 %}
+      <header class="onboarding-header">
+        <h1>Adicione o primeiro custo</h1>
+        <p>Registre o primeiro gasto desta obra para começar a controlar seu dinheiro.</p>
+      </header>
+
+      <form method="post" action="{{ url_for('onboarding_bp.criar_primeiro_custo') }}" class="onboarding-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <label class="onboarding-field">
+          <span>Descrição</span>
+          <input type="text" name="descricao" required autocomplete="off" placeholder="Ex: Compra de cimento">
+        </label>
+
+        <label class="onboarding-field">
+          <span>Categoria</span>
+          <select name="categoria" required>
+            {% for categoria in categorias_custo %}
+            <option value="{{ categoria }}">{{ categoria }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label class="onboarding-field">
+          <span>Valor</span>
+          <input type="text" name="valor" required inputmode="decimal" placeholder="R$ 0,00">
+        </label>
+
+        <button type="submit" class="onboarding-primary">Continuar &rarr;</button>
+      </form>
+
+      <form method="post" action="{{ url_for('onboarding_bp.pular_primeiro_custo') }}" class="onboarding-skip-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="onboarding-secondary">Pular por agora</button>
+      </form>
+      {% else %}
+      <header class="onboarding-header">
+        <h1>Compartilhe com o cliente</h1>
+        <p>Envie este link para o dono da obra acompanhar o progresso sem ver seus dados financeiros.</p>
+      </header>
+
+      <div class="onboarding-share">
+        <label class="onboarding-field">
+          <span>Link do portal</span>
+          <input type="text" id="portalLink" value="{{ portal_url }}" readonly>
+        </label>
+
+        <div class="onboarding-share-actions">
+          <button type="button" class="onboarding-copy" data-copy-portal>Copiar</button>
+          <a class="onboarding-whatsapp" href="{{ whatsapp_url }}" target="_blank" rel="noopener">Enviar pelo WhatsApp</a>
+        </div>
+      </div>
+
+      <form method="post" action="{{ url_for('onboarding_bp.concluir_onboarding') }}" class="onboarding-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="onboarding-primary">Concluir</button>
+      </form>
+      {% endif %}
+
+      <footer class="onboarding-footer">
+        Você pode pular e configurar depois nas configurações.
+      </footer>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const button = document.querySelector("[data-copy-portal]");
+      const input = document.getElementById("portalLink");
+      if (!button || !input) return;
+
+      button.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(input.value);
+        } catch (_) {
+          input.select();
+          document.execCommand("copy");
+          input.blur();
+        }
+        button.textContent = "Copiado";
+        setTimeout(() => { button.textContent = "Copiar"; }, 1600);
+      });
+    })();
+  </script>
+</body>
+
+</html>

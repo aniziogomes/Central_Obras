@@ -7,9 +7,12 @@
 {% set margem_prevista = (obra.receita_total or 0) - (obra.orcamento or 0) %}
 {% set tem_custos_lancados = custos|length > 0 %}
 {% set valor_contrato = obra.receita_total or 0 %}
+{% set orcamento_base = obra.orcamento or 0 %}
 {% set gasto_ultrapassou = custo_total > valor_contrato and valor_contrato > 0 %}
+{% set gasto_orcamento_alerta = custo_total >= (orcamento_base * 0.7) and orcamento_base > 0 %}
+{% set gasto_orcamento_estourado = custo_total > orcamento_base and orcamento_base > 0 %}
 {% set saldo_negativo = margem < 0 %}
-{% set percentual_orcamento = (custo_total / valor_contrato * 100) if valor_contrato > 0 else 0 %}
+{% set percentual_orcamento = (custo_total / orcamento_base * 100) if orcamento_base > 0 else 0 %}
 {% set percentual_orcamento_barra = 100 if percentual_orcamento > 100 else percentual_orcamento %}
 {% set foto_capa = obra.foto_capa if obra.foto_capa is defined and obra.foto_capa else '' %}
 {% set entrega_real = obra.data_fim_real if obra.data_fim_real is defined and obra.data_fim_real else '' %}
@@ -97,14 +100,17 @@
                     <strong class="{% if margem >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">{{ formatar_moeda(margem) }}</strong>
                 </div>
             </div>
-            <div class="obra-sticky-budget-progress {% if gasto_ultrapassou %}is-danger{% endif %}">
+            <div class="obra-sticky-budget-progress {% if gasto_orcamento_alerta %}is-danger{% endif %}">
                 <div>
-                    <span>Uso do orçamento</span>
-                    <strong>{{ '%.1f'|format(percentual_orcamento) }}% utilizado do orçamento</strong>
+                    <span>Gasto do orçamento</span>
+                    <strong>{{ '%.1f'|format(percentual_orcamento) }}% do orçamento base</strong>
                 </div>
                 <div class="obra-budget-progress-track">
                     <div class="obra-budget-progress-fill" style="width: {{ percentual_orcamento_barra }}%;"></div>
                 </div>
+                {% if gasto_orcamento_alerta %}
+                <small>Atenção: custo realizado acima de 70% do orçamento base.</small>
+                {% endif %}
             </div>
         </section>
 
@@ -262,10 +268,11 @@
                     <strong class="{% if gasto_ultrapassou %}valor-negativo{% endif %}">{{ formatar_moeda(custo_total) }}</strong>
                 </div>
                 <div>
-                    <span>Margem projetada</span>
+                    <span>Lucro previsto</span>
                     <strong class="{% if margem_prevista >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">
                         {{ formatar_moeda(margem_prevista) }}
                     </strong>
+                    <small class="obra-finance-card-note">se os custos ficarem no orçamento</small>
                 </div>
             </div>
             <div class="obra-finance-exec-visual">
@@ -275,28 +282,36 @@
                 </div>
                 <div class="obra-finance-exec-row">
                     <div><span>Custo</span><strong>{{ formatar_moeda(custo_total) }}</strong></div>
-                    <div class="obra-finance-bar obra-finance-bar--cost"><span style="width: {{ percentual_orcamento_barra }}%;"></span></div>
+                    <div class="obra-finance-bar obra-finance-bar--cost {% if gasto_orcamento_alerta %}is-danger{% endif %}"><span style="width: {{ percentual_orcamento_barra }}%;"></span></div>
                 </div>
                 <div class="obra-finance-exec-row">
                     <div><span>Saldo</span><strong>{{ formatar_moeda(margem) }}</strong></div>
                     <div class="obra-finance-bar obra-finance-bar--balance"><span style="width: {{ (100 - percentual_orcamento_barra) if percentual_orcamento_barra < 100 else 0 }}%;"></span></div>
                 </div>
-                <div class="obra-finance-exec-note {% if gasto_ultrapassou %}is-danger{% endif %}">
-                    <span>{{ '%.1f'|format(percentual_orcamento) }}% utilizado do orçamento</span>
-                    {% if gasto_ultrapassou %}
-                    <strong>Gasto acima do contrato</strong>
-                    {% elif valor_contrato <= 0 %}
-                    <strong>Cadastre o valor do contrato</strong>
+                <div class="obra-finance-exec-note {% if gasto_orcamento_alerta %}is-danger{% endif %}">
+                    <span>{{ '%.1f'|format(percentual_orcamento) }}% gasto do orçamento</span>
+                    {% if gasto_orcamento_estourado %}
+                    <strong>Orçamento base estourado</strong>
+                    {% elif gasto_orcamento_alerta %}
+                    <strong>Atenção: acima de 70%</strong>
+                    {% elif orcamento_base <= 0 %}
+                    <strong>Cadastre o orçamento base</strong>
                     {% else %}
                     <strong>{{ formatar_moeda(margem) }} disponível</strong>
                     {% endif %}
                 </div>
+                {% if gasto_orcamento_alerta %}
+                <div class="obra-budget-alert">
+                    <strong>Atenção ao orçamento</strong>
+                    <span>O custo realizado já passou de 70% do orçamento base. Revise compras, medições e novos compromissos antes do próximo lançamento.</span>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
 
     <div class="obra-detalhes-chart-grid">
-        <div class="card chart-card obra-detalhes-chart-card" data-obra-detail-panel="financeiro">
+        <div class="card chart-card obra-detalhes-chart-card obra-detalhes-chart-card--wide" data-obra-detail-panel="financeiro">
             <div class="card-hdr">
                 <div>
                     <div class="card-title">Custos por categoria</div>
@@ -304,7 +319,25 @@
                 </div>
             </div>
             {% if chart_custo_cat_labels %}
-            <div class="chart-box obra-detalhes-chart-box"><canvas id="graficoObraCategorias"></canvas></div>
+            <div class="obra-category-chart-layout">
+                <div class="chart-box obra-detalhes-chart-box obra-detalhes-chart-box--donut">
+                    <canvas id="graficoObraCategorias"></canvas>
+                </div>
+                <div class="obra-category-table">
+                    {% set total_categorias = chart_custo_cat_valores|sum %}
+                    {% for label in chart_custo_cat_labels %}
+                    {% set valor_categoria = chart_custo_cat_valores[loop.index0] or 0 %}
+                    <div class="obra-category-row">
+                        <span class="obra-category-name">
+                            <i></i>
+                            {{ label }}
+                        </span>
+                        <strong>{{ formatar_moeda(valor_categoria) }}</strong>
+                        <small>{{ '%.1f'|format((valor_categoria / total_categorias * 100) if total_categorias else 0) }}%</small>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
             {% else %}
             <div class="obra-empty-box">Sem custos registrados para montar o gráfico.</div>
             {% endif %}
@@ -589,6 +622,25 @@
         height: 10px;
     }
 
+    .obra-sticky-budget-progress.is-danger {
+        border-color: rgba(232, 66, 78, .32);
+        background:
+            linear-gradient(180deg, rgba(232, 66, 78, .095), rgba(255, 255, 255, .008)),
+            var(--bg2);
+    }
+
+    .obra-sticky-budget-progress.is-danger .obra-budget-progress-fill {
+        background: linear-gradient(90deg, #e8424e, #ff7b86);
+    }
+
+    .obra-sticky-budget-progress small {
+        display: block;
+        margin-top: 9px;
+        color: #ff9ca3;
+        font-size: 11px;
+        font-weight: 750;
+    }
+
     .obra-detalhes-tabs-bar {
         display: flex;
         align-items: center;
@@ -666,10 +718,10 @@
     .obra-finance-exec-note span {
         display: block;
         color: var(--text2);
-        font-size: 10px;
-        font-weight: 850;
-        letter-spacing: .04em;
-        text-transform: uppercase;
+        font-size: 11px;
+        font-weight: 650;
+        letter-spacing: 0;
+        text-transform: none;
     }
 
     .obra-finance-exec-summary strong {
@@ -677,10 +729,23 @@
         margin-top: 9px;
         color: var(--text);
         font-size: 22px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
         line-height: 1.15;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    .obra-finance-card-note {
+        display: block;
+        margin-top: 6px;
+        color: var(--text2);
+        font-size: 11px;
+        font-weight: 650;
+        line-height: 1.25;
+        text-transform: none;
+        letter-spacing: 0;
     }
 
     .obra-finance-exec-visual {
@@ -701,6 +766,8 @@
         margin-top: 5px;
         color: var(--text);
         font-size: 13px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
     }
 
     .obra-finance-bar {
@@ -720,6 +787,10 @@
 
     .obra-finance-bar--cost span {
         background: linear-gradient(90deg, #f07535, #ffb06d);
+    }
+
+    .obra-finance-bar--cost.is-danger span {
+        background: linear-gradient(90deg, #e8424e, #ff7b86);
     }
 
     .obra-finance-bar--balance span {
@@ -742,6 +813,110 @@
 
     .obra-finance-exec-note.is-danger strong {
         color: #ff8d96;
+    }
+
+    .obra-budget-alert {
+        display: grid;
+        gap: 4px;
+        padding: 11px 12px;
+        border: 1px solid rgba(232, 66, 78, .28);
+        border-radius: 8px;
+        background: rgba(232, 66, 78, .10);
+    }
+
+    .obra-budget-alert strong {
+        color: #ff9ca3;
+        font-size: 12px;
+    }
+
+    .obra-budget-alert span {
+        color: var(--text);
+        font-size: 12px;
+        line-height: 1.35;
+    }
+
+    .obra-category-chart-layout {
+        display: grid;
+        grid-template-columns: minmax(180px, 260px) minmax(220px, 1fr);
+        align-items: center;
+        gap: 18px;
+        min-height: 250px;
+    }
+
+    .obra-detalhes-chart-box--donut {
+        min-height: 230px;
+        height: 230px;
+    }
+
+    .obra-category-table {
+        display: grid;
+        gap: 8px;
+        align-self: stretch;
+        align-content: center;
+    }
+
+    .obra-category-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        align-items: center;
+        gap: 10px;
+        min-height: 40px;
+        padding: 9px 10px;
+        border: 1px solid rgba(255, 255, 255, .075);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, .02);
+    }
+
+    .obra-category-name {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 750;
+    }
+
+    .obra-category-name i {
+        width: 10px;
+        height: 10px;
+        flex: 0 0 10px;
+        border-radius: 3px;
+        background: #315f9a;
+    }
+
+    .obra-category-row:nth-child(2) .obra-category-name i {
+        background: #b08a3a;
+    }
+
+    .obra-category-row:nth-child(3) .obra-category-name i {
+        background: #4f9b73;
+    }
+
+    .obra-category-row:nth-child(4) .obra-category-name i {
+        background: #bd6b3a;
+    }
+
+    .obra-category-row:nth-child(5) .obra-category-name i {
+        background: #715fa6;
+    }
+
+    .obra-category-row:nth-child(6) .obra-category-name i {
+        background: #b5565f;
+    }
+
+    .obra-category-row strong {
+        color: var(--text);
+        font-size: 12px;
+        white-space: nowrap;
+    }
+
+    .obra-category-row small {
+        min-width: 46px;
+        color: var(--text2);
+        font-size: 11px;
+        font-weight: 800;
+        text-align: right;
     }
 
     .obra-overview-grid {
@@ -1220,6 +1395,15 @@
             align-items: flex-start;
             flex-direction: column;
         }
+
+        .obra-category-chart-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .obra-detalhes-chart-box--donut {
+            min-height: 210px;
+            height: 210px;
+        }
     }
 </style>
 
@@ -1361,7 +1545,7 @@
                         maintainAspectRatio: false,
                         cutout: "62%",
                         plugins: {
-                            legend: { position: "bottom", labels: { color: txtClaro, boxWidth: 12, boxHeight: 12, padding: 12 } },
+                            legend: { display: false },
                             tooltip: { callbacks: { label: c => `${c.label}: ${fmtMoeda(c.raw)}` } }
                         }
                     }

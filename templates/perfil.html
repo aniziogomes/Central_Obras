@@ -3,7 +3,7 @@
 {% block title %}Configurações da conta - Central de Obras{% endblock %}
 
 {% block content %}
-{% set perfil_label = {'admin': 'Admin', 'gestor': 'Gestor', 'leitura': 'Leitura'}.get(usuario.perfil, usuario.perfil) %}
+{% set perfil_label = {'admin': 'Admin', 'gestor': 'Gestor', 'leitura': 'Leitura', 'cliente': 'Cliente'}.get(usuario.perfil, usuario.perfil) %}
 
 <div class="hdr">
   <div>
@@ -54,11 +54,11 @@
       </label>
       <label class="form-field">
         <span>Nova senha</span>
-        <input type="password" name="nova_senha" autocomplete="new-password" minlength="6" required>
+        <input type="password" name="nova_senha" autocomplete="new-password" minlength="8" required>
       </label>
       <label class="form-field">
         <span>Confirmar nova senha</span>
-        <input type="password" name="confirmar_senha" autocomplete="new-password" minlength="6" required>
+        <input type="password" name="confirmar_senha" autocomplete="new-password" minlength="8" required>
       </label>
       <div class="profile-form-actions">
         <button type="submit" class="btn btn-primary">Salvar senha</button>
@@ -91,11 +91,12 @@
         <option value="gestor">Gestor</option>
         <option value="leitura">Leitura</option>
         <option value="admin">Admin</option>
+        <option value="cliente">Cliente (somente portal)</option>
       </select>
     </label>
     <label class="form-field">
       <span>Senha inicial</span>
-      <input type="password" name="senha" minlength="6" placeholder="Mínimo 6 caracteres" required>
+      <input type="password" name="senha" minlength="8" placeholder="Mínimo 8 caracteres" required>
     </label>
     <div class="usuarios-create-actions">
       <button type="submit" class="btn btn-primary">Criar usuário</button>
@@ -123,7 +124,7 @@
       </thead>
       <tbody>
         {% for item in usuarios %}
-        {% set item_perfil_label = {'admin': 'Admin', 'gestor': 'Gestor', 'leitura': 'Leitura'}.get(item.perfil,
+        {% set item_perfil_label = {'admin': 'Admin', 'gestor': 'Gestor', 'leitura': 'Leitura', 'cliente': 'Cliente'}.get(item.perfil,
         item.perfil) %}
         <tr>
           <td>
@@ -159,7 +160,7 @@
 
               <form method="POST" action="{{ url_for('auth_bp.resetar_senha_usuario', usuario_id=item.id) }}"
                 class="usuarios-reset-form">
-                <input type="password" name="nova_senha" minlength="6" placeholder="Nova senha" required>
+                <input type="password" name="nova_senha" minlength="8" placeholder="Nova senha" required>
                 <button type="submit" class="btn btn-secondary">Redefinir</button>
               </form>
 

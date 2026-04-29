@@ -2,6 +2,7 @@ import pandas as pd
 from io import BytesIO
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from database import query_one, query_all, execute
+from services.validators import limpar_texto, parse_int_nao_negativo, validar_nota
 from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
 from services.log_service import registrar_log
 
@@ -23,16 +24,20 @@ def novo_fornecedor():
         flash("Você não tem permissão para cadastrar fornecedores.", "erro")
         return redirect(url_for("fornecedores_bp.fornecedores"))
 
-    codigo = request.form.get("codigo", "").strip()
-    nome = request.form.get("nome", "").strip()
-    categoria = request.form.get("categoria", "").strip()
-    contato = request.form.get("contato", "").strip()
-    documento = request.form.get("documento", "").strip()
+    try:
+        codigo = limpar_texto(request.form.get("codigo", ""), max_len=40, obrigatorio=True, campo="Codigo")
+        nome = limpar_texto(request.form.get("nome", ""), max_len=160, obrigatorio=True, campo="Nome")
+        categoria = limpar_texto(request.form.get("categoria", ""), max_len=80, obrigatorio=True, campo="Categoria")
+        contato = limpar_texto(request.form.get("contato", ""), max_len=120)
+        documento = limpar_texto(request.form.get("documento", ""), max_len=80)
+        observacao = limpar_texto(request.form.get("observacao", ""), max_len=1000)
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirect(url_for("fornecedores_bp.fornecedores"))
     prazo_medio = request.form.get("prazo_medio", "").strip()
     nota_qualidade = request.form.get("nota_qualidade", "").strip()
     nota_preco = request.form.get("nota_preco", "").strip()
     nota_prazo = request.form.get("nota_prazo", "").strip()
-    observacao = request.form.get("observacao", "").strip()
 
     if not codigo or not nome or not categoria:
         flash("Preencha os campos obrigatórios do fornecedor.", "erro")
@@ -41,6 +46,15 @@ def novo_fornecedor():
     existe = query_one("SELECT * FROM fornecedores WHERE codigo = ?", (codigo,))
     if existe:
         flash("Já existe um fornecedor com esse código.", "erro")
+        return redirect(url_for("fornecedores_bp.fornecedores"))
+
+    try:
+        prazo_medio_int = parse_int_nao_negativo(prazo_medio, "Prazo medio") if prazo_medio else 0
+        nota_qualidade_float = validar_nota(nota_qualidade, "Nota de qualidade")
+        nota_preco_float = validar_nota(nota_preco, "Nota de preco")
+        nota_prazo_float = validar_nota(nota_prazo, "Nota de prazo")
+    except ValueError as e:
+        flash(str(e), "erro")
         return redirect(url_for("fornecedores_bp.fornecedores"))
 
     fornecedor_id = execute(
@@ -58,10 +72,10 @@ def novo_fornecedor():
             categoria,
             contato,
             documento,
-            int(prazo_medio) if prazo_medio else 0,
-            float(nota_qualidade) if nota_qualidade else 0,
-            float(nota_preco) if nota_preco else 0,
-            float(nota_prazo) if nota_prazo else 0,
+            prazo_medio_int,
+            nota_qualidade_float,
+            nota_preco_float,
+            nota_prazo_float,
             observacao
         )
     )
@@ -83,15 +97,28 @@ def editar_fornecedor(fornecedor_id):
         flash("Você não tem permissão para editar fornecedores.", "erro")
         return redirect(url_for("fornecedores_bp.fornecedores"))
 
-    nome = request.form.get("nome", "").strip()
-    categoria = request.form.get("categoria", "").strip()
-    contato = request.form.get("contato", "").strip()
-    documento = request.form.get("documento", "").strip()
+    try:
+        nome = limpar_texto(request.form.get("nome", ""), max_len=160, obrigatorio=True, campo="Nome")
+        categoria = limpar_texto(request.form.get("categoria", ""), max_len=80, obrigatorio=True, campo="Categoria")
+        contato = limpar_texto(request.form.get("contato", ""), max_len=120)
+        documento = limpar_texto(request.form.get("documento", ""), max_len=80)
+        observacao = limpar_texto(request.form.get("observacao", ""), max_len=1000)
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirect(url_for("fornecedores_bp.fornecedores"))
     prazo_medio = request.form.get("prazo_medio", "").strip()
     nota_qualidade = request.form.get("nota_qualidade", "").strip()
     nota_preco = request.form.get("nota_preco", "").strip()
     nota_prazo = request.form.get("nota_prazo", "").strip()
-    observacao = request.form.get("observacao", "").strip()
+
+    try:
+        prazo_medio_int = parse_int_nao_negativo(prazo_medio, "Prazo medio") if prazo_medio else 0
+        nota_qualidade_float = validar_nota(nota_qualidade, "Nota de qualidade")
+        nota_preco_float = validar_nota(nota_preco, "Nota de preco")
+        nota_prazo_float = validar_nota(nota_prazo, "Nota de prazo")
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirect(url_for("fornecedores_bp.fornecedores"))
 
     execute(
         """
@@ -106,10 +133,10 @@ def editar_fornecedor(fornecedor_id):
             categoria,
             contato,
             documento,
-            int(prazo_medio) if prazo_medio else 0,
-            float(nota_qualidade) if nota_qualidade else 0,
-            float(nota_preco) if nota_preco else 0,
-            float(nota_prazo) if nota_prazo else 0,
+            prazo_medio_int,
+            nota_qualidade_float,
+            nota_preco_float,
+            nota_prazo_float,
             observacao,
             fornecedor_id
         )

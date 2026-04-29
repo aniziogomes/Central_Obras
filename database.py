@@ -41,6 +41,13 @@ def init_db():
     except Exception:
         pass
 
+    # usuarios.onboarding_completo
+    try:
+        conn.execute("ALTER TABLE usuarios ADD COLUMN onboarding_completo INTEGER DEFAULT 0")
+        conn.commit()
+    except Exception:
+        pass
+
     # usuarios.foto_perfil
     try:
         conn.execute("ALTER TABLE usuarios ADD COLUMN foto_perfil TEXT")
@@ -84,6 +91,37 @@ def init_db():
     # obras.token_publico (link do portal)
     try:
         conn.execute("ALTER TABLE obras ADD COLUMN token_publico TEXT")
+        conn.commit()
+    except Exception:
+        pass
+
+    try:
+        conn.execute("ALTER TABLE obras ADD COLUMN portal_expira_em TEXT")
+        conn.commit()
+    except Exception:
+        pass
+
+    try:
+        conn.execute("ALTER TABLE obras ADD COLUMN portal_revogado_em TEXT")
+        conn.commit()
+    except Exception:
+        pass
+
+    try:
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_obras_token_publico ON obras(token_publico)")
+        conn.commit()
+    except Exception:
+        pass
+
+    try:
+        conn.execute("""
+            UPDATE obras
+            SET token_publico = NULL,
+                portal_expira_em = NULL,
+                portal_revogado_em = CURRENT_TIMESTAMP
+            WHERE token_publico IS NOT NULL
+              AND length(token_publico) < 32
+        """)
         conn.commit()
     except Exception:
         pass

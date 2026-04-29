@@ -1,103 +1,109 @@
 {% extends "base.html" %}
 
-{% block title %}Usuários - Central de Obras{% endblock %}
+{% block title %}Usuários - Canteiro{% endblock %}
+
+{% set perfil_labels = {"admin": "Admin", "gestor": "Gestor", "leitura": "Leitura"} %}
+{% set perfil_descricoes = {
+  "admin": "acesso total, cria e exclui usuários",
+  "gestor": "cria e edita obras, custos e equipe",
+  "leitura": "apenas visualiza, não edita nada"
+} %}
 
 {% block content %}
-<div class="hdr">
+<div class="hdr usuarios-page-header">
   <div>
     <h1>Usuários</h1>
-    <p>Controle de acesso ao sistema</p>
+    <p>Gerencie as contas que acessam o Canteiro.</p>
+  </div>
+  <div class="hdr-right">
+    <button type="button" class="btn btn-primary" data-open-usuario-modal="modalNovoUsuario">
+      + Novo usuário
+    </button>
   </div>
 </div>
 
-<section class="card usuarios-create-card">
-  <div class="card-hdr">
-    <div>
-      <div class="card-title">Criar novo usuário</div>
-      <div class="card-subtitle">Defina o perfil de acesso e uma senha inicial</div>
+<div class="quick-strip usuarios-quick-strip">
+  <div class="quick-item">
+    <div class="metric-summary-content">
+      <span class="quick-label">Total de usuários</span>
+      <strong class="quick-value">{{ kpis.total }}</strong>
     </div>
   </div>
-
-  <form method="POST" action="{{ url_for('auth_bp.novo_usuario') }}" class="usuarios-create-form">
-    <label class="form-field">
-      <span>Nome</span>
-      <input type="text" name="nome" placeholder="Nome do usuário" required>
-    </label>
-    <label class="form-field">
-      <span>Username</span>
-      <input type="text" name="username" placeholder="usuario.login" required>
-    </label>
-    <label class="form-field">
-      <span>Perfil</span>
-      <select name="perfil" required>
-        <option value="gestor">Gestor</option>
-        <option value="leitura">Leitura</option>
-        <option value="admin">Admin</option>
-      </select>
-    </label>
-    <label class="form-field">
-      <span>Senha inicial</span>
-      <input type="password" name="senha" minlength="6" placeholder="Mínimo 6 caracteres" required>
-    </label>
-    <div class="usuarios-create-actions">
-      <button type="submit" class="btn btn-primary">Criar usuário</button>
+  <div class="quick-item">
+    <div class="metric-summary-content">
+      <span class="quick-label">Usuários ativos</span>
+      <strong class="quick-value">{{ kpis.ativos }}</strong>
     </div>
-  </form>
-</section>
+  </div>
+  <div class="quick-item">
+    <div class="metric-summary-content">
+      <span class="quick-label">Administradores</span>
+      <strong class="quick-value">{{ kpis.admins }}</strong>
+    </div>
+  </div>
+</div>
 
-<section class="card usuarios-list-card">
+<section class="card usuarios-list-card usuarios-admin-card">
   <div class="card-hdr">
     <div>
-      <div class="card-title">Usuários cadastrados</div>
-      <div class="card-subtitle">Status, perfil e ações administrativas</div>
+      <div class="card-title">Contas cadastradas</div>
+      <div class="card-subtitle">Perfis, status e ações administrativas</div>
     </div>
   </div>
 
   <div class="usuarios-table-wrap">
-    <table class="usuarios-table">
+    <table class="usuarios-table usuarios-admin-table">
       <thead>
         <tr>
-          <th>Usuário</th>
+          <th>Nome</th>
+          <th>Username</th>
           <th>Perfil</th>
           <th>Status</th>
+          <th>Data de criação</th>
           <th>Ações</th>
         </tr>
       </thead>
       <tbody>
         {% for usuario in usuarios %}
-        {% set perfil_label = {'admin': 'Admin', 'gestor': 'Gestor', 'leitura': 'Leitura'}.get(usuario.perfil,
-        usuario.perfil) %}
+        {% set perfil_label = perfil_labels.get(usuario.perfil, usuario.perfil) %}
         <tr>
           <td>
             <div class="usuarios-person">
-              <div class="usuarios-avatar">{{ usuario.nome[0] | upper }}</div>
-              <div>
-                <strong>{{ usuario.nome }}</strong>
-                <span>@{{ usuario.username }}</span>
+              <div class="usuarios-avatar">
+                {% if usuario.foto_perfil %}
+                <img src="{{ usuario.foto_perfil }}" alt="Foto de {{ usuario.nome }}">
+                {% else %}
+                {{ usuario.nome[0] | upper }}
+                {% endif %}
               </div>
+              <strong>{{ usuario.nome }}</strong>
             </div>
           </td>
-          <td>
-            <span class="profile-role-badge profile-role-badge--{{ usuario.perfil }}">{{ perfil_label }}</span>
-          </td>
+          <td><span class="usuarios-username">@{{ usuario.username }}</span></td>
+          <td><span class="profile-role-badge profile-role-badge--{{ usuario.perfil }}">{{ perfil_label }}</span></td>
           <td>
             <span class="status-pill {{ 'ok' if usuario.ativo else 'danger' }}">
               {{ 'Ativo' if usuario.ativo else 'Inativo' }}
             </span>
           </td>
+          <td>{{ formatar_data(usuario.criado_em, "-") }}</td>
           <td>
-            <div class="usuarios-actions">
-              <form method="POST" action="{{ url_for('auth_bp.resetar_senha_usuario', usuario_id=usuario.id) }}"
-                class="usuarios-reset-form">
-                <input type="password" name="nova_senha" minlength="6" placeholder="Nova senha" required>
-                <button type="submit" class="btn btn-secondary">Redefinir</button>
+            <div class="usuarios-actions usuarios-admin-actions">
+              <button type="button" class="btn btn-small btn-secondary"
+                data-open-usuario-modal="modalEditarUsuario{{ usuario.id }}">Editar</button>
+              <button type="button" class="btn btn-small btn-secondary"
+                data-open-usuario-modal="modalResetSenha{{ usuario.id }}">Resetar senha</button>
+              <form method="POST" action="{{ url_for('auth_bp.toggle_usuario', usuario_id=usuario.id) }}">
+                <button type="submit" class="btn btn-small {{ 'btn-danger' if usuario.ativo else 'btn-secondary' }}"
+                  {% if usuario.id == session.get('usuario_id') %}disabled{% endif %}>
+                  {{ 'Desativar' if usuario.ativo else 'Ativar' }}
+                </button>
               </form>
-
-              <form method="POST" action="{{ url_for('auth_bp.desativar_usuario', usuario_id=usuario.id) }}"
-                class="usuarios-disable-form">
-                <button type="submit" class="btn btn-danger" {% if not usuario.ativo or
-                  usuario.id==session.get('usuario_id') %}disabled{% endif %}>
-                  Desativar
+              <form method="POST" action="{{ url_for('auth_bp.excluir_usuario', usuario_id=usuario.id) }}"
+                data-confirm-delete>
+                <button type="submit" class="btn btn-small btn-danger"
+                  {% if usuario.id == session.get('usuario_id') %}disabled{% endif %}>
+                  Excluir
                 </button>
               </form>
             </div>
@@ -105,7 +111,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="4" class="usuarios-empty">Nenhum usuário cadastrado.</td>
+          <td colspan="6" class="usuarios-empty">Nenhum usuário cadastrado.</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -113,47 +119,221 @@
   </div>
 </section>
 
+<div id="modalNovoUsuario" class="modal-overlay usuarios-modal">
+  <div class="modal-box usuarios-modal-box">
+    <div class="modal-header">
+      <h3>Novo usuário</h3>
+      <button type="button" class="modal-close" data-close-usuario-modal>&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('auth_bp.novo_usuario') }}">
+      <div class="form-grid modal-form-grid usuarios-modal-grid">
+        <label class="form-field">
+          <span>Nome completo</span>
+          <input type="text" name="nome" required autocomplete="off">
+        </label>
+        <label class="form-field">
+          <span>Username</span>
+          <input type="text" name="username" required autocomplete="off">
+        </label>
+        <label class="form-field">
+          <span>Senha temporária</span>
+          <input type="password" name="senha" minlength="6" required autocomplete="new-password">
+        </label>
+        <label class="form-field">
+          <span>Confirmar senha</span>
+          <input type="password" name="confirmar_senha" minlength="6" required autocomplete="new-password">
+        </label>
+        <label class="form-field">
+          <span>Perfil</span>
+          <select name="perfil" required data-profile-help>
+            <option value="admin">Admin</option>
+            <option value="gestor" selected>Gestor</option>
+            <option value="leitura">Leitura</option>
+          </select>
+          <div class="usuarios-profile-help-list">
+            <small>Admin: acesso total, cria e exclui usuários</small>
+            <small>Gestor: cria e edita obras, custos e equipe</small>
+            <small>Leitura: apenas visualiza, não edita nada</small>
+          </div>
+        </label>
+        <label class="form-field">
+          <span>Status</span>
+          <select name="ativo" required>
+            <option value="1" selected>Ativo</option>
+            <option value="0">Inativo</option>
+          </select>
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close-usuario-modal>Cancelar</button>
+        <button type="submit" class="btn btn-primary">Criar usuário</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% for usuario in usuarios %}
+{% set perfil_label = perfil_labels.get(usuario.perfil, usuario.perfil) %}
+<div id="modalEditarUsuario{{ usuario.id }}" class="modal-overlay usuarios-modal">
+  <div class="modal-box usuarios-modal-box">
+    <div class="modal-header">
+      <h3>Editar usuário</h3>
+      <button type="button" class="modal-close" data-close-usuario-modal>&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('auth_bp.editar_usuario', usuario_id=usuario.id) }}">
+      <div class="form-grid modal-form-grid usuarios-modal-grid">
+        <label class="form-field">
+          <span>Nome completo</span>
+          <input type="text" name="nome" value="{{ usuario.nome }}" required>
+        </label>
+        <label class="form-field">
+          <span>Username</span>
+          <input type="text" name="username" value="{{ usuario.username }}" required>
+        </label>
+        <label class="form-field">
+          <span>Perfil</span>
+          <select name="perfil" required data-profile-help>
+            {% for valor, label in perfil_labels.items() %}
+            <option value="{{ valor }}" {% if usuario.perfil == valor %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <div class="usuarios-profile-help-list">
+            <small>Admin: acesso total, cria e exclui usuários</small>
+            <small>Gestor: cria e edita obras, custos e equipe</small>
+            <small>Leitura: apenas visualiza, não edita nada</small>
+          </div>
+        </label>
+        <label class="form-field">
+          <span>Status</span>
+          <select name="ativo" required {% if usuario.id == session.get('usuario_id') %}disabled{% endif %}>
+            <option value="1" {% if usuario.ativo %}selected{% endif %}>Ativo</option>
+            <option value="0" {% if not usuario.ativo %}selected{% endif %}>Inativo</option>
+          </select>
+          {% if usuario.id == session.get('usuario_id') %}
+          <input type="hidden" name="ativo" value="1">
+          {% endif %}
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close-usuario-modal>Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar alterações</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="modalResetSenha{{ usuario.id }}" class="modal-overlay usuarios-modal">
+  <div class="modal-box usuarios-modal-box usuarios-modal-box--sm">
+    <div class="modal-header">
+      <h3>Resetar senha</h3>
+      <button type="button" class="modal-close" data-close-usuario-modal>&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('auth_bp.resetar_senha_usuario', usuario_id=usuario.id) }}">
+      <div class="form-grid modal-form-grid usuarios-modal-grid usuarios-modal-grid--one">
+        <label class="form-field">
+          <span>Nova senha</span>
+          <input type="password" name="nova_senha" minlength="6" required autocomplete="new-password">
+        </label>
+        <label class="form-field">
+          <span>Confirmar senha</span>
+          <input type="password" name="confirmar_senha" minlength="6" required autocomplete="new-password">
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close-usuario-modal>Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar nova senha</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endfor %}
+
+{% if credenciais_usuario %}
+<div id="modalCredenciaisUsuario" class="modal-overlay usuarios-modal show" data-credentials-modal>
+  <div class="modal-box usuarios-modal-box usuarios-modal-box--sm">
+    <div class="modal-header">
+      <h3>Credenciais prontas</h3>
+      <button type="button" class="modal-close" data-close-usuario-modal>&times;</button>
+    </div>
+    <div class="usuarios-credentials-card">
+      <span>Username</span>
+      <strong>{{ credenciais_usuario.username }}</strong>
+      <span>Senha temporária</span>
+      <strong>{{ credenciais_usuario.senha }}</strong>
+    </div>
+    <textarea class="usuarios-credentials-text" readonly data-credentials-text>Olá! Seu acesso ao Canteiro está pronto.
+Acesse: {{ credenciais_usuario.url }}
+Usuário: {{ credenciais_usuario.username }}
+Senha: {{ credenciais_usuario.senha }}</textarea>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" data-close-usuario-modal>Fechar</button>
+      <button type="button" class="btn btn-primary" data-copy-credentials>Copiar credenciais</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <script>
-  (function () {
-    document.querySelectorAll(".usuarios-disable-form").forEach(function (form) {
-      form.addEventListener("submit", async function (event) {
-        event.preventDefault();
+  (() => {
+    const profileHelp = {
+      admin: "Admin: acesso total, cria e exclui usuários",
+      gestor: "Gestor: cria e edita obras, custos e equipe",
+      leitura: "Leitura: apenas visualiza, não edita nada"
+    };
 
-        const button = form.querySelector("button[type='submit']");
-        if (!button || button.disabled) return;
+    function openModal(id) {
+      const modal = document.getElementById(id);
+      if (modal) modal.classList.add("show");
+    }
 
-        button.disabled = true;
-        button.textContent = "Desativando";
+    function closeModal(modal) {
+      if (modal) modal.classList.remove("show");
+    }
 
-        try {
-          const response = await fetch(form.action, {
-            method: "POST",
-            credentials: "same-origin",
-            headers: { "X-Requested-With": "XMLHttpRequest" }
-          });
+    document.querySelectorAll("[data-open-usuario-modal]").forEach((button) => {
+      button.addEventListener("click", () => openModal(button.dataset.openUsuarioModal));
+    });
 
-          if (!response.ok) {
-            let message = "Nao foi possivel desativar este usuario.";
-            try {
-              const data = await response.json();
-              if (data.message) message = data.message;
-            } catch (err) {
-              // Resposta HTML de redirect/login: usa mensagem padrao.
-            }
-            alert(message);
-            button.disabled = false;
-            button.textContent = "Desativar";
-            return;
-          }
+    document.querySelectorAll("[data-close-usuario-modal]").forEach((button) => {
+      button.addEventListener("click", () => closeModal(button.closest(".modal-overlay")));
+    });
 
-          window.location.href = "{{ url_for('auth_bp.usuarios') }}";
-        } catch (err) {
-          alert("Nao foi possivel desativar este usuario.");
-          button.disabled = false;
-          button.textContent = "Desativar";
-        }
+    document.querySelectorAll(".usuarios-modal").forEach((modal) => {
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal) closeModal(modal);
       });
     });
+
+    document.querySelectorAll("[data-profile-help]").forEach((select) => {
+      const help = select.closest(".form-field").querySelector("[data-profile-help-text]");
+      const sync = () => {
+        if (help) help.textContent = profileHelp[select.value] || "";
+      };
+      select.addEventListener("change", sync);
+      sync();
+    });
+
+    document.querySelectorAll("[data-confirm-delete]").forEach((form) => {
+      form.addEventListener("submit", (event) => {
+        if (!confirm("Deseja excluir este usuário?")) event.preventDefault();
+      });
+    });
+
+    const copyButton = document.querySelector("[data-copy-credentials]");
+    const credentialsText = document.querySelector("[data-credentials-text]");
+    if (copyButton && credentialsText) {
+      copyButton.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(credentialsText.value);
+        } catch (_) {
+          credentialsText.select();
+          document.execCommand("copy");
+          credentialsText.blur();
+        }
+        copyButton.textContent = "Copiado";
+        setTimeout(() => { copyButton.textContent = "Copiar credenciais"; }, 1600);
+      });
+    }
   })();
 </script>
 {% endblock %}

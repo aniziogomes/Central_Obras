@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     senha_hash TEXT NOT NULL,
     perfil TEXT NOT NULL DEFAULT 'admin',
     ativo INTEGER NOT NULL DEFAULT 1,
+    onboarding_completo INTEGER DEFAULT 0,
     foto_perfil TEXT,
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -23,6 +24,9 @@ CREATE TABLE IF NOT EXISTS obras (
     receita_total REAL DEFAULT 0,
     progresso_percentual REAL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'planejamento',
+    token_publico TEXT UNIQUE,
+    portal_expira_em TEXT,
+    portal_revogado_em TEXT,
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
