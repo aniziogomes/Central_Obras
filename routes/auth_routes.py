@@ -169,6 +169,9 @@ def index():
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
+    if request.method == "GET" and usuario_logado():
+        return redirect(url_for("dashboard_bp.dashboard"))
+
     if request.method == "POST":
         try:
             username = limpar_texto(request.form.get("username", ""), max_len=80)

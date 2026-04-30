@@ -9638,6 +9638,11 @@ table tbody tr:hover,
   color: #ffffff;
 }
 
+.global-actions-item.active {
+  background: rgba(232, 98, 26, 0.12);
+  color: #ffb083;
+}
+
 .global-actions-divider {
   height: 1px;
   margin: 6px 3px;

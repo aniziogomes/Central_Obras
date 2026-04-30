@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" sizes="256x256"
     href="{{ url_for('static', filename='img/logoNovaBranca-favicon.png', v='6') }}" />
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/logoNovaBranca-favicon.png', v='6') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='login-logo-wordmark-2') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='global-import-actions-1') }}" />
 </head>
 
 <body>
@@ -133,19 +133,6 @@
           <span>Alertas</span>
         </a>
 
-        <a class="nav-item {% if request.endpoint == 'importacao_bp.importacao' %}active{% endif %}"
-          href="{{ url_for('importacao_bp.importacao') }}" data-spa>
-          <span class="nav-ico">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="16 16 12 12 8 16" />
-              <line x1="12" y1="12" x2="12" y2="21" />
-              <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
-            </svg>
-          </span>
-          <span>Importação</span>
-        </a>
-
         <a class="nav-item {% if request.endpoint == 'importacao_bp.orcamento_importado' %}active{% endif %}"
           href="{{ url_for('importacao_bp.orcamento_importado') }}" data-spa>
           <span class="nav-ico">
@@ -249,6 +236,9 @@
             <a href="{{ menu_export_url }}" class="global-actions-item" data-export-action>Exportar Excel</a>
             <div class="global-actions-divider" role="separator"></div>
             {% endif %}
+            <a href="{{ url_for('importacao_bp.importacao') }}"
+              class="global-actions-item {% if request.endpoint == 'importacao_bp.importacao' %}active{% endif %}"
+              data-spa>Importação</a>
             <a href="{{ url_for('auth_bp.perfil') }}" class="global-actions-item" data-spa>Configurações da conta</a>
           </div>
         </div>
@@ -391,6 +381,10 @@
       function setActiveNav(href) {
         const path = new URL(href, location.origin).pathname;
         document.querySelectorAll('.nav-item[data-spa]').forEach(a => {
+          const aPath = new URL(a.href, location.origin).pathname;
+          a.classList.toggle('active', aPath === path);
+        });
+        document.querySelectorAll('.global-actions-item[data-spa]').forEach(a => {
           const aPath = new URL(a.href, location.origin).pathname;
           a.classList.toggle('active', aPath === path);
         });
