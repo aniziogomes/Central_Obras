@@ -188,7 +188,7 @@ obra.observacao_responsavel else '' %}
                     </svg>
                 </button>
                 {% endif %}
-                {% if eh_admin() %}
+                {% if eh_gestor() %}
                 <form method="POST" class="delete-icon-form" action="{{ url_for('obras_bp.excluir_obra', obra_id=obra.id) }}"
                     onsubmit="return confirm('Deseja realmente excluir esta obra?');" style="margin:0;">
                     <button type="submit" class="custo-delete-icon" aria-label="Excluir obra" title="Excluir">

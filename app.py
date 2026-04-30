@@ -2,7 +2,7 @@ import os
 import secrets
 from datetime import timedelta
 
-from flask import Flask, request, url_for, redirect, jsonify, session, abort
+from flask import Flask, request, url_for, redirect, jsonify, session, abort, send_from_directory
 from database import init_db, query_one
 from utils import formatar_moeda, calcular_media_fornecedor, formatar_tipo_obra, formatar_data
 from services.dashboard_service import calcular_alertas
@@ -31,6 +31,14 @@ from routes.importacao_routes import importacao_bp
 from routes.onboarding_routes import onboarding_bp
 from routes.portal_routes import portal_bp          # ← NOVO
 
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    def load_dotenv():
+        return False
+
+load_dotenv()
+
 app = Flask(__name__)
 app.config.update(
     SECRET_KEY=os.environ.get("SECRET_KEY") or os.environ.get("FLASK_SECRET_KEY") or secrets.token_urlsafe(32),
@@ -45,11 +53,24 @@ init_db()
 criar_usuario_admin()
 
 
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(
+        os.path.join(app.root_path, "static", "img"),
+        "favicon.ico",
+        mimetype="image/vnd.microsoft.icon",
+        max_age=0,
+    )
+
+
 ROTAS_PUBLICAS = {
     "auth_bp.index",
     "auth_bp.login",
+    "auth_bp.esqueci_senha",
+    "auth_bp.redefinir_senha",
     "portal_bp.portal_obra",
     "portal_bp.pagina_nao_encontrada",
+    "favicon",
     "static",
 }
 

@@ -2,3 +2,4 @@ flask
 pandas
 openpyxl
 bcrypt
+python-dotenv

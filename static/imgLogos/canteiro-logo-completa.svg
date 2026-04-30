@@ -1,0 +1,57 @@
+<svg width="820" height="220" viewBox="0 0 820 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Canteiro - Inteligência de Obras</title>
+  <desc id="desc">Logo completa do Canteiro com ícone C em branco e barras de progresso, com a última barra em laranja, texto canteiro em branco e subtítulo em laranja.</desc>
+
+  <defs>
+    <linearGradient id="whiteSoft" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F2F4F7"/>
+    </linearGradient>
+
+    <linearGradient id="orangeAccent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF9A1F"/>
+      <stop offset="100%" stop-color="#FF6A00"/>
+    </linearGradient>
+
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000000" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <!-- Ícone: C + fluxo/progresso -->
+  <g transform="translate(42 35)" filter="url(#softShadow)">
+    <!-- C principal -->
+    <path
+      d="M111.7 15.4C91.3 5.8 66.9 6.7 46.7 18.4C18.9 34.6 3.3 66.1 8.4 97.9C13.5 129.7 38.7 154.5 70.6 158.9C88.8 161.4 106.9 157.5 121.9 148.5L105.3 119.8C95.7 125.5 84.2 128.1 72.6 126.5C54.1 124 39.4 109.6 36.4 91.2C33.4 72.8 42.5 54.5 58.7 45.1C70.9 38 85.6 37.3 98.1 42.8L111.7 15.4Z"
+      fill="url(#whiteSoft)"
+    />
+
+    <!-- Barras de progresso internas -->
+    <path d="M64 123L86 112V148H64V123Z" fill="url(#whiteSoft)"/>
+    <path d="M94 107L116 96V148H94V107Z" fill="url(#whiteSoft)"/>
+    <path d="M124 87L146 75V148H124V87Z" fill="url(#orangeAccent)"/>
+  </g>
+
+  <!-- Wordmark -->
+  <g transform="translate(230 58)">
+    <text
+      x="0"
+      y="78"
+      fill="url(#whiteSoft)"
+      font-family="Sora, Manrope, Inter, Arial, sans-serif"
+      font-size="86"
+      font-weight="700"
+      letter-spacing="-2.5"
+    >canteiro</text>
+
+    <text
+      x="4"
+      y="123"
+      fill="#FF7A00"
+      font-family="Sora, Manrope, Inter, Arial, sans-serif"
+      font-size="25"
+      font-weight="700"
+      letter-spacing="10"
+    >INTELIGÊNCIA DE OBRAS</text>
+  </g>
+</svg>

@@ -3,7 +3,7 @@ from io import BytesIO
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from database import query_all, execute
 from services.validators import caminho_redirecionamento_seguro, limpar_texto, parse_int_positivo, parse_valor_monetario, valor_negativo
-from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
+from auth import usuario_logado, eh_gestor, eh_leitura
 from services.tenant import and_empresa, listar_obras_acessiveis, obter_obra_acessivel, obter_registro_acessivel
 
 equipe_bp = Blueprint("equipe_bp", __name__)
@@ -124,7 +124,7 @@ def editar_equipe(equipe_id):
 
 @equipe_bp.route("/equipe/excluir/<int:equipe_id>", methods=["POST"])
 def excluir_equipe(equipe_id):
-    if not usuario_logado() or not eh_admin():
+    if not usuario_logado() or not eh_gestor():
         flash("Você não tem permissão para excluir equipe.", "erro")
         return redirect(url_for("equipe_bp.equipe"))
 

@@ -6,25 +6,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="csrf-token" content="{{ csrf_token() }}" />
   <title>{% block title %}Central de Obras{% endblock %}</title>
+  <link rel="shortcut icon" href="{{ url_for('favicon', v='6') }}" />
+  <link rel="icon" href="{{ url_for('favicon', v='6') }}" sizes="any" />
   <link rel="icon" type="image/png" sizes="256x256"
-    href="{{ url_for('static', filename='img/canteiro-favicon-laranja-vivo.png') }}" />
-  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/canteiro-favicon-laranja-vivo.png') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='account-users-2') }}" />
+    href="{{ url_for('static', filename='img/logoNovaBranca-favicon.png', v='6') }}" />
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/logoNovaBranca-favicon.png', v='6') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='login-logo-wordmark-2') }}" />
 </head>
 
 <body>
   {% if session.get('usuario_id') %}
   <div class="shell">
     <aside class="sidebar">
-      <div class="logo">
-        <div class="logo-icon logo-icon-img">
-          <img src="{{ url_for('static', filename='img/logoBranca.png') }}" alt="Logo Central de Obras">
-        </div>
-        <div class="logo-text">
-          <div class="logo-title">Canteiro</div>
-          <div class="logo-sub">Inteligência de
-            Obras</div>
-        </div>
+      <div class="logo logo--sidebar-image">
+        <img class="logo-sidebar-img" src="{{ url_for('static', filename='imgLogos/logo1.png', v='2') }}"
+          alt="Canteiro - Inteligência de Obras">
       </div>
 
       <nav class="nav">
@@ -631,6 +627,80 @@
 
       document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape' && !modal.hidden) closeConfirm();
+      });
+    })();
+
+    /* =============================================
+       MODAIS: compatibilidade para botões antigos e SPA
+       ============================================= */
+    (function () {
+      function openModalElement(modal) {
+        if (!modal) return;
+        modal.style.display = 'flex';
+        modal.classList.add('show');
+      }
+
+      function closeModalElement(modal) {
+        if (!modal) return;
+        modal.classList.remove('show');
+        modal.style.display = 'none';
+      }
+
+      function openModalById(id) {
+        openModalElement(document.getElementById(id));
+      }
+
+      function closeModalById(id) {
+        closeModalElement(document.getElementById(id));
+      }
+
+      const modalMap = {
+        Obra: 'modalObra',
+        Custo: 'modalCusto',
+        Fornecedor: 'modalFornecedor',
+        Equipe: 'modalEquipe',
+        Medicao: 'modalMedicao',
+      };
+
+      Object.entries(modalMap).forEach(([name, modalId]) => {
+        window[`abrirModal${name}`] = window[`abrirModal${name}`] || (() => openModalById(modalId));
+        window[`fecharModal${name}`] = window[`fecharModal${name}`] || (() => closeModalById(modalId));
+        window[`abrirModalEditar${name}`] = window[`abrirModalEditar${name}`] || ((id) => openModalById(`modalEditar${name}${id}`));
+        window[`fecharModalEditar${name}`] = window[`fecharModalEditar${name}`] || ((id) => closeModalById(`modalEditar${name}${id}`));
+      });
+
+      window.CanteiroModal = {
+        open: openModalById,
+        close: closeModalById,
+        openElement: openModalElement,
+        closeElement: closeModalElement,
+      };
+
+      document.addEventListener('click', function (event) {
+        const usuarioOpen = event.target.closest('[data-open-usuario-modal]');
+        if (usuarioOpen) {
+          event.preventDefault();
+          openModalById(usuarioOpen.dataset.openUsuarioModal);
+          return;
+        }
+
+        const quickOpen = event.target.closest('[data-open-quick-modal]');
+        if (quickOpen) {
+          event.preventDefault();
+          openModalById(quickOpen.dataset.openQuickModal);
+          return;
+        }
+
+        const modalClose = event.target.closest('[data-close-usuario-modal], [data-close-quick-modal]');
+        if (modalClose) {
+          event.preventDefault();
+          closeModalElement(modalClose.closest('.modal-overlay'));
+          return;
+        }
+
+        if (event.target.classList && event.target.classList.contains('modal-overlay')) {
+          closeModalElement(event.target);
+        }
       });
     })();
 

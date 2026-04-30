@@ -19,6 +19,7 @@
 {% endfor %}
 {% set perc_receita_usada = custo_percentual_receita if custo_percentual_receita < 100 else 100 %}
 {% set perc_saldo = margem_percentual if margem_percentual > 0 else 0 %}
+{% set sem_dados_financeiros = total_receita <= 0 and total_custo <= 0 and margem == 0 %}
 {% set status_concluidas_pct = (status_ns.concluidas / total_obras_dash * 100) if total_obras_dash > 0 else 0 %}
 {% set status_andamento_pct = (status_ns.andamento / total_obras_dash * 100) if total_obras_dash > 0 else 0 %}
 {% set status_atrasadas_pct = (status_ns.atrasadas / total_obras_dash * 100) if total_obras_dash > 0 else 0 %}
@@ -133,7 +134,8 @@
             <div class="dashboard-v2-finance-bars">
                 <div class="dashboard-v2-finance-row">
                     <span>Valor total dos contratos</span>
-                    <div class="dashboard-v2-bar"><i style="width: 100%;"></i></div>
+                    <div class="dashboard-v2-bar"><i id="financeReceitaBar"
+                            style="width: {{ 100 if total_receita > 0 else 0 }}%;"></i></div>
                     <strong id="financeReceita">{{ formatar_moeda(total_receita) }}</strong>
                 </div>
                 <div class="dashboard-v2-finance-row">
@@ -151,9 +153,13 @@
                     <em id="financeSaldoPct">{{ '%.1f'|format(margem_percentual) }}%</em>
                 </div>
             </div>
-            <div class="dashboard-v2-note">
+            <div class="dashboard-v2-note" id="financeNota">
+                {% if sem_dados_financeiros %}
+                Cadastre suas obras para ver o desempenho financeiro.
+                {% else %}
                 Você ainda tem <strong id="financeNotaPct">{{ '%.1f'|format(margem_percentual) }}%</strong> do valor
                 total disponível para novas despesas.
+                {% endif %}
             </div>
         </div>
 
@@ -508,8 +514,8 @@
     .dashboard-v2-kpi {
         position: relative;
         min-width: 0;
-        min-height: 88px;
-        padding: 18px 20px 16px;
+        min-height: 112px;
+        padding: 22px 20px 18px;
         border: 1px solid rgba(255, 255, 255, .08);
         border-radius: 9px;
         background:
@@ -545,7 +551,7 @@
     .dashboard-v2-kpi span {
         display: block;
         color: var(--text2);
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 850;
         letter-spacing: .03em;
         line-height: 1.25;
@@ -1173,6 +1179,10 @@
             const pct = totalObras > 0 ? (v) => (v / totalObras * 100) : () => 0;
             const custoPct = Number(p.quick_strip.custo_percentual_receita || 0);
             const margemPct = Number(p.kpis.margem_percentual || 0);
+            const totalReceitaValor = Number(p.kpis.total_receita || 0);
+            const totalCustoValor = Number(p.kpis.total_custo || 0);
+            const margemValor = Number(p.kpis.margem || 0);
+            const semDadosFinanceiros = totalReceitaValor <= 0 && totalCustoValor <= 0 && margemValor === 0;
 
             document.getElementById("kpiObrasFiltradas").textContent = p.quick_strip.obras_filtradas;
             document.getElementById("kpiReceita").textContent = p.kpis.total_receita_formatado;
@@ -1201,9 +1211,15 @@
             document.getElementById("financeSaldo").textContent = p.kpis.margem_formatada;
             document.getElementById("financeCustoPct").textContent = `${custoPct.toFixed(1)}%`;
             document.getElementById("financeSaldoPct").textContent = `${margemPct.toFixed(1)}%`;
-            document.getElementById("financeNotaPct").textContent = `${margemPct.toFixed(1)}%`;
+            document.getElementById("financeReceitaBar").style.width = totalReceitaValor > 0 ? "100%" : "0%";
             document.getElementById("financeCustoBar").style.width = `${Math.max(0, Math.min(100, custoPct))}%`;
             document.getElementById("financeSaldoBar").style.width = `${Math.max(0, Math.min(100, margemPct))}%`;
+            const financeNota = document.getElementById("financeNota");
+            if (semDadosFinanceiros) {
+                financeNota.textContent = "Cadastre suas obras para ver o desempenho financeiro.";
+            } else {
+                financeNota.innerHTML = `Você ainda tem <strong id="financeNotaPct">${margemPct.toFixed(1)}%</strong> do valor total disponível para novas despesas.`;
+            }
             document.getElementById("tableTotalObras").textContent = totalObras;
             document.getElementById("tableTotalReceita").textContent = p.kpis.total_receita_formatado;
             document.getElementById("tableTotalCusto").textContent = p.kpis.total_custo_formatado;

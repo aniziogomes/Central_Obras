@@ -148,7 +148,7 @@
                                     </button>
                                     {% endif %}
 
-                                    {% if eh_admin() %}
+                                    {% if eh_gestor() %}
                                     <form method="POST" class="delete-icon-form"
                                         action="{{ url_for('medicoes_bp.excluir_medicao', medicao_id=medicao.id) }}"
                                         onsubmit="return confirm('Deseja realmente excluir esta medição?');"

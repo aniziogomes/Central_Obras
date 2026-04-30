@@ -10,7 +10,7 @@ from services.validators import (
     valor_negativo,
     validar_intervalo_percentual,
 )
-from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
+from auth import usuario_logado, eh_gestor, eh_leitura
 from services.log_service import registrar_log
 from services.tenant import and_empresa, listar_obras_acessiveis, obter_obra_acessivel, obter_registro_acessivel
 
@@ -182,7 +182,7 @@ def editar_medicao(medicao_id):
 
 @medicoes_bp.route("/medicoes/excluir/<int:medicao_id>", methods=["POST"])
 def excluir_medicao(medicao_id):
-    if not usuario_logado() or not eh_admin():
+    if not usuario_logado() or not eh_gestor():
         flash("Você não tem permissão para excluir medições.", "erro")
         return redirect(url_for("medicoes_bp.medicoes"))
 

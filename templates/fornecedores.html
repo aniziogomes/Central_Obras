@@ -234,7 +234,7 @@ risco_qtd=0) %}
                     </button>
                     {% endif %}
 
-                    {% if eh_admin() %}
+                    {% if eh_gestor() %}
                     <form method="POST" class="delete-icon-form"
                         action="{{ url_for('fornecedores_bp.excluir_fornecedor', fornecedor_id=fornecedor.id) }}"
                         onsubmit="return confirm('Deseja realmente excluir este fornecedor?');">

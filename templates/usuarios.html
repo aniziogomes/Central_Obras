@@ -5,7 +5,7 @@
 {% set perfil_labels = {"admin": "Admin", "gestor": "Gestor", "leitura": "Leitura"} %}
 {% set perfil_descricoes = {
   "admin": "acesso total, cria e exclui usuários",
-  "gestor": "cria e edita obras, custos e equipe",
+  "gestor": "cria, edita e exclui itens operacionais",
   "leitura": "apenas visualiza, não edita nada"
 } %}
 
@@ -57,6 +57,7 @@
         <tr>
           <th>Nome</th>
           <th>Username</th>
+          <th>Email</th>
           <th>Empresa</th>
           <th>Perfil</th>
           <th>Status</th>
@@ -81,6 +82,7 @@
             </div>
           </td>
           <td><span class="usuarios-username">@{{ usuario.username }}</span></td>
+          <td>{{ usuario.email or "-" }}</td>
           <td><span class="usuarios-company-name">{{ usuario.empresa_nome or "Sem empresa" }}</span></td>
           <td><span class="profile-role-badge profile-role-badge--{{ usuario.perfil }}">{{ perfil_label }}</span></td>
           <td>
@@ -113,7 +115,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" class="usuarios-empty">Nenhum usuário cadastrado.</td>
+          <td colspan="8" class="usuarios-empty">Nenhum usuário cadastrado.</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -136,6 +138,10 @@
         <label class="form-field">
           <span>Username</span>
           <input type="text" name="username" required autocomplete="off">
+        </label>
+        <label class="form-field">
+          <span>Email</span>
+          <input type="email" name="email" autocomplete="email">
         </label>
         <label class="form-field">
           <span>Empresa / cliente</span>
@@ -168,7 +174,7 @@
           </select>
           <div class="usuarios-profile-help-list">
             <small>Admin: acesso total, cria e exclui usuários</small>
-            <small>Gestor: cria e edita obras, custos e equipe</small>
+            <small>Gestor: cria, edita e exclui itens operacionais</small>
             <small>Leitura: apenas visualiza, não edita nada</small>
           </div>
         </label>
@@ -207,6 +213,10 @@
           <input type="text" name="username" value="{{ usuario.username }}" required>
         </label>
         <label class="form-field">
+          <span>Email</span>
+          <input type="email" name="email" value="{{ usuario.email or '' }}" autocomplete="email">
+        </label>
+        <label class="form-field">
           <span>Empresa / cliente</span>
           <select name="empresa_id">
             <option value="">Sem empresa (admin global)</option>
@@ -229,7 +239,7 @@
           </select>
           <div class="usuarios-profile-help-list">
             <small>Admin: acesso total, cria e exclui usuários</small>
-            <small>Gestor: cria e edita obras, custos e equipe</small>
+            <small>Gestor: cria, edita e exclui itens operacionais</small>
             <small>Leitura: apenas visualiza, não edita nada</small>
           </div>
         </label>
@@ -307,7 +317,7 @@ Senha: {{ credenciais_usuario.senha }}</textarea>
   (() => {
     const profileHelp = {
       admin: "Admin: acesso total, cria e exclui usuários",
-      gestor: "Gestor: cria e edita obras, custos e equipe",
+      gestor: "Gestor: cria, edita e exclui itens operacionais",
       leitura: "Leitura: apenas visualiza, não edita nada"
     };
 

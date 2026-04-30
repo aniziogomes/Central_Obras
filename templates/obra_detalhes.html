@@ -532,12 +532,28 @@
         z-index: 80;
         display: flex;
         flex-direction: column;
-        gap: 16px;
-        margin: 6px 0 12px;
+        gap: 10px;
+        margin: 4px 0 10px;
         padding-top: 1px;
         background:
             linear-gradient(180deg, rgba(30, 33, 40, .98), rgba(30, 33, 40, .92));
         backdrop-filter: blur(14px);
+    }
+
+    .obra-detalhes-page .obra-section-card,
+    .obra-detalhes-page .obra-detalhes-chart-card {
+        padding: 14px;
+    }
+
+    .obra-detalhes-page .card-hdr {
+        margin-bottom: 12px;
+    }
+
+    .obra-detalhes-page .obra-empty-box {
+        min-height: 56px;
+        padding: 14px;
+        border-radius: 10px;
+        font-size: 12px;
     }
 
     .obra-sticky-finance-summary {
@@ -549,7 +565,7 @@
     .obra-sticky-finance-cards {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 12px;
+        gap: 10px;
     }
 
     .obra-sticky-finance-card,
@@ -564,8 +580,8 @@
     }
 
     .obra-sticky-finance-card {
-        padding: 16px 18px;
-        min-height: 92px;
+        padding: 12px 14px;
+        min-height: 72px;
     }
 
     .obra-sticky-finance-card--contract {
@@ -584,17 +600,17 @@
     .obra-sticky-budget-progress span {
         display: block;
         color: var(--text2);
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 850;
-        letter-spacing: .05em;
+        letter-spacing: .04em;
         text-transform: uppercase;
     }
 
     .obra-sticky-finance-card strong {
         display: block;
-        margin-top: 12px;
+        margin-top: 8px;
         color: var(--text);
-        font-size: 24px;
+        font-size: 20px;
         line-height: 1.15;
         white-space: nowrap;
         overflow: hidden;
@@ -602,7 +618,7 @@
     }
 
     .obra-sticky-budget-progress {
-        padding: 14px 18px;
+        padding: 11px 14px;
     }
 
     .obra-sticky-budget-progress>div:first-child {
@@ -610,7 +626,7 @@
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
     }
 
     .obra-sticky-budget-progress strong {
@@ -619,7 +635,7 @@
     }
 
     .obra-sticky-budget-progress .obra-budget-progress-track {
-        height: 10px;
+        height: 7px;
     }
 
     .obra-sticky-budget-progress.is-danger {
@@ -644,9 +660,9 @@
     .obra-detalhes-tabs-bar {
         display: flex;
         align-items: center;
-        gap: 8px;
-        min-height: 44px;
-        padding: 0 12px;
+        gap: 6px;
+        min-height: 40px;
+        padding: 0 10px;
         border: 1px solid rgba(255, 255, 255, .08);
         border-radius: 8px;
         background:
@@ -659,12 +675,12 @@
         position: relative;
         display: inline-flex;
         align-items: center;
-        min-height: 42px;
-        padding: 0 14px;
+        min-height: 38px;
+        padding: 0 12px;
         border: 0;
         background: transparent;
         color: var(--text2);
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 750;
         white-space: nowrap;
         cursor: pointer;
@@ -922,8 +938,8 @@
     .obra-overview-grid {
         display: grid;
         grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr);
-        gap: 14px;
-        margin-bottom: 14px;
+        gap: 12px;
+        margin-bottom: 12px;
     }
 
     .obra-overview-progress-card,
@@ -934,15 +950,15 @@
 
     .obra-overview-progress-body {
         display: grid;
-        grid-template-columns: 168px minmax(0, 1fr);
+        grid-template-columns: 132px minmax(0, 1fr);
         align-items: center;
-        gap: 26px;
-        min-height: 190px;
+        gap: 18px;
+        min-height: 150px;
     }
 
     .obra-progress-ring {
-        width: 136px;
-        height: 136px;
+        width: 110px;
+        height: 110px;
         border-radius: 50%;
         display: grid;
         place-items: center;
@@ -958,22 +974,22 @@
     .obra-progress-ring strong {
         display: block;
         color: var(--text);
-        font-size: 28px;
+        font-size: 22px;
         line-height: 1;
     }
 
     .obra-progress-ring span {
         display: block;
-        margin-top: 7px;
+        margin-top: 5px;
         color: var(--text2);
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 700;
     }
 
     .obra-overview-progress-lines {
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 14px;
         min-width: 0;
     }
 
@@ -982,7 +998,7 @@
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
         color: var(--text);
         font-size: 12px;
         font-weight: 750;
@@ -1013,21 +1029,21 @@
     .obra-overview-timeline {
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 11px;
         padding: 4px 0;
     }
 
     .obra-overview-timeline-item {
         display: grid;
-        grid-template-columns: 28px minmax(0, 1fr);
+        grid-template-columns: 24px minmax(0, 1fr);
         gap: 10px;
         align-items: start;
     }
 
     .obra-overview-timeline-item>span {
-        width: 22px;
-        height: 22px;
-        border-radius: 8px;
+        width: 18px;
+        height: 18px;
+        border-radius: 7px;
         background: rgba(40, 181, 106, .18);
         border: 1px solid rgba(40, 181, 106, .25);
         position: relative;
@@ -1036,7 +1052,7 @@
     .obra-overview-timeline-item>span::after {
         content: "";
         position: absolute;
-        inset: 6px;
+        inset: 5px;
         border-radius: 50%;
         background: #48d17f;
     }
@@ -1067,7 +1083,7 @@
     }
 
     .obra-latest-expenses {
-        margin-bottom: 18px;
+        margin-bottom: 12px;
         overflow: hidden;
     }
 
@@ -1084,8 +1100,8 @@
     }
 
     .obra-expenses-head {
-        min-height: 42px;
-        padding: 0 14px;
+        min-height: 38px;
+        padding: 0 12px;
         color: var(--text2);
         background: rgba(255, 255, 255, .035);
         font-size: 10px;
@@ -1095,8 +1111,8 @@
     }
 
     .obra-expenses-row {
-        min-height: 44px;
-        padding: 0 14px;
+        min-height: 40px;
+        padding: 0 12px;
         border-top: 1px solid rgba(255, 255, 255, .055);
         color: var(--text);
         font-size: 12px;
@@ -1122,26 +1138,26 @@
 
     .obra-detalhes-hero--portal {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 380px;
+        grid-template-columns: minmax(0, 1fr) 330px;
         align-items: stretch;
-        gap: 18px;
-        min-height: 132px;
-        padding: 18px;
+        gap: 14px;
+        min-height: 108px;
+        padding: 14px;
         border-radius: 8px;
     }
 
     .obra-detalhes-hero-main {
         display: flex;
         align-items: center;
-        gap: 18px;
+        gap: 14px;
         min-width: 0;
     }
 
     .obra-detalhes-cover,
     .obra-detalhes-cover img,
     .obra-detalhes-cover-placeholder {
-        width: 92px;
-        height: 92px;
+        width: 72px;
+        height: 72px;
         border-radius: 8px;
     }
 
@@ -1161,7 +1177,7 @@
         align-items: center;
         justify-content: center;
         color: var(--text);
-        font-size: 32px;
+        font-size: 28px;
         font-weight: 900;
         background: linear-gradient(135deg, rgba(36, 104, 204, .38), rgba(232, 98, 26, .24));
     }
@@ -1173,16 +1189,16 @@
     .obra-detalhes-title-row {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 8px;
         min-width: 0;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
     }
 
     .obra-detalhes-hero--portal h2 {
         margin: 0;
         min-width: 0;
         color: var(--text);
-        font-size: 24px;
+        font-size: 21px;
         line-height: 1.15;
         white-space: nowrap;
         overflow: hidden;
@@ -1190,7 +1206,7 @@
     }
 
     .obra-detalhes-subtitle--portal {
-        margin-bottom: 12px;
+        margin-bottom: 9px;
     }
 
     .obra-detalhes-subtitle--portal span:not(:last-child)::after {
@@ -1209,27 +1225,27 @@
     .obra-detalhes-link-status {
         display: inline-flex;
         align-items: center;
-        min-height: 22px;
-        padding: 0 9px;
+        min-height: 20px;
+        padding: 0 8px;
         border: 1px solid rgba(40, 181, 106, .28);
         border-radius: 999px;
         color: #6ee79c;
         background: rgba(40, 181, 106, .12);
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 800;
     }
 
     .obra-detalhes-hero-side {
         display: grid;
         grid-template-rows: 1fr auto;
-        gap: 10px;
+        gap: 8px;
         min-width: 0;
     }
 
     .obra-detalhes-progress--portal {
         align-self: stretch;
         min-width: 0;
-        padding: 14px;
+        padding: 10px;
         border: 1px solid rgba(255, 255, 255, .08);
         border-radius: 8px;
         background: rgba(255, 255, 255, .025);
@@ -1247,14 +1263,14 @@
     }
 
     .obra-detalhes-progress--portal strong {
-        margin: 7px 0 10px;
+        margin: 5px 0 8px;
         color: var(--text);
-        font-size: 22px;
+        font-size: 18px;
         line-height: 1;
     }
 
     .obra-detalhes-progress--portal .progress-bar-bg {
-        height: 8px;
+        height: 6px;
     }
 
     .obra-detalhes-date-strip {
@@ -1268,7 +1284,7 @@
 
     .obra-detalhes-date-strip div {
         min-width: 0;
-        padding: 9px 10px;
+        padding: 7px 9px;
         border-left: 1px solid rgba(255, 255, 255, .065);
     }
 
@@ -1280,7 +1296,7 @@
         display: block;
         margin-top: 4px;
         color: var(--text);
-        font-size: 13px;
+        font-size: 12px;
         line-height: 1.2;
         white-space: nowrap;
         overflow: hidden;
@@ -1324,12 +1340,12 @@
         }
 
         .obra-sticky-finance-card {
-            min-height: 78px;
-            padding: 13px 14px;
+            min-height: 68px;
+            padding: 11px 12px;
         }
 
         .obra-sticky-finance-card strong {
-            font-size: 20px;
+            font-size: 18px;
         }
 
         .obra-sticky-budget-progress>div:first-child {
@@ -1346,7 +1362,7 @@
         .obra-detalhes-cover img,
         .obra-detalhes-cover-placeholder {
             width: 100%;
-            height: 170px;
+            height: 140px;
         }
 
         .obra-detalhes-title-row {

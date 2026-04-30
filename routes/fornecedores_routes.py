@@ -3,7 +3,7 @@ from io import BytesIO
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from database import query_one, query_all, execute
 from services.validators import limpar_texto, parse_int_nao_negativo, validar_nota
-from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
+from auth import usuario_logado, eh_gestor, eh_leitura
 from services.log_service import registrar_log
 from services.tenant import empresa_id_para_insert, obter_registro_acessivel, where_empresa
 
@@ -164,7 +164,7 @@ def editar_fornecedor(fornecedor_id):
 
 @fornecedores_bp.route("/fornecedores/excluir/<int:fornecedor_id>", methods=["POST"])
 def excluir_fornecedor(fornecedor_id):
-    if not usuario_logado() or not eh_admin():
+    if not usuario_logado() or not eh_gestor():
         flash("Você não tem permissão para excluir fornecedores.", "erro")
         return redirect(url_for("fornecedores_bp.fornecedores"))
 

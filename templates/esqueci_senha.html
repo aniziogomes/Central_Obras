@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Recuperar senha - Canteiro{% endblock %}
+
+{% block auth_content %}
+<div class="login-page login-page--split">
+    <section class="login-left-panel" aria-label="Apresentacao do Canteiro">
+        <div class="login-left-top">
+            <div class="login-mark" aria-hidden="true">
+                <img src="{{ url_for('static', filename='img/logoBranca.png') }}" alt="">
+            </div>
+            <div>
+                <div class="login-brand-name">Canteiro</div>
+                <div class="login-brand-sub">Inteligencia de Obras</div>
+            </div>
+        </div>
+        <div class="login-left-copy">
+            <span class="login-accent-line"></span>
+            <h1>Recupere seu acesso</h1>
+            <p>Informe o email cadastrado para receber um link seguro de redefinicao.</p>
+        </div>
+    </section>
+
+    <section class="login-right-panel" aria-label="Recuperacao de senha">
+        <div class="login-form-shell">
+            <div class="login-form-head">
+                <span class="login-form-kicker">Senha</span>
+                <h2>Esqueci minha senha</h2>
+                <p>O link enviado por email expira em 1 hora.</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="login-flashes">
+                {% for categoria, mensagem in messages %}
+                <div class="flash {% if categoria == 'erro' %}flash-error{% else %}flash-success{% endif %}">
+                    {{ mensagem }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="login-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label class="login-field">
+                    <span>Email cadastrado</span>
+                    <input type="email" name="email" placeholder="voce@empresa.com" autocomplete="email" required>
+                </label>
+                <button type="submit" class="login-submit">Enviar link</button>
+                <div class="login-form-links login-form-links--center">
+                    <a href="{{ url_for('auth_bp.login') }}">Voltar para o login</a>
+                </div>
+            </form>
+        </div>
+    </section>
+</div>
+{% endblock %}

@@ -224,7 +224,7 @@
                                         </svg>
                                     </button>
                                     {% endif %}
-                                    {% if eh_admin() %}
+                                    {% if eh_gestor() %}
                                     <form method="POST"
                                         action="{{ url_for('custos_bp.excluir_custo', custo_id=custo.id) }}"
                                         onsubmit="return confirm('Deseja realmente excluir este custo?');">

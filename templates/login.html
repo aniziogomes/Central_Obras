@@ -5,14 +5,9 @@
 {% block auth_content %}
 <div class="login-page login-page--split">
     <section class="login-left-panel" aria-label="Apresentação do Canteiro">
-        <div class="login-left-top">
-            <div class="login-mark" aria-hidden="true">
-                <img src="{{ url_for('static', filename='img/logoBranca.png') }}" alt="">
-            </div>
-            <div>
-                <div class="login-brand-name">Canteiro</div>
-                <div class="login-brand-sub">Inteligência de Obras</div>
-            </div>
+        <div class="login-left-top login-left-top--brand-image">
+            <img class="login-brand-logo" src="{{ url_for('static', filename='imgLogos/logo.png', v='3') }}"
+                alt="Canteiro - Inteligência de Obras">
         </div>
 
         <div class="login-visual-wrap">
@@ -111,6 +106,10 @@
                     <input type="password" name="senha" placeholder="Digite sua senha" autocomplete="current-password"
                         required>
                 </label>
+
+                <div class="login-form-links">
+                    <a href="{{ url_for('auth_bp.esqueci_senha') }}">Esqueci minha senha</a>
+                </div>
 
                 <button type="submit" class="login-submit">Entrar</button>
             </form>

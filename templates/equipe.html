@@ -276,7 +276,7 @@
                                         </svg>
                                     </button>
                                     {% endif %}
-                                    {% if eh_admin() %}
+                                    {% if eh_gestor() %}
                                     <form method="POST" class="delete-icon-form"
                                         action="{{ url_for('equipe_bp.excluir_equipe', equipe_id=item.id) }}"
                                         onsubmit="return confirm('Deseja realmente excluir este profissional?');">

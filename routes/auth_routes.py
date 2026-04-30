@@ -1,4 +1,9 @@
 from pathlib import Path
+from datetime import datetime, timedelta, timezone
+from html import escape
+import hashlib
+import os
+import secrets
 import time
 from uuid import uuid4
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
@@ -6,6 +11,7 @@ from werkzeug.utils import secure_filename
 from database import query_all, query_one, execute
 from auth import verificar_senha, gerar_hash_senha, eh_admin, gerar_csrf_token, PERFIS_VALIDOS
 from services.validators import limpar_texto
+from services.email_service import enviar_email_resend
 from services.log_service import registrar_log
 from services.tenant import empresa_usuario_por_form, listar_empresas
 
@@ -16,10 +22,75 @@ MAX_TENTATIVAS_LOGIN = 5
 BLOQUEIO_LOGIN_SEGUNDOS = 15 * 60
 tentativas_login = {}
 PERFIS_ADMINISTRAVEIS = {"admin", "gestor", "leitura"}
+RESET_SENHA_EXPIRACAO_MINUTOS = 60
 
 
 def url_sistema():
-    return request.url_root.rstrip("/")
+    return os.environ.get("APP_BASE_URL", "").strip().rstrip("/") or request.url_root.rstrip("/")
+
+
+def normalizar_email(email):
+    return (email or "").strip().lower()
+
+
+def hash_token_reset(token):
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def agora_utc():
+    return datetime.now(timezone.utc)
+
+
+def data_iso(dt):
+    return dt.astimezone(timezone.utc).isoformat(timespec="seconds")
+
+
+def apagar_tokens_reset_expirados():
+    execute(
+        "DELETE FROM tokens_reset_senha WHERE usado = 1 OR expira_em <= ?",
+        (data_iso(agora_utc()),)
+    )
+
+
+def gerar_token_reset(usuario_id):
+    apagar_tokens_reset_expirados()
+    execute(
+        "UPDATE tokens_reset_senha SET usado = 1, usado_em = ? WHERE usuario_id = ? AND usado = 0",
+        (data_iso(agora_utc()), usuario_id)
+    )
+    token = secrets.token_urlsafe(48)
+    expira_em = agora_utc() + timedelta(minutes=RESET_SENHA_EXPIRACAO_MINUTOS)
+    execute(
+        """
+        INSERT INTO tokens_reset_senha (usuario_id, token, expira_em, usado)
+        VALUES (?, ?, ?, 0)
+        """,
+        (usuario_id, hash_token_reset(token), data_iso(expira_em))
+    )
+    return token
+
+
+def enviar_email_reset_senha(usuario, link_reset):
+    nome = escape(usuario["nome"] or "usuario")
+    link = escape(link_reset)
+    assunto = "Redefinicao de senha - Canteiro"
+    texto = (
+        f"Ola, {usuario['nome']}.\n\n"
+        "Recebemos uma solicitacao para redefinir sua senha no Canteiro.\n"
+        f"Acesse este link em ate {RESET_SENHA_EXPIRACAO_MINUTOS} minutos:\n{link_reset}\n\n"
+        "Se voce nao solicitou essa redefinicao, ignore este email."
+    )
+    html = f"""
+    <div style="font-family:Arial,sans-serif;line-height:1.5;color:#20232a">
+      <h2>Redefinicao de senha</h2>
+      <p>Ola, {nome}.</p>
+      <p>Recebemos uma solicitacao para redefinir sua senha no Canteiro.</p>
+      <p><a href="{link}" style="display:inline-block;background:#e8621a;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:700">Criar nova senha</a></p>
+      <p>Este link expira em {RESET_SENHA_EXPIRACAO_MINUTOS} minutos.</p>
+      <p>Se voce nao solicitou essa redefinicao, ignore este email.</p>
+    </div>
+    """
+    return enviar_email_resend(usuario["email"], assunto, html, texto)
 
 
 def guardar_credenciais_usuario(nome, username, senha, contexto="criado"):
@@ -140,19 +211,96 @@ def login():
     return render_template("login.html")
 
 
+@auth_bp.route("/esqueci-senha", methods=["GET", "POST"])
+def esqueci_senha():
+    if request.method == "POST":
+        email = normalizar_email(request.form.get("email", ""))
+        usuario = None
+        if email:
+            usuario = query_one(
+                "SELECT id, nome, email, ativo FROM usuarios WHERE lower(email) = ?",
+                (email,)
+            )
+
+        if usuario and usuario["ativo"]:
+            token = gerar_token_reset(usuario["id"])
+            link_reset = f"{url_sistema()}{url_for('auth_bp.redefinir_senha', token=token)}"
+            enviado = enviar_email_reset_senha(usuario, link_reset)
+            if not enviado and os.environ.get("FLASK_DEBUG", "0") == "1":
+                print(f"Link de redefinicao de senha para desenvolvimento: {link_reset}")
+
+        flash("Se o email estiver cadastrado, enviaremos um link para redefinir sua senha.", "sucesso")
+        return redirect(url_for("auth_bp.login"))
+
+    return render_template("esqueci_senha.html")
+
+
+@auth_bp.route("/redefinir-senha/<token>", methods=["GET", "POST"])
+def redefinir_senha(token):
+    apagar_tokens_reset_expirados()
+    token_hash = hash_token_reset(token or "")
+    registro = query_one(
+        """
+        SELECT t.id, t.usuario_id, t.expira_em, t.usado, u.nome, u.email, u.ativo
+        FROM tokens_reset_senha t
+        JOIN usuarios u ON u.id = t.usuario_id
+        WHERE t.token = ?
+        """,
+        (token_hash,)
+    )
+
+    token_valido = bool(
+        registro
+        and not registro["usado"]
+        and registro["ativo"]
+        and registro["expira_em"] > data_iso(agora_utc())
+    )
+
+    if not token_valido:
+        flash("Link de redefinicao invalido ou expirado. Solicite um novo link.", "erro")
+        return redirect(url_for("auth_bp.esqueci_senha"))
+
+    if request.method == "POST":
+        nova_senha = request.form.get("nova_senha", "")
+        confirmar_senha = request.form.get("confirmar_senha", "")
+
+        if len(nova_senha) < 8:
+            flash("A nova senha precisa ter pelo menos 8 caracteres.", "erro")
+            return render_template("redefinir_senha.html", token=token)
+
+        if nova_senha != confirmar_senha:
+            flash("A confirmacao da senha nao confere.", "erro")
+            return render_template("redefinir_senha.html", token=token)
+
+        execute(
+            "UPDATE usuarios SET senha_hash = ? WHERE id = ?",
+            (gerar_hash_senha(nova_senha), registro["usuario_id"])
+        )
+        execute(
+            "UPDATE tokens_reset_senha SET usado = 1, usado_em = ? WHERE id = ?",
+            (data_iso(agora_utc()), registro["id"])
+        )
+        apagar_tokens_reset_expirados()
+        registrar_log("resetar_senha_publico", "usuario", registro["usuario_id"], "Senha redefinida por link de email")
+        flash("Senha redefinida com sucesso. Entre com sua nova senha.", "sucesso")
+        return redirect(url_for("auth_bp.login"))
+
+    return render_template("redefinir_senha.html", token=token)
+
+
 @auth_bp.route("/perfil")
 def perfil():
     if not usuario_logado():
         return redirect(url_for("auth_bp.login"))
 
-    usuario = query_one("SELECT id, empresa_id, nome, username, perfil, ativo, foto_perfil FROM usuarios WHERE id = ?", (session["usuario_id"],))
+    usuario = query_one("SELECT id, empresa_id, nome, username, email, perfil, ativo, foto_perfil FROM usuarios WHERE id = ?", (session["usuario_id"],))
     if not usuario:
         session.clear()
         return redirect(url_for("auth_bp.login"))
 
     usuarios = []
     if eh_admin():
-        usuarios = query_all("SELECT id, empresa_id, nome, username, perfil, ativo, foto_perfil, criado_em FROM usuarios ORDER BY nome ASC")
+        usuarios = query_all("SELECT id, empresa_id, nome, username, email, perfil, ativo, foto_perfil, criado_em FROM usuarios ORDER BY nome ASC")
 
     return render_template("perfil.html", usuario=usuario, usuarios=usuarios)
 
@@ -214,7 +362,7 @@ def usuarios():
 
     usuarios_lista = query_all("""
         SELECT
-            u.id, u.empresa_id, u.nome, u.username, u.perfil, u.ativo,
+            u.id, u.empresa_id, u.nome, u.username, u.email, u.perfil, u.ativo,
             u.foto_perfil, u.criado_em, e.nome AS empresa_nome
         FROM usuarios u
         LEFT JOIN empresas e ON e.id = u.empresa_id
@@ -258,6 +406,7 @@ def novo_usuario():
     try:
         nome = limpar_texto(request.form.get("nome", ""), max_len=120, obrigatorio=True, campo="Nome completo")
         username = limpar_texto(request.form.get("username", ""), max_len=80, obrigatorio=True, campo="Username")
+        email = normalizar_email(limpar_texto(request.form.get("email", ""), max_len=160))
     except ValueError as e:
         flash(str(e), "erro")
         return redirecionar_usuarios()
@@ -292,12 +441,16 @@ def novo_usuario():
         flash("Ja existe um usuario com esse username.", "erro")
         return redirecionar_usuarios()
 
+    if email and query_one("SELECT id FROM usuarios WHERE lower(email) = ?", (email,)):
+        flash("Ja existe um usuario com esse email.", "erro")
+        return redirecionar_usuarios()
+
     usuario_id = execute(
         """
-        INSERT INTO usuarios (empresa_id, nome, username, senha_hash, perfil, ativo)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO usuarios (empresa_id, nome, username, email, senha_hash, perfil, ativo)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        (empresa_id, nome, username, gerar_hash_senha(senha), perfil, ativo)
+        (empresa_id, nome, username, email or None, gerar_hash_senha(senha), perfil, ativo)
     )
     registrar_log("criar_usuario", "usuario", usuario_id, f"Usuario {username} criado")
     guardar_credenciais_usuario(nome, username, senha, "criado")
@@ -356,6 +509,7 @@ def editar_usuario(usuario_id):
     try:
         nome = limpar_texto(request.form.get("nome", ""), max_len=120, obrigatorio=True, campo="Nome completo")
         username = limpar_texto(request.form.get("username", ""), max_len=80, obrigatorio=True, campo="Username")
+        email = normalizar_email(limpar_texto(request.form.get("email", ""), max_len=160))
     except ValueError as e:
         flash(str(e), "erro")
         return redirecionar_usuarios()
@@ -384,9 +538,13 @@ def editar_usuario(usuario_id):
         flash("Ja existe um usuario com esse username.", "erro")
         return redirecionar_usuarios()
 
+    if email and query_one("SELECT id FROM usuarios WHERE lower(email) = ? AND id != ?", (email, usuario_id)):
+        flash("Ja existe um usuario com esse email.", "erro")
+        return redirecionar_usuarios()
+
     execute(
-        "UPDATE usuarios SET empresa_id = ?, nome = ?, username = ?, perfil = ?, ativo = ? WHERE id = ?",
-        (empresa_id, nome, username, perfil, ativo, usuario_id)
+        "UPDATE usuarios SET empresa_id = ?, nome = ?, username = ?, email = ?, perfil = ?, ativo = ? WHERE id = ?",
+        (empresa_id, nome, username, email or None, perfil, ativo, usuario_id)
     )
     if usuario_id == session.get("usuario_id"):
         session["usuario_nome"] = nome

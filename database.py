@@ -143,6 +143,43 @@ def init_db():
     except Exception:
         pass
 
+    # usuarios.email
+    try:
+        conn.execute("ALTER TABLE usuarios ADD COLUMN email TEXT")
+        conn.commit()
+    except Exception:
+        pass
+
+    try:
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email)")
+        conn.commit()
+    except Exception:
+        pass
+
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS tokens_reset_senha (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                usuario_id INTEGER NOT NULL,
+                token TEXT NOT NULL UNIQUE,
+                expira_em TEXT NOT NULL,
+                usado INTEGER NOT NULL DEFAULT 0,
+                criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                usado_em TEXT,
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+            )
+        """)
+        conn.commit()
+    except Exception:
+        pass
+
+    try:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_tokens_reset_senha_usuario ON tokens_reset_senha(usuario_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_tokens_reset_senha_expira ON tokens_reset_senha(expira_em)")
+        conn.commit()
+    except Exception:
+        pass
+
     # obras.tipo_obra
     try:
         conn.execute("ALTER TABLE obras ADD COLUMN tipo_obra TEXT NOT NULL DEFAULT 'contrato'")

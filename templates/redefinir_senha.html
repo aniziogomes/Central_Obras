@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Nova senha - Canteiro{% endblock %}
+
+{% block auth_content %}
+<div class="login-page login-page--split">
+    <section class="login-left-panel" aria-label="Apresentacao do Canteiro">
+        <div class="login-left-top">
+            <div class="login-mark" aria-hidden="true">
+                <img src="{{ url_for('static', filename='img/logoBranca.png') }}" alt="">
+            </div>
+            <div>
+                <div class="login-brand-name">Canteiro</div>
+                <div class="login-brand-sub">Inteligencia de Obras</div>
+            </div>
+        </div>
+        <div class="login-left-copy">
+            <span class="login-accent-line"></span>
+            <h1>Crie uma nova senha</h1>
+            <p>Use uma senha forte para proteger o acesso ao painel.</p>
+        </div>
+    </section>
+
+    <section class="login-right-panel" aria-label="Nova senha">
+        <div class="login-form-shell">
+            <div class="login-form-head">
+                <span class="login-form-kicker">Seguranca</span>
+                <h2>Definir nova senha</h2>
+                <p>A senha precisa ter pelo menos 8 caracteres.</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="login-flashes">
+                {% for categoria, mensagem in messages %}
+                <div class="flash {% if categoria == 'erro' %}flash-error{% else %}flash-success{% endif %}">
+                    {{ mensagem }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="login-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label class="login-field">
+                    <span>Nova senha</span>
+                    <input type="password" name="nova_senha" autocomplete="new-password" minlength="8" required>
+                </label>
+                <label class="login-field">
+                    <span>Confirmar senha</span>
+                    <input type="password" name="confirmar_senha" autocomplete="new-password" minlength="8" required>
+                </label>
+                <button type="submit" class="login-submit">Salvar nova senha</button>
+            </form>
+        </div>
+    </section>
+</div>
+{% endblock %}

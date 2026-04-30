@@ -11,7 +11,7 @@ from services.validators import (
     parse_int_positivo,
     CATEGORIAS_CUSTO_VALIDAS
 )
-from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
+from auth import usuario_logado, eh_gestor, eh_leitura
 from services.log_service import registrar_log
 from services.tenant import aplicar_filtro_empresa, listar_obras_acessiveis, obter_obra_acessivel, obter_registro_acessivel
 from utils import formatar_moeda, formatar_data
@@ -235,7 +235,7 @@ def custos_dados():
             for c in lista
         ],
         "pode_editar": eh_gestor(),
-        "pode_excluir": eh_admin(),
+        "pode_excluir": eh_gestor(),
     })
 
 
@@ -407,7 +407,7 @@ def editar_custo(custo_id):
 
 @custos_bp.route("/custos/excluir/<int:custo_id>", methods=["POST"])
 def excluir_custo(custo_id):
-    if not usuario_logado() or not eh_admin():
+    if not usuario_logado() or not eh_gestor():
         flash("Você não tem permissão para excluir custos.", "erro")
         return redirect(url_for("custos_bp.custos"))
 

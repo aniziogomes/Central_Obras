@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     empresa_id INTEGER,
     nome TEXT NOT NULL,
     username TEXT NOT NULL UNIQUE,
+    email TEXT UNIQUE,
     senha_hash TEXT NOT NULL,
     perfil TEXT NOT NULL DEFAULT 'admin',
     ativo INTEGER NOT NULL DEFAULT 1,
@@ -17,6 +18,17 @@ CREATE TABLE IF NOT EXISTS usuarios (
     foto_perfil TEXT,
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+);
+
+CREATE TABLE IF NOT EXISTS tokens_reset_senha (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    expira_em TEXT NOT NULL,
+    usado INTEGER NOT NULL DEFAULT 0,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    usado_em TEXT,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 );
 
 CREATE TABLE IF NOT EXISTS obras (

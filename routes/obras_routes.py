@@ -158,7 +158,7 @@ def obras_dados():
         "total": len(lista_obras),
         "obras": serializar_obras(lista_obras),
         "pode_editar": eh_gestor(),
-        "pode_excluir": eh_admin(),
+        "pode_excluir": eh_gestor(),
     })
 
 
@@ -748,7 +748,7 @@ def obras_exportar():
 
 @obras_bp.route("/obras/excluir/<int:obra_id>", methods=["POST"])
 def excluir_obra(obra_id):
-    if not usuario_logado() or not eh_admin():
+    if not usuario_logado() or not eh_gestor():
         flash("Você não tem permissão para excluir obras.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
