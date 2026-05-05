@@ -31,6 +31,10 @@ def criar_usuario_admin():
     precisa_criar = not usuario
     precisa_trocar_senha_padrao = bool(usuario and verificar_senha("123456", usuario["senha_hash"]))
     if not precisa_criar and not precisa_trocar_senha_padrao:
+        execute(
+            "UPDATE usuarios SET perfil = 'admin', ativo = 1, onboarding_completo = 1, onboarding_pendente = 0 WHERE id = ?",
+            (usuario["id"],)
+        )
         return
 
     senha_inicial = os.environ.get("ADMIN_PASSWORD")
@@ -47,14 +51,14 @@ def criar_usuario_admin():
     if precisa_criar:
         execute(
             """
-            INSERT INTO usuarios (nome, username, senha_hash, perfil, ativo)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO usuarios (nome, username, senha_hash, perfil, ativo, onboarding_completo, onboarding_pendente)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            ("Administrador", "admin", senha_hash, "admin", 1)
+            ("Administrador", "admin", senha_hash, "admin", 1, 1, 0)
         )
     else:
         execute(
-            "UPDATE usuarios SET senha_hash = ?, perfil = 'admin', ativo = 1 WHERE id = ?",
+            "UPDATE usuarios SET senha_hash = ?, perfil = 'admin', ativo = 1, onboarding_completo = 1, onboarding_pendente = 0 WHERE id = ?",
             (senha_hash, usuario["id"])
         )
         print("AVISO DE SEGURANCA: senha padrao antiga do admin foi substituida.")
@@ -70,7 +74,7 @@ def usuario_atual():
         return None
     return query_one(
         """
-        SELECT id, empresa_id, nome, username, perfil, ativo, onboarding_completo, foto_perfil
+        SELECT id, empresa_id, nome, username, perfil, ativo, onboarding_completo, onboarding_pendente, foto_perfil
         FROM usuarios
         WHERE id = ?
         """,
@@ -104,6 +108,10 @@ def eh_gestor():
 
 
 def eh_leitura():
+    return usuario_perfil() == "leitura"
+
+
+def pode_visualizar():
     return usuario_perfil() in PERFIS_INTERNOS
 
 

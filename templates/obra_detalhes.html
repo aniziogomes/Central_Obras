@@ -15,6 +15,10 @@
 {% set percentual_orcamento = (custo_total / orcamento_base * 100) if orcamento_base > 0 else 0 %}
 {% set percentual_orcamento_barra = 100 if percentual_orcamento > 100 else percentual_orcamento %}
 {% set foto_capa = obra.foto_capa if obra.foto_capa is defined and obra.foto_capa else '' %}
+{% set observacao_canteiro = obra.observacao_responsavel if obra.observacao_responsavel is defined and obra.observacao_responsavel else '' %}
+{% set fases_obra = ['Planejamento', 'Fundacao', 'Estrutura', 'Alvenaria', 'Telhado', 'Instalacoes', 'Revestimento', 'Acabamento', 'Vistoria', 'Concluida'] %}
+{% set partes_nome_obra = (obra.nome or 'Obra').split() %}
+{% set iniciais_obra = ((partes_nome_obra[0][0] if partes_nome_obra else 'O') ~ (partes_nome_obra[1][0] if partes_nome_obra|length > 1 else ''))|upper %}
 {% set entrega_real = obra.data_fim_real if obra.data_fim_real is defined and obra.data_fim_real else '' %}
 {% if not entrega_real and (obra.status or '')|lower == 'concluida' %}
 {% set entrega_real = obra.data_fim_prevista %}
@@ -23,10 +27,13 @@
 <div class="obra-view-page obra-detalhes-page">
     <div class="hdr">
         <div>
-            <h1>Portal do cliente</h1>
+            <h1>Detalhes da Obra</h1>
             <p>{{ obra.nome }} · {{ obra.codigo }}</p>
         </div>
         <div class="hdr-right">
+            {% if eh_gestor() %}
+            <button type="button" class="btn btn-primary" data-open-quick-modal="modalEditarDadosObra">Editar obra</button>
+            {% endif %}
             <a href="{{ url_for('obras_bp.obras') }}" class="btn btn-ghost">← Voltar para obras</a>
         </div>
     </div>
@@ -37,7 +44,9 @@
                 {% if foto_capa %}
                 <img src="{{ foto_capa }}" alt="{{ obra.nome }}">
                 {% else %}
-                <div class="obra-detalhes-cover-placeholder">{{ (obra.nome or 'Obra')[:1] }}</div>
+                <div class="obra-detalhes-cover-placeholder obra-detalhes-cover-placeholder--{{ obra.status or 'planejamento' }}">
+                    <span>{{ iniciais_obra }}</span>
+                </div>
                 {% endif %}
             </div>
             <div class="obra-detalhes-identity">
@@ -121,6 +130,8 @@
             <button type="button" data-obra-detail-tab="medicoes">Medições</button>
             <button type="button" data-obra-detail-tab="despesas">Despesas</button>
             <button type="button" data-obra-detail-tab="equipe">Equipe</button>
+            <button type="button" data-obra-detail-tab="galeria">Galeria</button>
+            <button type="button" data-obra-detail-tab="dados">Dados da Obra</button>
         </div>
     </div>
 
@@ -166,6 +177,47 @@
             </div>
         </div>
 
+        <div class="card obra-section-card obra-overview-ops-card">
+            <div class="card-hdr">
+                <div>
+                    <div class="card-title">Atualizacao operacional</div>
+                    <div class="obra-card-subtitle">Fase, conclusao e observacao do responsavel.</div>
+                </div>
+            </div>
+            {% if eh_gestor() %}
+            <form method="POST" action="{{ url_for('obras_bp.atualizar_canteiro_obra', obra_id=obra.id) }}" class="obra-operational-form">
+                <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
+                <div class="form-grid modal-form-grid">
+                    <div class="form-group">
+                        <label>Fase da obra</label>
+                        <select name="fase_obra" required>
+                            {% for fase in fases_obra %}
+                            <option value="{{ fase }}" {% if fase_atual == fase %}selected{% endif %}>{{ fase }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Conclusao (%)</label>
+                        <input type="number" name="progresso_percentual" min="0" max="100" step="0.01" value="{{ obra.progresso_percentual or 0 }}" required>
+                    </div>
+                    <div class="form-group full">
+                        <label>Observacoes do responsavel</label>
+                        <textarea name="observacao_responsavel" rows="4" placeholder="Descreva o andamento atual da obra.">{{ observacao_canteiro }}</textarea>
+                    </div>
+                </div>
+                <div class="obra-operational-actions">
+                    <button type="submit" class="btn btn-primary">Salvar atualizacao</button>
+                </div>
+            </form>
+            {% else %}
+            <div class="obra-operational-readonly">
+                <div><span>Fase atual</span><strong>{{ fase_atual }}</strong></div>
+                <div><span>Conclusao</span><strong>{{ (obra.progresso_percentual or 0)|round(1) }}%</strong></div>
+                <p class="{% if not observacao_canteiro %}obra-kpi-muted{% endif %}">{{ observacao_canteiro or "Sem observacoes do responsavel." }}</p>
+            </div>
+            {% endif %}
+        </div>
+
         <div class="card obra-section-card obra-overview-timeline-card" id="cronograma">
             <div class="card-hdr">
                 <div class="card-title">Linha do tempo</div>
@@ -189,6 +241,99 @@
                     <div><strong>{{ fase_atual }}</strong><small>{{ formatar_data(entrega_real or obra.data_fim_prevista, "-") }}</small></div>
                 </div>
             </div>
+        </div>
+    </section>
+
+    <section class="card obra-section-card obra-section-card--full obra-gallery-panel" id="galeria"
+        data-obra-detail-panel="galeria">
+        <div class="card-hdr">
+            <div>
+                <div class="card-title">Galeria da obra</div>
+                <div class="obra-card-subtitle">{{ fotos_obra|length }} foto(s)</div>
+            </div>
+        </div>
+        {% if eh_gestor() %}
+        <form method="POST" action="{{ url_for('obras_bp.nova_foto_obra', obra_id=obra.id) }}" enctype="multipart/form-data"
+            class="obra-galeria-upload-form">
+            <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
+            <input type="hidden" name="fase" value="{{ fase_atual if fase_atual != 'Nao definida' else '' }}">
+            <div class="obra-galeria-upload-grid">
+                <div class="form-group">
+                    <label>Foto</label>
+                    <input type="file" name="foto_arquivo" accept="image/*" required>
+                </div>
+                <div class="form-group">
+                    <label>Titulo</label>
+                    <input type="text" name="titulo" placeholder="Ex: alvenaria finalizada">
+                </div>
+                <div class="form-group">
+                    <label>Data</label>
+                    <input type="date" name="data_registro">
+                </div>
+                <div class="obra-foto-fase-atual">
+                    <span>Fase atual</span>
+                    <strong>{{ fase_atual }}</strong>
+                </div>
+            </div>
+            <div class="obra-galeria-upload-actions">
+                <button type="submit" class="btn btn-primary">Adicionar foto</button>
+            </div>
+        </form>
+        {% endif %}
+
+        {% if fotos_obra %}
+        <div class="obra-canteiro-gallery-grid">
+            {% for foto in fotos_obra %}
+            <div class="obra-canteiro-photo-card">
+                <img src="{{ foto.caminho }}" alt="{{ foto.titulo or 'Foto da obra' }}">
+                <div class="obra-canteiro-photo-info">
+                    <div>
+                        <strong>{{ foto.titulo or foto.fase or fase_atual }}</strong>
+                        <span>{{ formatar_data(foto.data_registro, "Sem data") }}</span>
+                    </div>
+                    {% if eh_gestor() %}
+                    <div class="obra-canteiro-photo-actions">
+                        <form method="POST" action="{{ url_for('obras_bp.usar_foto_como_capa', obra_id=obra.id, foto_id=foto.id) }}">
+                            <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
+                            <button type="submit" class="btn btn-small btn-ghost">Usar como principal</button>
+                        </form>
+                        <form method="POST" class="delete-icon-form" action="{{ url_for('obras_bp.excluir_foto_obra', obra_id=obra.id, foto_id=foto.id) }}" onsubmit="return confirm('Excluir esta foto?');">
+                            <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
+                            <button type="submit" class="custo-delete-icon" aria-label="Excluir foto" title="Excluir">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                    <path d="M8 6V4h8v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                    <path d="M6 6l1 15h10l1-15" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                                    <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="obra-empty-box">Nenhuma foto cadastrada ainda.</div>
+        {% endif %}
+    </section>
+
+    <section class="card obra-section-card obra-section-card--full obra-info-panel" id="dados"
+        data-obra-detail-panel="dados">
+        <div class="card-hdr">
+            <div>
+                <div class="card-title">Dados da obra</div>
+                <div class="obra-card-subtitle">Informacoes cadastrais e de contexto.</div>
+            </div>
+        </div>
+        <div class="obra-info-grid">
+            <div><span>Empresa / cliente</span><strong>{{ obra.empresa_nome if obra.empresa_nome is defined and obra.empresa_nome else "Sem empresa vinculada" }}</strong></div>
+            <div><span>Endereco</span><strong>{{ obra.endereco or "Nao informado" }}</strong></div>
+            <div><span>Codigo</span><strong>{{ obra.codigo }}</strong></div>
+            <div><span>Tipo da obra</span><strong>{{ formatar_tipo_obra(obra.tipo_obra) }}</strong></div>
+            <div><span>Tipologia</span><strong>{{ obra.tipologia or "-" }}</strong></div>
+            <div><span>Area</span><strong>{{ obra.area_m2 or 0 }} m2</strong></div>
         </div>
     </section>
 
@@ -459,6 +604,60 @@
 </div>
 
 {% if eh_gestor() %}
+<div id="modalEditarDadosObra" class="modal-overlay obra-quick-modal">
+    <div class="modal-box">
+        <div class="modal-header"><h3>Editar dados da obra</h3><button type="button" class="modal-close" data-close-quick-modal>&times;</button></div>
+        <form method="POST" action="{{ url_for('obras_bp.editar_obra', obra_id=obra.id) }}">
+            <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
+            <div class="form-grid modal-form-grid">
+                <div class="form-group"><label>Nome da Obra *</label><input type="text" name="nome" value="{{ obra.nome }}" required></div>
+                {% if empresas %}
+                <div class="form-group full">
+                    <label>Empresa / cliente</label>
+                    <select name="empresa_id">
+                        {% for empresa in empresas %}
+                        <option value="{{ empresa.id }}" {% if obra.empresa_id == empresa.id %}selected{% endif %}>{{ empresa.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                <div class="form-group full tipo-obra-field">
+                    <label>Tipo da Obra</label>
+                    <div class="tipo-obra-group">
+                        <label class="tipo-obra-option">
+                            <input type="radio" name="tipo_obra" value="contrato" {% if (obra.tipo_obra or 'contrato') == 'contrato' %}checked{% endif %}>
+                            <div class="tipo-obra-card"><div class="tipo-obra-bullet"></div><div class="tipo-obra-text"><span class="tipo-obra-title">Por contrato</span><span class="tipo-obra-sub">Reforma, execucao ou servico</span></div></div>
+                        </label>
+                        <label class="tipo-obra-option">
+                            <input type="radio" name="tipo_obra" value="venda" {% if obra.tipo_obra == 'venda' %}checked{% endif %}>
+                            <div class="tipo-obra-card"><div class="tipo-obra-bullet"></div><div class="tipo-obra-text"><span class="tipo-obra-title">Para venda</span><span class="tipo-obra-sub">Construcao com venda prevista</span></div></div>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group"><label>Tipologia *</label><input type="text" name="tipologia" value="{{ obra.tipologia or '' }}" required></div>
+                <div class="form-group"><label>Area (m2)</label><input type="number" step="0.01" name="area_m2" value="{{ obra.area_m2 or 0 }}"></div>
+                <div class="form-group full"><label>Endereco</label><input type="text" name="endereco" value="{{ obra.endereco or '' }}"></div>
+                <div class="form-group"><label>Data Inicio</label><input type="date" name="data_inicio" value="{{ obra.data_inicio or '' }}"></div>
+                <div class="form-group"><label>Data Fim Prevista</label><input type="date" name="data_fim_prevista" value="{{ obra.data_fim_prevista or '' }}"></div>
+                <div class="form-group"><label>Orcamento previsto (R$)</label><input type="number" step="0.01" name="orcamento" value="{{ obra.orcamento or 0 }}"><small class="form-field-help">Custo-base esperado para executar a obra.</small></div>
+                <div class="form-group"><label>Valor do contrato (R$)</label><input type="number" step="0.01" name="receita_total" value="{{ obra.receita_total or 0 }}"><small class="form-field-help">Receita prevista ou valor fechado com o cliente.</small></div>
+                <div class="form-group">
+                    <label>Status *</label>
+                    <select name="status" required>
+                        <option value="planejamento" {% if obra.status == 'planejamento' %}selected{% endif %}>planejamento</option>
+                        <option value="andamento" {% if obra.status == 'andamento' %}selected{% endif %}>andamento</option>
+                        <option value="atrasada" {% if obra.status == 'atrasada' %}selected{% endif %}>atrasada</option>
+                        <option value="concluida" {% if obra.status == 'concluida' %}selected{% endif %}>concluida</option>
+                        <option value="vendida" {% if obra.status == 'vendida' %}selected{% endif %}>vendida</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-info-card">Fase, conclusao, observacoes e fotos ficam nas abas Visao Geral e Galeria.</div>
+            <div class="modal-footer"><button type="button" class="btn btn-ghost" data-close-quick-modal>Cancelar</button><button type="submit" class="btn btn-primary">Salvar alteracoes</button></div>
+        </form>
+    </div>
+</div>
+
 <div id="modalQuickCusto" class="modal-overlay obra-quick-modal">
     <div class="modal-box">
         <div class="modal-header"><h3>Novo custo</h3><button type="button" class="modal-close" data-close-quick-modal>&times;</button></div>
@@ -943,9 +1142,62 @@
     }
 
     .obra-overview-progress-card,
+    .obra-overview-ops-card,
     .obra-overview-timeline-card,
     .obra-latest-expenses {
         border-radius: 8px;
+    }
+
+    .obra-operational-form .modal-form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .obra-operational-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 12px;
+    }
+
+    .obra-operational-readonly {
+        display: grid;
+        gap: 12px;
+    }
+
+    .obra-operational-readonly>div,
+    .obra-info-grid>div {
+        padding: 14px;
+        border: 1px solid rgba(255, 255, 255, .08);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, .025);
+    }
+
+    .obra-operational-readonly span,
+    .obra-info-grid span {
+        display: block;
+        margin-bottom: 5px;
+        color: var(--text2);
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .obra-operational-readonly strong,
+    .obra-info-grid strong {
+        color: var(--text);
+        font-size: 13px;
+    }
+
+    .obra-operational-readonly p {
+        margin: 0;
+        color: var(--text2);
+        line-height: 1.5;
+    }
+
+    .obra-info-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
     }
 
     .obra-overview-progress-body {
@@ -1177,9 +1429,34 @@
         align-items: center;
         justify-content: center;
         color: var(--text);
-        font-size: 28px;
+        font-size: 0;
         font-weight: 900;
-        background: linear-gradient(135deg, rgba(36, 104, 204, .38), rgba(232, 98, 26, .24));
+        background: linear-gradient(135deg, rgba(36, 104, 204, .42), rgba(79, 187, 132, .24));
+    }
+
+    .obra-detalhes-cover-placeholder span {
+        display: grid;
+        place-items: center;
+        width: 46px;
+        height: 46px;
+        border-radius: 8px;
+        background: rgba(0, 0, 0, .16);
+        color: #fff;
+        font-size: 20px;
+        letter-spacing: 0;
+    }
+
+    .obra-detalhes-cover-placeholder--andamento {
+        background: linear-gradient(135deg, rgba(47, 125, 240, .54), rgba(79, 187, 132, .26));
+    }
+
+    .obra-detalhes-cover-placeholder--atrasada {
+        background: linear-gradient(135deg, rgba(232, 66, 78, .55), rgba(232, 98, 26, .28));
+    }
+
+    .obra-detalhes-cover-placeholder--concluida,
+    .obra-detalhes-cover-placeholder--vendida {
+        background: linear-gradient(135deg, rgba(61, 168, 109, .55), rgba(47, 125, 240, .22));
     }
 
     .obra-detalhes-identity {
@@ -1316,6 +1593,10 @@
             grid-template-columns: 1fr;
         }
 
+        .obra-info-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
         .obra-finance-exec {
             grid-template-columns: 1fr;
         }
@@ -1396,6 +1677,11 @@
 
         .obra-overview-progress-lines {
             width: 100%;
+        }
+
+        .obra-operational-form .modal-form-grid,
+        .obra-info-grid {
+            grid-template-columns: 1fr;
         }
 
         .obra-latest-expenses {

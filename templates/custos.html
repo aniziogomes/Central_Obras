@@ -254,14 +254,40 @@
         </div>
     </div>
     {% else %}
-    <div class="custos-empty-state" id="linhaSemCustosOriginal">
-        Nenhum custo lançado ainda.
+    <div class="custos-empty-state custos-empty-state--rich" id="linhaSemCustosOriginal">
+        <div class="custos-empty-icon" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3v18" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
+                <path d="M17 7.5c-.8-1.4-2.2-2.1-4.2-2.1H10a3 3 0 0 0 0 6h4a3 3 0 0 1 0 6h-3c-2 0-3.5-.8-4.3-2.3"
+                    stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+        </div>
+        <div class="custos-empty-copy">
+            <strong>Nenhum custo lançado ainda</strong>
+            <p>Comece registrando o primeiro gasto da obra para acompanhar orçamento, saldo e margem.</p>
+        </div>
+        {% if eh_gestor() %}
+        <button type="button" class="btn btn-primary custos-empty-action" onclick="abrirModalCusto()">+ Lançar primeiro custo</button>
+        {% endif %}
     </div>
     {% endfor %}
 </div>
 
-<div id="custosSemResultado" class="custos-empty-state" style="display:none;">
-    Nenhum custo encontrado com os filtros aplicados.
+<div id="custosSemResultado" class="custos-empty-state custos-empty-state--rich" style="display:none;">
+    <div class="custos-empty-icon" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+            <path d="M12 3v18" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
+            <path d="M17 7.5c-.8-1.4-2.2-2.1-4.2-2.1H10a3 3 0 0 0 0 6h4a3 3 0 0 1 0 6h-3c-2 0-3.5-.8-4.3-2.3"
+                stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+    </div>
+    <div class="custos-empty-copy">
+        <strong>Nenhum custo encontrado</strong>
+        <p>Comece registrando o primeiro gasto da obra para acompanhar orçamento, saldo e margem.</p>
+    </div>
+    {% if eh_gestor() %}
+    <button type="button" class="btn btn-primary custos-empty-action" onclick="abrirModalCusto()">+ Lançar primeiro custo</button>
+    {% endif %}
 </div>
 
 {% if eh_gestor() %}
@@ -615,7 +641,7 @@
             });
 
             if (emptyState) {
-                emptyState.style.display = visiveis === 0 ? "flex" : "none";
+                emptyState.style.display = grupos.length > 0 && visiveis === 0 ? "flex" : "none";
             }
         }
 
@@ -661,6 +687,25 @@
         `).join("");
         }
 
+        function custosEmptyStateHtml(podeEditar, titulo) {
+            return `
+            <div class="custos-empty-state custos-empty-state--rich">
+                <div class="custos-empty-icon" aria-hidden="true">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 3v18" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
+                        <path d="M17 7.5c-.8-1.4-2.2-2.1-4.2-2.1H10a3 3 0 0 0 0 6h4a3 3 0 0 1 0 6h-3c-2 0-3.5-.8-4.3-2.3"
+                            stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </div>
+                <div class="custos-empty-copy">
+                    <strong>${esc(titulo || "Nenhum custo lançado ainda")}</strong>
+                    <p>Comece registrando o primeiro gasto da obra para acompanhar orçamento, saldo e margem.</p>
+                </div>
+                ${podeEditar ? `<button type="button" class="btn btn-primary custos-empty-action" onclick="abrirModalCusto()">+ Lançar primeiro custo</button>` : ""}
+            </div>
+        `;
+        }
+
         function renderizarCustosAgrupados(custos, podeEditar, podeExcluir) {
             const wrap = document.getElementById("custosCardsWrap");
             const emptyState = document.getElementById("custosSemResultado");
@@ -668,7 +713,12 @@
             if (!wrap) return;
 
             if (!custos || custos.length === 0) {
-                wrap.innerHTML = `<div class="custos-empty-state">Nenhum custo lançado ainda.</div>`;
+                const filtrosAtivos = ["filtroCustoObra", "filtroCustoCategoria", "filtroCustoDataInicio", "filtroCustoDataFim"]
+                    .some(id => {
+                        const campo = document.getElementById(id);
+                        return campo && campo.value;
+                    });
+                wrap.innerHTML = custosEmptyStateHtml(podeEditar, filtrosAtivos ? "Nenhum custo encontrado" : "Nenhum custo lançado ainda");
                 if (emptyState) emptyState.style.display = "none";
                 return;
             }

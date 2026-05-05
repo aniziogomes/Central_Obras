@@ -27,16 +27,20 @@ TABELAS_FILHAS_OBRA = {
 }
 
 
-def eh_admin_global():
-    return session.get("usuario_perfil") == "admin"
-
-
 def empresa_id_atual():
     valor = session.get("empresa_id")
     try:
         return int(valor) if valor else None
     except (TypeError, ValueError):
         return None
+
+
+def tem_acesso_global():
+    return session.get("usuario_perfil") == "admin" and empresa_id_atual() is None
+
+
+def eh_admin_global():
+    return tem_acesso_global()
 
 
 def normalizar_empresa_id(valor):
@@ -100,20 +104,21 @@ def empresa_usuario_por_form(perfil, empresa_id_form="", empresa_nome_form=""):
 
 
 def empresa_id_para_insert(empresa_id_form=None):
-    if eh_admin_global():
+    empresa_id_sessao = empresa_id_atual()
+    if empresa_id_sessao:
+        return empresa_id_sessao
+
+    if tem_acesso_global():
         empresa_id = normalizar_empresa_id(empresa_id_form)
         if empresa_id and obter_empresa(empresa_id):
             return empresa_id
         return empresa_padrao_id()
 
-    empresa_id = empresa_id_atual()
-    if empresa_id:
-        return empresa_id
     return empresa_padrao_id()
 
 
 def filtro_empresa_expr(alias=None):
-    if eh_admin_global():
+    if tem_acesso_global():
         return "", ()
 
     empresa_id = empresa_id_atual()

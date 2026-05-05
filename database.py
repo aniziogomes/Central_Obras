@@ -136,6 +136,22 @@ def init_db():
     except Exception:
         pass
 
+    # usuarios.onboarding_pendente
+    try:
+        conn.execute("ALTER TABLE usuarios ADD COLUMN onboarding_pendente INTEGER DEFAULT 0")
+        conn.commit()
+    except Exception:
+        pass
+
+    executar_sem_quebrar(
+        """
+        UPDATE usuarios
+        SET onboarding_pendente = 0,
+            onboarding_completo = 1
+        WHERE perfil != 'gestor'
+        """
+    )
+
     # usuarios.foto_perfil
     try:
         conn.execute("ALTER TABLE usuarios ADD COLUMN foto_perfil TEXT")
@@ -209,6 +225,13 @@ def init_db():
     # obras.foto_capa
     try:
         conn.execute("ALTER TABLE obras ADD COLUMN foto_capa TEXT")
+        conn.commit()
+    except Exception:
+        pass
+
+    # obras.proxima_etapa_portal
+    try:
+        conn.execute("ALTER TABLE obras ADD COLUMN proxima_etapa_portal TEXT")
         conn.commit()
     except Exception:
         pass

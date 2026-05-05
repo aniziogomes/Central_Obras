@@ -11,7 +11,7 @@ from services.validators import (
     parse_int_positivo,
     CATEGORIAS_CUSTO_VALIDAS
 )
-from auth import usuario_logado, eh_gestor, eh_leitura
+from auth import usuario_logado, eh_gestor, pode_visualizar
 from services.log_service import registrar_log
 from services.tenant import aplicar_filtro_empresa, listar_obras_acessiveis, obter_obra_acessivel, obter_registro_acessivel
 from utils import formatar_moeda, formatar_data
@@ -140,7 +140,7 @@ def calcular_valores_custo(valor_total, quantidade, valor_unitario):
 
 @custos_bp.route("/custos")
 def custos():
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return redirect(url_for("auth_bp.login"))
 
     filtros = obter_filtros_custos()
@@ -177,7 +177,7 @@ def custos():
 
 @custos_bp.route("/custos/dados")
 def custos_dados():
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return jsonify({"erro": "não autorizado"}), 401
 
     filtros = obter_filtros_custos()
@@ -432,7 +432,7 @@ def excluir_custo(custo_id):
 
 @custos_bp.route("/custos/exportar")
 def custos_exportar():
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return redirect(url_for("auth_bp.login"))
 
     filtros = obter_filtros_custos()

@@ -1,6 +1,7 @@
 import os
 import re
 import secrets
+import unicodedata
 from datetime import datetime, timedelta
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
 from database import query_one, query_all, execute
@@ -10,6 +11,18 @@ from services.tenant import obter_obra_acessivel
 
 portal_bp = Blueprint("portal_bp", __name__)
 TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{32,128}$")
+PORTAL_FASES = [
+    "Planejamento",
+    "Fundacao",
+    "Estrutura",
+    "Alvenaria",
+    "Telhado",
+    "Instalacoes",
+    "Revestimento",
+    "Acabamento",
+    "Vistoria",
+    "Concluida",
+]
 
 
 def gerar_token_portal():
@@ -27,6 +40,71 @@ def token_portal_valido(token):
     return bool(token and TOKEN_RE.fullmatch(token))
 
 
+def _slug_fase(valor):
+    texto = unicodedata.normalize("NFKD", str(valor or ""))
+    texto = "".join(ch for ch in texto if not unicodedata.combining(ch))
+    return texto.strip().lower()
+
+
+def _indice_fase_atual(fase_atual):
+    fase_slug = _slug_fase(fase_atual)
+    for indice, fase in enumerate(PORTAL_FASES):
+        if _slug_fase(fase) == fase_slug:
+            return indice
+    return 0
+
+
+def _proxima_etapa(fase_atual, status):
+    if (status or "").lower() in {"concluida", "vendida"}:
+        return "Obra concluida"
+    indice = _indice_fase_atual(fase_atual)
+    if indice >= len(PORTAL_FASES) - 1:
+        return "Entrega final"
+    return PORTAL_FASES[indice + 1]
+
+
+def _ultima_atualizacao(obra, atualizacoes, fotos_obra):
+    candidatos = []
+    if atualizacoes and atualizacoes[0]["data_hora"]:
+        candidatos.append(atualizacoes[0]["data_hora"])
+    if fotos_obra and fotos_obra[0]["data_registro"]:
+        candidatos.append(fotos_obra[0]["data_registro"])
+    if "criado_em" in obra.keys() and obra["criado_em"]:
+        candidatos.append(obra["criado_em"])
+    return max(candidatos) if candidatos else None
+
+
+def _montar_timeline_portal(obra, fase_atual, proxima_etapa, ultima_atualizacao):
+    status = (obra["status"] or "").lower()
+    etapa_entrega = "Concluida" if status in {"concluida", "vendida"} else "Entrega prevista"
+    return [
+        {
+            "titulo": "Inicio da obra",
+            "status": "done" if obra["data_inicio"] else "upcoming",
+            "data": obra["data_inicio"],
+            "descricao": "Marco inicial do cronograma.",
+        },
+        {
+            "titulo": fase_atual,
+            "status": "current",
+            "data": ultima_atualizacao,
+            "descricao": "Fase atualmente em acompanhamento.",
+        },
+        {
+            "titulo": proxima_etapa,
+            "status": "upcoming" if status not in {"concluida", "vendida"} else "done",
+            "data": obra["data_fim_prevista"],
+            "descricao": "Proximo passo previsto pela equipe responsavel.",
+        },
+        {
+            "titulo": etapa_entrega,
+            "status": "done" if status in {"concluida", "vendida"} else "upcoming",
+            "data": obra["data_fim_prevista"],
+            "descricao": "Previsao consolidada de encerramento da obra.",
+        },
+    ]
+
+
 # ─── Rota pública — sem login ────────────────────────────────────────────────
 
 @portal_bp.route("/portal/<token>")
@@ -36,9 +114,9 @@ def portal_obra(token):
 
     obra = query_one("""
         SELECT
-            id, codigo, nome, tipologia, area_m2, data_inicio,
+            id, codigo, nome, endereco, tipologia, area_m2, data_inicio, criado_em,
             data_fim_prevista, progresso_percentual, status, fase_obra,
-            observacao_responsavel, foto_capa, token_publico, portal_expira_em,
+            observacao_responsavel, foto_capa, proxima_etapa_portal, token_publico, portal_expira_em,
             portal_revogado_em
         FROM obras
         WHERE token_publico = ?
@@ -76,11 +154,27 @@ def portal_obra(token):
         LIMIT 12
     """, (obra["id"],))
 
+    foto_principal = obra["foto_capa"] if "foto_capa" in obra.keys() and obra["foto_capa"] else ""
+    if not foto_principal and fotos_obra:
+        foto_principal = fotos_obra[0]["caminho"]
+
+    galeria_portal = [foto for foto in fotos_obra if foto["caminho"] != foto_principal]
+    fase_portal = obra["fase_obra"] if obra["fase_obra"] else "Atualizacao em breve"
+    proxima_etapa = obra["proxima_etapa_portal"] if obra["proxima_etapa_portal"] else _proxima_etapa(fase_portal, obra["status"])
+    ultima_atualizacao = _ultima_atualizacao(obra, atualizacoes, fotos_obra)
+    timeline_portal = _montar_timeline_portal(obra, fase_portal, proxima_etapa, ultima_atualizacao)
+
     return render_template(
         "portal_obra.html",
         obra=obra,
         atualizacoes=atualizacoes,
         fotos_obra=fotos_obra,
+        foto_principal=foto_principal,
+        galeria_portal=galeria_portal,
+        fase_portal=fase_portal,
+        proxima_etapa=proxima_etapa,
+        ultima_atualizacao=ultima_atualizacao,
+        timeline_portal=timeline_portal,
     )
 
 

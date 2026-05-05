@@ -13,7 +13,7 @@ from auth import verificar_senha, gerar_hash_senha, eh_admin, gerar_csrf_token, 
 from services.validators import limpar_texto
 from services.email_service import enviar_email_resend
 from services.log_service import registrar_log
-from services.tenant import empresa_usuario_por_form, listar_empresas
+from services.tenant import empresa_id_atual, empresa_usuario_por_form, listar_empresas, tem_acesso_global
 
 auth_bp = Blueprint("auth_bp", __name__)
 UPLOAD_USUARIOS_DIR = Path("static/uploads/usuarios")
@@ -105,6 +105,15 @@ def guardar_credenciais_usuario(nome, username, senha, contexto="criado"):
 
 def redirecionar_usuarios():
     return redirect(url_for("auth_bp.usuarios"))
+
+
+def obter_usuario_administravel(usuario_id, campos="id"):
+    filtro_empresa = "" if tem_acesso_global() else "AND empresa_id = ?"
+    params = (usuario_id,) if tem_acesso_global() else (usuario_id, empresa_id_atual())
+    return query_one(
+        f"SELECT {campos} FROM usuarios WHERE id = ? AND perfil != 'cliente' {filtro_empresa}",
+        params,
+    )
 
 
 def usuario_logado():
@@ -303,7 +312,13 @@ def perfil():
 
     usuarios = []
     if eh_admin():
-        usuarios = query_all("SELECT id, empresa_id, nome, username, email, perfil, ativo, foto_perfil, criado_em FROM usuarios ORDER BY nome ASC")
+        if tem_acesso_global():
+            usuarios = query_all("SELECT id, empresa_id, nome, username, email, perfil, ativo, foto_perfil, criado_em FROM usuarios ORDER BY nome ASC")
+        else:
+            usuarios = query_all(
+                "SELECT id, empresa_id, nome, username, email, perfil, ativo, foto_perfil, criado_em FROM usuarios WHERE empresa_id = ? ORDER BY nome ASC",
+                (empresa_id_atual(),),
+            )
 
     return render_template("perfil.html", usuario=usuario, usuarios=usuarios)
 
@@ -363,22 +378,29 @@ def usuarios():
         flash("Apenas administradores podem gerenciar usuarios.", "erro")
         return redirect(url_for("dashboard_bp.dashboard"))
 
-    usuarios_lista = query_all("""
+    filtro_empresa = ""
+    params_empresa = ()
+    if not tem_acesso_global():
+        filtro_empresa = "AND u.empresa_id = ?"
+        params_empresa = (empresa_id_atual(),)
+
+    usuarios_lista = query_all(f"""
         SELECT
             u.id, u.empresa_id, u.nome, u.username, u.email, u.perfil, u.ativo,
             u.foto_perfil, u.criado_em, e.nome AS empresa_nome
         FROM usuarios u
         LEFT JOIN empresas e ON e.id = u.empresa_id
         WHERE u.perfil != 'cliente'
+          {filtro_empresa}
         ORDER BY u.ativo DESC, u.nome ASC
-    """)
+    """, params_empresa)
     kpis = {
         "total": len(usuarios_lista),
         "ativos": sum(1 for usuario in usuarios_lista if usuario["ativo"]),
         "admins": sum(1 for usuario in usuarios_lista if usuario["perfil"] == "admin"),
     }
     credenciais_usuario = session.pop("credenciais_usuario", None)
-    empresas = listar_empresas()
+    empresas = listar_empresas() if tem_acesso_global() else []
 
     return render_template(
         "usuarios.html",
@@ -387,6 +409,7 @@ def usuarios():
         kpis=kpis,
         credenciais_usuario=credenciais_usuario,
         sistema_url=url_sistema(),
+        admin_global=tem_acesso_global(),
     )
 
 
@@ -423,11 +446,16 @@ def novo_usuario():
         perfil = "leitura"
 
     try:
-        empresa_id = empresa_usuario_por_form(
-            perfil,
-            request.form.get("empresa_id", ""),
-            request.form.get("empresa_nome", ""),
-        )
+        if tem_acesso_global():
+            empresa_id = empresa_usuario_por_form(
+                perfil,
+                request.form.get("empresa_id", ""),
+                request.form.get("empresa_nome", ""),
+            )
+        else:
+            empresa_id = empresa_id_atual()
+            if not empresa_id:
+                raise ValueError("Administrador sem empresa nao pode criar usuarios de empresa.")
     except ValueError as e:
         flash(str(e), "erro")
         return redirecionar_usuarios()
@@ -448,12 +476,28 @@ def novo_usuario():
         flash("Ja existe um usuario com esse email.", "erro")
         return redirecionar_usuarios()
 
+    onboarding_pendente = 1 if perfil == "gestor" else 0
+    onboarding_completo = 0 if onboarding_pendente else 1
+
     usuario_id = execute(
         """
-        INSERT INTO usuarios (empresa_id, nome, username, email, senha_hash, perfil, ativo)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO usuarios (
+            empresa_id, nome, username, email, senha_hash, perfil, ativo,
+            onboarding_completo, onboarding_pendente
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (empresa_id, nome, username, email or None, gerar_hash_senha(senha), perfil, ativo)
+        (
+            empresa_id,
+            nome,
+            username,
+            email or None,
+            gerar_hash_senha(senha),
+            perfil,
+            ativo,
+            onboarding_completo,
+            onboarding_pendente,
+        )
     )
     registrar_log("criar_usuario", "usuario", usuario_id, f"Usuario {username} criado")
     guardar_credenciais_usuario(nome, username, senha, "criado")
@@ -486,12 +530,15 @@ def novo_usuario_antigo():
         flash("Já existe um usuário com esse username.", "erro")
         return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
+    onboarding_pendente = 1 if perfil == "gestor" else 0
+    onboarding_completo = 0 if onboarding_pendente else 1
+
     usuario_id = execute(
         """
-        INSERT INTO usuarios (nome, username, senha_hash, perfil, ativo)
-        VALUES (?, ?, ?, ?, 1)
+        INSERT INTO usuarios (nome, username, senha_hash, perfil, ativo, onboarding_completo, onboarding_pendente)
+        VALUES (?, ?, ?, ?, 1, ?, ?)
         """,
-        (nome, username, gerar_hash_senha(senha), perfil)
+        (nome, username, gerar_hash_senha(senha), perfil, onboarding_completo, onboarding_pendente)
     )
     registrar_log("criar_usuario", "usuario", usuario_id, f"Usuário {username} criado")
     flash("Usuário criado com sucesso.", "sucesso")
@@ -504,7 +551,7 @@ def editar_usuario(usuario_id):
         flash("Apenas administradores podem editar usuarios.", "erro")
         return redirecionar_usuarios()
 
-    usuario = query_one("SELECT id FROM usuarios WHERE id = ? AND perfil != 'cliente'", (usuario_id,))
+    usuario = obter_usuario_administravel(usuario_id)
     if not usuario:
         flash("Usuario nao encontrado.", "erro")
         return redirecionar_usuarios()
@@ -524,11 +571,16 @@ def editar_usuario(usuario_id):
         perfil = "leitura"
 
     try:
-        empresa_id = empresa_usuario_por_form(
-            perfil,
-            request.form.get("empresa_id", ""),
-            request.form.get("empresa_nome", ""),
-        )
+        if tem_acesso_global():
+            empresa_id = empresa_usuario_por_form(
+                perfil,
+                request.form.get("empresa_id", ""),
+                request.form.get("empresa_nome", ""),
+            )
+        else:
+            empresa_id = empresa_id_atual()
+            if not empresa_id:
+                raise ValueError("Administrador sem empresa nao pode editar usuarios de empresa.")
     except ValueError as e:
         flash(str(e), "erro")
         return redirecionar_usuarios()
@@ -545,10 +597,27 @@ def editar_usuario(usuario_id):
         flash("Ja existe um usuario com esse email.", "erro")
         return redirecionar_usuarios()
 
-    execute(
-        "UPDATE usuarios SET empresa_id = ?, nome = ?, username = ?, email = ?, perfil = ?, ativo = ? WHERE id = ?",
-        (empresa_id, nome, username, email or None, perfil, ativo, usuario_id)
-    )
+    onboarding_pendente = None
+    onboarding_completo = None
+    if perfil != "gestor":
+        onboarding_pendente = 0
+        onboarding_completo = 1
+
+    if onboarding_pendente is None:
+        execute(
+            "UPDATE usuarios SET empresa_id = ?, nome = ?, username = ?, email = ?, perfil = ?, ativo = ? WHERE id = ?",
+            (empresa_id, nome, username, email or None, perfil, ativo, usuario_id)
+        )
+    else:
+        execute(
+            """
+            UPDATE usuarios
+            SET empresa_id = ?, nome = ?, username = ?, email = ?, perfil = ?, ativo = ?,
+                onboarding_completo = ?, onboarding_pendente = ?
+            WHERE id = ?
+            """,
+            (empresa_id, nome, username, email or None, perfil, ativo, onboarding_completo, onboarding_pendente, usuario_id)
+        )
     if usuario_id == session.get("usuario_id"):
         session["usuario_nome"] = nome
         session["usuario_perfil"] = perfil
@@ -575,7 +644,7 @@ def toggle_usuario(usuario_id):
         flash("Voce nao pode desativar sua propria conta.", "erro")
         return redirecionar_usuarios()
 
-    usuario = query_one("SELECT id, ativo FROM usuarios WHERE id = ? AND perfil != 'cliente'", (usuario_id,))
+    usuario = obter_usuario_administravel(usuario_id, "id, ativo")
     if not usuario:
         if requisicao_ajax:
             return jsonify({"ok": False, "message": "Usuario nao encontrado."}), 404
@@ -602,7 +671,7 @@ def excluir_usuario(usuario_id):
         flash("Voce nao pode excluir sua propria conta.", "erro")
         return redirecionar_usuarios()
 
-    usuario = query_one("SELECT id, username FROM usuarios WHERE id = ? AND perfil != 'cliente'", (usuario_id,))
+    usuario = obter_usuario_administravel(usuario_id, "id, username")
     if not usuario:
         flash("Usuario nao encontrado.", "erro")
         return redirecionar_usuarios()
@@ -625,7 +694,7 @@ def desativar_usuario(usuario_id):
         flash("Você não pode desativar seu próprio usuário.", "erro")
         return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
-    usuario = query_one("SELECT id, ativo FROM usuarios WHERE id = ?", (usuario_id,))
+    usuario = obter_usuario_administravel(usuario_id, "id, ativo")
     if not usuario:
         if requisicao_ajax:
             return jsonify({"ok": False, "message": "Usuario nao encontrado."}), 404
@@ -650,7 +719,7 @@ def reativar_usuario(usuario_id):
         flash("Apenas administradores podem reativar usuarios.", "erro")
         return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
-    usuario = query_one("SELECT id FROM usuarios WHERE id = ?", (usuario_id,))
+    usuario = obter_usuario_administravel(usuario_id)
     if not usuario:
         flash("Usuario nao encontrado.", "erro")
         return redirect(url_for("auth_bp.perfil") + "#usuarios")
@@ -677,7 +746,7 @@ def resetar_senha_usuario(usuario_id):
         flash("A confirmacao da senha nao confere.", "erro")
         return redirecionar_usuarios()
 
-    usuario = query_one("SELECT id, nome, username FROM usuarios WHERE id = ? AND perfil != 'cliente'", (usuario_id,))
+    usuario = obter_usuario_administravel(usuario_id, "id, nome, username")
     if not usuario:
         flash("Usuario nao encontrado.", "erro")
         return redirecionar_usuarios()
@@ -695,7 +764,7 @@ def atualizar_foto_usuario(usuario_id):
         flash("Apenas administradores podem alterar fotos de usuarios.", "erro")
         return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
-    usuario = query_one("SELECT id FROM usuarios WHERE id = ?", (usuario_id,))
+    usuario = obter_usuario_administravel(usuario_id)
     if not usuario:
         flash("Usuario nao encontrado.", "erro")
         return redirect(url_for("auth_bp.perfil") + "#usuarios")

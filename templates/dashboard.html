@@ -23,6 +23,7 @@
 {% set status_concluidas_pct = (status_ns.concluidas / total_obras_dash * 100) if total_obras_dash > 0 else 0 %}
 {% set status_andamento_pct = (status_ns.andamento / total_obras_dash * 100) if total_obras_dash > 0 else 0 %}
 {% set status_atrasadas_pct = (status_ns.atrasadas / total_obras_dash * 100) if total_obras_dash > 0 else 0 %}
+{% set dashboard_vazio_total = total_obras_dash == 0 and (custos|length) == 0 %}
 
 <div class="dashboard-v2">
     <div class="dashboard-v2-header">
@@ -87,7 +88,27 @@
         </div>
     </div>
 
-    <section class="dashboard-v2-kpis">
+    <section id="dashboardEmptyState" class="card dashboard-v2-empty-callout" {% if not dashboard_vazio_total %}hidden{% endif %}>
+        <div class="dashboard-v2-empty-icon" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                <path d="M4 21V5.8C4 4.8 4.8 4 5.8 4h8.4c1 0 1.8.8 1.8 1.8V21" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M16 9h2.2c1 0 1.8.8 1.8 1.8V21" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M8 8h4M8 12h4M8 16h4M3 21h18" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+        </div>
+        <div class="dashboard-v2-empty-copy">
+            <strong>Cadastre sua primeira obra para comecar</strong>
+            <p>Assim que a primeira obra for criada, o dashboard libera indicadores, custos e desempenho financeiro.</p>
+        </div>
+        {% if eh_gestor() %}
+        <a href="{{ url_for('obras_bp.obras') }}" class="btn btn-primary" data-spa>+ Criar primeira obra</a>
+        {% endif %}
+    </section>
+
+    <section id="dashboardKpisSection" class="dashboard-v2-kpis" {% if dashboard_vazio_total %}hidden{% endif %}>
         <div class="dashboard-v2-kpi dashboard-v2-kpi--blue">
             <span>Valor total dos contratos</span>
             <strong id="kpiReceita">{{ formatar_moeda(total_receita) }}</strong>
@@ -128,7 +149,7 @@
         <span id="quickAlertasAtivos" hidden>{{ alertas|length }}</span>
     </section>
 
-    <section class="dashboard-v2-main-grid">
+    <section id="dashboardMainGridSection" class="dashboard-v2-main-grid" {% if dashboard_vazio_total %}hidden{% endif %}>
         <div class="card dashboard-v2-panel dashboard-v2-finance">
             <div class="card-title">Desempenho financeiro geral</div>
             <div class="dashboard-v2-finance-bars">
@@ -183,7 +204,7 @@
         </div>
     </section>
 
-    <section class="card dashboard-v2-table-card">
+    <section id="dashboardTableSection" class="card dashboard-v2-table-card" {% if dashboard_vazio_total %}hidden{% endif %}>
         <div class="card-hdr">
             <div class="card-title">Situação das obras</div>
             <a href="{{ url_for('obras_bp.obras') }}" class="btn btn-small btn-ghost">Ver todas as obras</a>
@@ -212,7 +233,15 @@
                     <a href="/obra/{{ obra.codigo }}" class="btn btn-small btn-ghost">Abrir portal</a>
                 </div>
                 {% else %}
-                <div class="dashboard-summary-empty">Nenhuma obra cadastrada.</div>
+                <div class="dashboard-summary-empty dashboard-summary-empty--rich">
+                    <div class="dashboard-summary-empty-copy">
+                        <strong>Nenhuma obra cadastrada.</strong>
+                        <p>Crie a primeira obra para acompanhar prazos, custos e margem em tempo real.</p>
+                    </div>
+                    {% if eh_gestor() %}
+                    <a href="{{ url_for('obras_bp.obras') }}" class="btn btn-primary" data-spa>+ Criar primeira obra</a>
+                    {% endif %}
+                </div>
                 {% endfor %}
             </div>
         </div>
@@ -643,6 +672,7 @@
 
     .dashboard-v2-bar i {
         display: block;
+        width: 0;
         height: 100%;
         max-width: 100%;
         border-radius: inherit;
@@ -669,6 +699,59 @@
 
     .dashboard-v2-note strong {
         color: var(--text);
+    }
+
+    .dashboard-v2-empty-callout {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 18px;
+        padding: 24px;
+        min-height: 156px;
+    }
+
+    .dashboard-v2-empty-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 54px;
+        height: 54px;
+        border-radius: 14px;
+        color: #2f7df0;
+        background: rgba(47, 125, 240, 0.12);
+        border: 1px solid rgba(47, 125, 240, 0.2);
+    }
+
+    .dashboard-v2-empty-copy strong {
+        display: block;
+        color: #f4f7ff;
+        font-size: 19px;
+        line-height: 1.25;
+    }
+
+    .dashboard-v2-empty-copy p {
+        margin: 7px 0 0;
+        color: var(--text2);
+        font-size: 13px;
+    }
+
+    .dashboard-summary-empty--rich {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .dashboard-summary-empty-copy strong {
+        display: block;
+        color: #f4f7ff;
+        font-size: 15px;
+        line-height: 1.2;
+    }
+
+    .dashboard-summary-empty-copy p {
+        margin: 6px 0 0;
+        color: var(--text2);
     }
 
     .dashboard-v2-status-body {
@@ -974,6 +1057,18 @@
         .dashboard-v2-finance-row em {
             text-align: left;
         }
+
+        .dashboard-v2-empty-callout,
+        .dashboard-summary-empty--rich {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .dashboard-v2-empty-callout .btn,
+        .dashboard-summary-empty--rich .btn {
+            width: 100%;
+        }
     }
 </style>
 <div id="dashboard-data" data-margem-labels='{{ chart_margem_labels | default([], true) | tojson | safe }}'
@@ -988,6 +1083,8 @@
 
 <script>
     (function initDashboard() {
+        const ehGestor = {{ "true" if eh_gestor() else "false" }};
+
         function esperarChart(callback) {
             if (typeof Chart !== 'undefined') {
                 callback();
@@ -1284,7 +1381,14 @@
         function atualizarResumoObras(p) {
             const b = document.getElementById("resumoObrasBody");
             if (!p.margem_por_obra || !p.margem_por_obra.length) {
-                b.innerHTML = `<div class="dashboard-summary-empty">Nenhuma obra cadastrada.</div>`;
+                b.innerHTML = `
+                <div class="dashboard-summary-empty dashboard-summary-empty--rich">
+                    <div class="dashboard-summary-empty-copy">
+                        <strong>Nenhuma obra cadastrada.</strong>
+                        <p>Crie a primeira obra para acompanhar prazos, custos e margem em tempo real.</p>
+                    </div>
+                    ${ehGestor ? `<a href="/obras" class="btn btn-primary" data-spa>+ Criar primeira obra</a>` : ""}
+                </div>`;
                 return;
             }
             b.innerHTML = p.margem_por_obra.map(o => `
@@ -1307,6 +1411,19 @@
             </div>`).join("");
             aplicarBarrasResumo();
         }
+
+        function atualizarEstadoVazioDashboard(p) {
+            const semDados = Number(p.kpis.total_obras || 0) === 0 && Number(p.kpis.total_custos_lancados || 0) === 0;
+            const emptyState = document.getElementById("dashboardEmptyState");
+            const kpis = document.getElementById("dashboardKpisSection");
+            const mainGrid = document.getElementById("dashboardMainGridSection");
+            const table = document.getElementById("dashboardTableSection");
+            if (emptyState) emptyState.hidden = !semDados;
+            if (kpis) kpis.hidden = semDados;
+            if (mainGrid) mainGrid.hidden = semDados;
+            if (table) table.hidden = semDados;
+        }
+
         function atualizarLinkExcel(p) {
             const params = new URLSearchParams();
             if (p.filtros.obra) params.set("obra", p.filtros.obra);
@@ -1346,6 +1463,7 @@
                 atualizarAlertas(payload);
                 atualizarRanking(payload);
                 atualizarResumoObras(payload);
+                atualizarEstadoVazioDashboard(payload);
                 construirGraficos(payload);
                 atualizarLinkExcel(payload);
                 atualizarUrl();

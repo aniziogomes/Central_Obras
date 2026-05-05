@@ -7,7 +7,7 @@ from database import execute, query_one
 from routes.obras_routes import gerar_codigo_obra
 from routes.portal_routes import calcular_expiracao_portal, gerar_token_portal
 from services.log_service import registrar_log
-from services.tenant import and_empresa, empresa_id_para_insert, obter_obra_acessivel
+from services.tenant import empresa_id_para_insert, obter_obra_acessivel
 from services.validators import (
     CATEGORIAS_CUSTO_VALIDAS,
     limpar_texto,
@@ -35,15 +35,9 @@ def _usuario_id():
     return session.get("usuario_id")
 
 
-def _usuario_onboarding_completo():
-    usuario = query_one("SELECT onboarding_completo FROM usuarios WHERE id = ?", (_usuario_id(),))
-    return bool(usuario and int(usuario["onboarding_completo"] or 0) == 1)
-
-
-def _total_obras():
-    filtro_empresa, params_empresa = and_empresa()
-    total = query_one(f"SELECT COUNT(*) AS total FROM obras WHERE 1 = 1 {filtro_empresa}", params_empresa)
-    return int(total["total"] if total else 0)
+def _usuario_onboarding_pendente():
+    usuario = query_one("SELECT onboarding_pendente FROM usuarios WHERE id = ?", (_usuario_id(),))
+    return bool(usuario and int(usuario["onboarding_pendente"] or 0) == 1)
 
 
 def _obra_onboarding():
@@ -122,7 +116,7 @@ def onboarding():
         return redirect(url_for("auth_bp.login"))
     if not eh_gestor():
         return redirect(url_for("dashboard_bp.dashboard"))
-    if _usuario_onboarding_completo() and _total_obras() > 0:
+    if not _usuario_onboarding_pendente():
         return redirect(url_for("dashboard_bp.dashboard"))
 
     passo = _normalizar_passo(request.args.get("step"))
@@ -134,6 +128,8 @@ def onboarding():
 def criar_primeira_obra():
     if not usuario_logado() or not eh_gestor():
         return redirect(url_for("auth_bp.login"))
+    if not _usuario_onboarding_pendente():
+        return redirect(url_for("obras_bp.obras"))
 
     try:
         nome = limpar_texto(request.form.get("nome", ""), max_len=140, obrigatorio=True, campo="Nome da obra")
@@ -175,6 +171,8 @@ def criar_primeira_obra():
 def criar_primeiro_custo():
     if not usuario_logado() or not eh_gestor():
         return redirect(url_for("auth_bp.login"))
+    if not _usuario_onboarding_pendente():
+        return redirect(url_for("custos_bp.custos"))
 
     obra = _obra_onboarding()
     if not obra:
@@ -215,6 +213,8 @@ def criar_primeiro_custo():
 def pular_primeiro_custo():
     if not usuario_logado() or not eh_gestor():
         return redirect(url_for("auth_bp.login"))
+    if not _usuario_onboarding_pendente():
+        return redirect(url_for("dashboard_bp.dashboard"))
     if not _obra_onboarding():
         return redirect(url_for("onboarding_bp.onboarding", step=1))
 
@@ -228,7 +228,10 @@ def concluir_onboarding():
     if not usuario_logado() or not eh_gestor():
         return redirect(url_for("auth_bp.login"))
 
-    execute("UPDATE usuarios SET onboarding_completo = 1 WHERE id = ?", (_usuario_id(),))
+    execute(
+        "UPDATE usuarios SET onboarding_completo = 1, onboarding_pendente = 0 WHERE id = ?",
+        (_usuario_id(),),
+    )
     session.pop("onboarding_ativo", None)
     session.pop("onboarding_obra_id", None)
     session.pop("onboarding_step", None)

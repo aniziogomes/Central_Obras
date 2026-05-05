@@ -3,7 +3,7 @@ from io import BytesIO
 from flask import Blueprint, render_template, request, redirect, url_for, send_file, jsonify
 from database import query_all
 from services.dashboard_service import calcular_kpis_dashboard, calcular_alertas, serializar_dashboard_json
-from auth import usuario_logado, eh_leitura
+from auth import usuario_logado, pode_visualizar
 from services.tenant import where_empresa
 
 dashboard_bp = Blueprint("dashboard_bp", __name__)
@@ -22,7 +22,7 @@ def obter_filtros_dashboard():
 
 @dashboard_bp.route("/dashboard")
 def dashboard():
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return redirect(url_for("auth_bp.login"))
 
     filtros = obter_filtros_dashboard()
@@ -68,7 +68,7 @@ def dashboard():
 
 @dashboard_bp.route("/dashboard/dados")
 def dashboard_dados():
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return jsonify({"erro": "não autorizado"}), 401
 
     filtros = obter_filtros_dashboard()
@@ -88,7 +88,7 @@ def dashboard_dados():
 
 @dashboard_bp.route("/dashboard/exportar")
 def dashboard_exportar():
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return redirect(url_for("auth_bp.login"))
 
     filtros = obter_filtros_dashboard()
@@ -133,7 +133,7 @@ def dashboard_exportar():
 
 @dashboard_bp.route("/alertas")
 def alertas():
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return redirect(url_for("auth_bp.login"))
 
     lista_alertas = calcular_alertas()
@@ -142,7 +142,7 @@ def alertas():
 
 @dashboard_bp.route("/logs")
 def logs():
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return redirect(url_for("auth_bp.login"))
 
     where_logs, params_logs = where_empresa()

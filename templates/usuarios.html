@@ -143,6 +143,7 @@
           <span>Email</span>
           <input type="email" name="email" autocomplete="email">
         </label>
+        {% if admin_global %}
         <label class="form-field">
           <span>Empresa / cliente</span>
           <select name="empresa_id">
@@ -157,6 +158,7 @@
           <span>Nova empresa</span>
           <input type="text" name="empresa_nome" autocomplete="off" placeholder="Criar empresa ao salvar">
         </label>
+        {% endif %}
         <label class="form-field">
           <span>Senha temporária</span>
           <input type="password" name="senha" minlength="6" required autocomplete="new-password">
@@ -216,6 +218,7 @@
           <span>Email</span>
           <input type="email" name="email" value="{{ usuario.email or '' }}" autocomplete="email">
         </label>
+        {% if admin_global %}
         <label class="form-field">
           <span>Empresa / cliente</span>
           <select name="empresa_id">
@@ -230,6 +233,7 @@
           <span>Nova empresa</span>
           <input type="text" name="empresa_nome" autocomplete="off" placeholder="Criar empresa ao salvar">
         </label>
+        {% endif %}
         <label class="form-field">
           <span>Perfil</span>
           <select name="perfil" required data-profile-help>

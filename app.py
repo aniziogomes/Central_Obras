@@ -3,10 +3,9 @@ import secrets
 from datetime import timedelta
 
 from flask import Flask, request, url_for, redirect, jsonify, session, abort, send_from_directory
-from database import init_db, query_one
+from database import init_db
 from utils import formatar_moeda, calcular_media_fornecedor, formatar_tipo_obra, formatar_data
 from services.dashboard_service import calcular_alertas
-from services.tenant import and_empresa
 
 from auth import (
     criar_usuario_admin,
@@ -14,6 +13,7 @@ from auth import (
     eh_gestor,
     eh_leitura,
     gerar_csrf_token,
+    pode_visualizar,
     usuario_atual,
     usuario_logado,
     usuario_perfil,
@@ -56,9 +56,9 @@ criar_usuario_admin()
 @app.route("/favicon.ico")
 def favicon():
     return send_from_directory(
-        os.path.join(app.root_path, "static", "img"),
-        "favicon.ico",
-        mimetype="image/vnd.microsoft.icon",
+        os.path.join(app.root_path, "static", "imgLogos"),
+        "logo1.png",
+        mimetype="image/png",
         max_age=0,
     )
 
@@ -96,15 +96,9 @@ def _resposta_nao_autorizado():
 
 
 def _deve_exibir_onboarding(usuario):
-    if not usuario or usuario["perfil"] not in {"admin", "gestor"}:
+    if not usuario or usuario["perfil"] != "gestor":
         return False
-    filtro_empresa, params_empresa = and_empresa()
-    total_obras = query_one(f"SELECT COUNT(*) AS total FROM obras WHERE 1 = 1 {filtro_empresa}", params_empresa)
-    if int(total_obras["total"] if total_obras else 0) == 0:
-        return True
-    if session.get("onboarding_ativo"):
-        return True
-    return False
+    return int(usuario["onboarding_pendente"] or 0) == 1
 
 
 @app.before_request
@@ -138,6 +132,11 @@ def aplicar_seguranca_minima():
     session["empresa_id"] = usuario["empresa_id"]
     session["usuario_foto"] = usuario["foto_perfil"] if "foto_perfil" in usuario.keys() and usuario["foto_perfil"] else ""
 
+    if not _deve_exibir_onboarding(usuario):
+        session.pop("onboarding_ativo", None)
+        session.pop("onboarding_obra_id", None)
+        session.pop("onboarding_step", None)
+
     if endpoint not in ROTAS_ONBOARDING and _deve_exibir_onboarding(usuario):
         return redirect(url_for("onboarding_bp.onboarding"))
 
@@ -158,7 +157,7 @@ def aplicar_headers_seguranca(response):
 @app.context_processor
 def inject_helpers():
     alertas_globais = []
-    if usuario_logado() and eh_leitura():
+    if usuario_logado() and pode_visualizar():
         try:
             alertas_globais = calcular_alertas()
         except Exception:
@@ -189,6 +188,7 @@ def inject_helpers():
         eh_admin=eh_admin,
         eh_gestor=eh_gestor,
         eh_leitura=eh_leitura,
+        pode_visualizar=pode_visualizar,
         usuario_perfil=usuario_perfil,
         csrf_token=gerar_csrf_token,
         alertas_globais=alertas_globais,

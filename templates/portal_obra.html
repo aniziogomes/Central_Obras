@@ -4,21 +4,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ obra.nome }} - Portal do cliente</title>
+  <title>{{ obra.nome }} - Portal da obra</title>
   <style>
     :root {
-      --bg: #11141b;
-      --bg2: #1b202b;
-      --bg3: #232936;
-      --border: rgba(255, 255, 255, .08);
-      --text: #f4f6fb;
-      --text2: #aab3c3;
-      --text3: #657184;
-      --blue: #2f7df0;
-      --blue2: #8ab8ff;
-      --orange: #e8621a;
-      --orange2: #ff8a4a;
-      --shadow: 0 18px 42px rgba(0, 0, 0, .28);
+      --bg: #090b10;
+      --bg-soft: #11151d;
+      --panel: rgba(21, 26, 36, 0.88);
+      --panel-strong: rgba(28, 34, 46, 0.94);
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #f7f8fb;
+      --text-soft: #a7b0bf;
+      --text-dim: #70798a;
+      --orange: #ff8a1f;
+      --orange-soft: #ffb25f;
+      --orange-glow: rgba(255, 138, 31, 0.24);
+      --green: #49c97c;
+      --shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
+      --radius-xl: 28px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
     }
 
     * {
@@ -27,358 +31,831 @@
       padding: 0;
     }
 
+    html {
+      color-scheme: dark;
+    }
+
     body {
       min-height: 100vh;
       color: var(--text);
-      font-family: Arial, sans-serif;
+      font-family: Sora, Manrope, "Segoe UI", sans-serif;
       background:
-        radial-gradient(circle at 15% 0%, rgba(47, 125, 240, .18), transparent 34%),
-        linear-gradient(180deg, #10141c 0%, #151923 100%);
+        radial-gradient(circle at top left, rgba(255, 138, 31, 0.18), transparent 30%),
+        radial-gradient(circle at top right, rgba(255, 255, 255, 0.06), transparent 20%),
+        linear-gradient(180deg, #080a0f 0%, #10141c 44%, #090b10 100%);
     }
 
-    .portal-shell {
-      width: min(1040px, calc(100% - 32px));
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.018), transparent 30%),
+        repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0.012) 1px, transparent 1px, transparent 22px);
+      opacity: 0.36;
+    }
+
+    .portal-page {
+      position: relative;
+      width: min(100%, 560px);
       margin: 0 auto;
-      padding: 28px 0 40px;
+      padding: 18px 14px 42px;
     }
 
-    .portal-top {
+    .portal-topbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 18px;
+      gap: 12px;
+      margin-bottom: 14px;
     }
 
-    .brand {
+    .portal-brand {
       display: flex;
       align-items: center;
-      gap: 10px;
-      color: var(--text2);
-      font-size: 12px;
-      font-weight: 700;
+      gap: 12px;
+      min-width: 0;
     }
 
-    .brand-mark {
-      width: 34px;
-      height: 34px;
+    .portal-brand-mark {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
       display: grid;
       place-items: center;
-      border-radius: 10px;
-      color: #fff;
-      background: linear-gradient(180deg, var(--orange2), var(--orange));
-      box-shadow: 0 10px 24px rgba(232, 98, 26, .22);
+      flex: 0 0 auto;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
+      overflow: hidden;
     }
 
-    .live {
+    .portal-brand-mark img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .portal-brand-copy {
+      min-width: 0;
+    }
+
+    .portal-brand-copy strong {
+      display: block;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.15;
+    }
+
+    .portal-brand-copy span {
+      display: block;
+      margin-top: 3px;
+      color: var(--text-soft);
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .portal-live {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      min-height: 28px;
-      padding: 0 10px;
-      border: 1px solid rgba(40, 181, 106, .24);
+      gap: 8px;
+      min-height: 34px;
+      padding: 0 12px;
       border-radius: 999px;
-      color: #74e49b;
-      background: rgba(40, 181, 106, .10);
+      border: 1px solid rgba(73, 201, 124, 0.2);
+      background: rgba(73, 201, 124, 0.1);
+      color: #98e8b7;
       font-size: 11px;
       font-weight: 800;
+      white-space: nowrap;
     }
 
-    .live::before {
+    .portal-live::before {
       content: "";
       width: 7px;
       height: 7px;
       border-radius: 50%;
-      background: #38bf72;
+      background: var(--green);
+      box-shadow: 0 0 0 6px rgba(73, 201, 124, 0.12);
     }
 
     .hero {
+      position: relative;
       overflow: hidden;
+      border-radius: var(--radius-xl);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, .035), rgba(255, 255, 255, .010)),
-        var(--bg2);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
       box-shadow: var(--shadow);
+      min-height: 436px;
     }
 
-    .photo {
-      height: clamp(260px, 46vw, 480px);
-      background: var(--bg3);
+    .hero-media {
+      position: absolute;
+      inset: 0;
+      background: #151a23;
     }
 
-    .photo img {
-      display: block;
+    .hero-media img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      filter: saturate(1.05) contrast(1.02);
+      transform: scale(1.02);
     }
 
-    .photo-empty {
-      height: 100%;
+    .hero-media::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(8, 10, 15, 0.08) 0%, rgba(8, 10, 15, 0.24) 22%, rgba(8, 10, 15, 0.72) 68%, rgba(8, 10, 15, 0.96) 100%);
+    }
+
+    .hero-placeholder {
+      position: absolute;
+      inset: 0;
       display: grid;
       place-items: center;
-      color: var(--text3);
-      font-size: 14px;
-      font-weight: 700;
-      border-bottom: 1px dashed rgba(255, 255, 255, .10);
+      background:
+        radial-gradient(circle at 28% 18%, rgba(255, 138, 31, 0.28), transparent 24%),
+        linear-gradient(180deg, #161b25 0%, #0f131b 100%);
     }
 
-    .content {
+    .hero-placeholder-badge {
+      width: 126px;
+      height: 126px;
+      border-radius: 34px;
       display: grid;
-      grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr);
-      gap: 18px;
-      padding: 22px;
-      align-items: start;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+      color: #fff;
+      font-size: 40px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      box-shadow: 0 22px 44px rgba(0, 0, 0, 0.34);
+      backdrop-filter: blur(10px);
     }
 
-    .title h1 {
-      margin: 0 0 10px;
-      color: var(--text);
-      font-size: clamp(24px, 4vw, 36px);
-      line-height: 1.08;
+    .hero-body {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      min-height: 436px;
+      padding: 18px;
     }
 
-    .fase-card,
-    .obs-card,
-    .updates-card {
-      border: 1px solid rgba(255, 255, 255, .075);
-      border-radius: 10px;
-      background: rgba(255, 255, 255, .025);
+    .hero-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
     }
 
-    .fase-card {
-      padding: 14px;
-    }
-
-    .label {
-      display: block;
-      margin-bottom: 8px;
-      color: var(--text2);
-      font-size: 10px;
-      font-weight: 850;
-      letter-spacing: .07em;
-      text-transform: uppercase;
-    }
-
-    .fase {
+    .hero-chip {
       display: inline-flex;
-      min-height: 30px;
       align-items: center;
+      min-height: 30px;
       padding: 0 12px;
-      border: 1px solid rgba(232, 98, 26, .30);
       border-radius: 999px;
-      color: var(--orange2);
-      background: rgba(232, 98, 26, .11);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(12, 15, 22, 0.46);
+      color: #eff4fb;
+      font-size: 11px;
+      font-weight: 700;
+      backdrop-filter: blur(12px);
+    }
+
+    .hero-chip--phase {
+      color: #ffd0a0;
+      border-color: rgba(255, 138, 31, 0.28);
+      background: rgba(255, 138, 31, 0.16);
+    }
+
+    .hero-title {
+      font-size: clamp(30px, 8vw, 42px);
+      line-height: 1.02;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-location {
+      margin-top: 10px;
+      color: rgba(244, 247, 255, 0.84);
+      font-size: 13px;
+      line-height: 1.5;
+      max-width: 92%;
+    }
+
+    .hero-progress {
+      display: grid;
+      grid-template-columns: 96px minmax(0, 1fr);
+      align-items: center;
+      gap: 16px;
+      margin-top: 20px;
+      padding: 14px;
+      border-radius: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(10, 13, 20, 0.68);
+      backdrop-filter: blur(16px);
+    }
+
+    .progress-spot {
+      display: grid;
+      place-items: center;
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle, rgba(9, 11, 16, 1) 0 55%, transparent 56%),
+        conic-gradient(var(--orange) 0 calc(var(--progress, 0) * 3.6deg), rgba(255, 255, 255, 0.12) 0);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    }
+
+    .progress-spot strong {
+      font-size: 26px;
+      line-height: 1;
+    }
+
+    .progress-spot span {
+      margin-top: 4px;
+      color: var(--text-soft);
+      font-size: 10px;
+      line-height: 1.1;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .progress-copy strong {
+      display: block;
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    .progress-copy p {
+      margin-top: 5px;
+      color: var(--text-soft);
       font-size: 12px;
-      font-weight: 900;
-      letter-spacing: .03em;
+      line-height: 1.5;
+    }
+
+    .progress-bar {
+      height: 10px;
+      margin-top: 12px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .progress-bar i {
+      display: block;
+      width: calc(var(--progress, 0) * 1%);
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--orange), var(--orange-soft));
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 0 18px var(--orange-glow);
+    }
+
+    .portal-stack {
+      display: grid;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .portal-card {
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .portal-card-body {
+      padding: 18px;
+    }
+
+    .portal-section-kicker {
+      color: var(--text-soft);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
     }
 
-    .obs-card {
-      padding: 16px;
+    .portal-section-title {
+      margin-top: 6px;
+      font-size: 20px;
+      line-height: 1.15;
     }
 
-    .obs {
-      color: var(--text);
+    .hero-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .hero-metric {
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .hero-metric span {
+      display: block;
+      color: var(--text-soft);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .hero-metric strong {
+      display: block;
+      margin-top: 9px;
       font-size: 15px;
-      line-height: 1.7;
+      line-height: 1.4;
     }
 
-    .obs.empty {
-      color: var(--text2);
-      font-style: italic;
+    .message-card {
+      background:
+        linear-gradient(180deg, rgba(255, 138, 31, 0.08), rgba(255, 138, 31, 0.02)),
+        var(--panel-strong);
     }
 
-    .updates-card {
-      grid-column: 1 / -1;
-      padding: 16px;
+    .message-card p {
+      margin-top: 10px;
+      color: #edf1f8;
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .message-card p.is-empty {
+      color: var(--text-soft);
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .meta-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-soft);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .gallery-grid {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .gallery-lead {
+      position: relative;
+      overflow: hidden;
+      min-height: 214px;
+      border-radius: 18px;
+      background: #1a202b;
+    }
+
+    .gallery-lead img,
+    .gallery-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .gallery-lead-copy {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      left: 12px;
+      padding: 12px 13px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(9, 11, 16, 0.18), rgba(9, 11, 16, 0.82));
+      backdrop-filter: blur(10px);
+    }
+
+    .gallery-lead-copy strong {
+      display: block;
+      font-size: 14px;
+      line-height: 1.3;
+    }
+
+    .gallery-lead-copy span {
+      display: block;
+      margin-top: 3px;
+      color: var(--text-soft);
+      font-size: 11px;
+    }
+
+    .gallery-thumbs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .gallery-thumb {
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 0.92;
+      border-radius: 16px;
+      background: #1a202b;
+    }
+
+    .gallery-thumb::after {
+      content: attr(data-caption);
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      padding: 18px 10px 10px;
+      color: #fff;
+      font-size: 11px;
+      line-height: 1.35;
+      background: linear-gradient(180deg, transparent, rgba(7, 9, 14, 0.84));
+    }
+
+    .gallery-empty {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .gallery-empty-card {
+      min-height: 138px;
+      border-radius: 18px;
+      border: 1px dashed rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.02);
+      display: flex;
+      align-items: flex-end;
+      padding: 14px;
+      color: var(--text-soft);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .timeline-item {
+      position: relative;
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    .timeline-item:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      top: 30px;
+      left: 14px;
+      bottom: -14px;
+      width: 2px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .timeline-dot {
+      position: relative;
+      z-index: 1;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: #171b25;
+      color: var(--text-soft);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .timeline-item.is-done .timeline-dot {
+      background: rgba(73, 201, 124, 0.16);
+      color: #8ce4ad;
+      border-color: rgba(73, 201, 124, 0.22);
+    }
+
+    .timeline-item.is-current .timeline-dot {
+      background: rgba(255, 138, 31, 0.18);
+      color: #ffd1a6;
+      border-color: rgba(255, 138, 31, 0.26);
+      box-shadow: 0 0 0 8px rgba(255, 138, 31, 0.08);
+    }
+
+    .timeline-card {
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .timeline-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .timeline-top strong {
+      display: block;
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .timeline-date {
+      color: var(--orange-soft);
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .timeline-card p {
+      margin-top: 7px;
+      color: var(--text-soft);
+      font-size: 12px;
+      line-height: 1.6;
     }
 
     .updates-list {
       display: grid;
       gap: 10px;
+      margin-top: 14px;
     }
 
-    .update-item {
-      padding: 12px;
-      border: 1px solid rgba(255, 255, 255, .07);
-      border-radius: 9px;
-      background: rgba(17, 20, 27, .38);
+    .update-card {
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.025);
     }
 
-    .update-item time {
+    .update-card time {
       display: block;
-      margin-bottom: 6px;
-      color: var(--blue2);
+      color: var(--orange-soft);
       font-size: 11px;
-      font-weight: 850;
+      font-weight: 800;
     }
 
-    .update-item p {
-      margin: 0;
-      color: var(--text);
-      font-size: 14px;
-      line-height: 1.65;
+    .update-card p {
+      margin-top: 8px;
+      color: #edf1f8;
+      font-size: 13px;
+      line-height: 1.7;
     }
 
-    .footer {
-      margin-top: 16px;
-      color: var(--text3);
+    .update-card small {
+      display: block;
+      margin-top: 9px;
+      color: var(--text-dim);
       font-size: 11px;
+    }
+
+    .updates-empty {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px dashed rgba(255, 255, 255, 0.1);
+      color: var(--text-soft);
+      font-size: 12px;
+      line-height: 1.6;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .portal-footer {
+      margin-top: 18px;
+      color: var(--text-dim);
+      font-size: 11px;
+      line-height: 1.5;
       text-align: center;
     }
 
-    @media (max-width: 760px) {
-      .portal-shell {
-        width: min(100% - 14px, 1040px);
-        padding: 10px 0 24px;
+    @media (min-width: 761px) {
+      .portal-page {
+        padding-top: 26px;
       }
 
-      .portal-top {
-        gap: 10px;
-        margin-bottom: 10px;
-      }
-
-      .content {
-        grid-template-columns: 1fr;
-      }
-
-      .content {
-        display: grid;
-        gap: 12px;
-        padding: 14px;
-      }
-
-      .photo {
-        height: min(58vh, 360px);
-        min-height: 250px;
-      }
-
-      .title h1 {
-        font-size: 24px;
-        line-height: 1.12;
-      }
-
-      .fase-card,
-      .obs-card,
-      .updates-card {
-        border-radius: 9px;
-      }
-
-      .obs-card,
-      .updates-card {
-        padding: 14px;
-      }
-
-      .obs {
-        font-size: 14px;
-        line-height: 1.65;
-      }
-    }
-
-    @media (max-width: 420px) {
-      .brand-mark {
-        width: 30px;
-        height: 30px;
-        border-radius: 9px;
-      }
-
-      .brand {
-        font-size: 11px;
-      }
-
-      .live {
-        min-height: 26px;
-        padding: 0 8px;
-        font-size: 10px;
-      }
-
-      .photo {
-        min-height: 230px;
-        height: 54vh;
-      }
-
-      .content {
-        padding: 12px;
-      }
-
-      .fase {
-        max-width: 100%;
-        white-space: normal;
-        line-height: 1.2;
-        padding: 7px 10px;
+      .portal-stack {
+        gap: 18px;
       }
     }
   </style>
 </head>
 
 <body>
-  {% set foto_cliente = obra.foto_capa if obra.foto_capa is defined and obra.foto_capa else '' %}
-  {% if not foto_cliente and fotos_obra %}
-  {% set foto_cliente = fotos_obra[0].caminho %}
-  {% endif %}
-  {% set fase_cliente = obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else 'Atualização em breve' %}
-  {% set obs_cliente = obra.observacao_responsavel if obra.observacao_responsavel is defined and obra.observacao_responsavel else '' %}
+  {% set partes_nome = (obra.nome or 'Obra').split() %}
+  {% set iniciais = ((partes_nome[0][0] if partes_nome else 'O') ~ (partes_nome[1][0] if partes_nome|length > 1 else
+  ''))|upper %}
+  {% set progresso = (obra.progresso_percentual or 0)|round(0)|int %}
+  {% set endereco_resumido = obra.endereco if obra.endereco else 'Localizacao informada em obra privada' %}
+  {% set tipologia_resumida = obra.tipologia if obra.tipologia else 'Projeto residencial ou comercial' %}
+  {% set fotos_galeria = galeria_portal if galeria_portal is defined else [] %}
+  {% set atualizacao_label = formatar_data(ultima_atualizacao, '-', True) if ultima_atualizacao else 'Sem atualizacao
+  publicada' %}
 
-  <main class="portal-shell">
-    <div class="portal-top">
-      <div class="brand">
-        <div class="brand-mark">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-            <path d="M9 22V12h6v10" />
-          </svg>
+  <main class="portal-page">
+    <div class="portal-topbar">
+      <div class="portal-brand">
+        <div class="portal-brand-mark">
+          <img src="{{ url_for('static', filename='imgLogos/logo1.png', v='2') }}" alt="Canteiro">
         </div>
-        <span>Portal do cliente</span>
+        <div class="portal-brand-copy">
+          <strong>Portal VIP da obra</strong>
+          <span>Acompanhamento para o cliente</span>
+        </div>
       </div>
-      <div class="live">Link ativo</div>
+      <div class="portal-live">Portal ativo</div>
     </div>
 
     <section class="hero">
-      <div class="photo">
-        {% if foto_cliente %}
-        <img src="{{ foto_cliente }}" alt="Foto da obra {{ obra.nome }}">
+      <div class="hero-media">
+        {% if foto_principal %}
+        <img src="{{ foto_principal }}" alt="Imagem principal da obra {{ obra.nome }}">
         {% else %}
-        <div class="photo-empty">Foto da obra em breve</div>
+        <div class="hero-placeholder">
+          <div class="hero-placeholder-badge">{{ iniciais }}</div>
+        </div>
         {% endif %}
       </div>
 
-      <div class="content">
-        <div class="title">
-          <h1>{{ obra.nome }}</h1>
-          <div class="fase-card">
-            <span class="label">Fase atual</span>
-            <span class="fase">{{ fase_cliente }}</span>
-          </div>
+      <div class="hero-body" style="--progress: {{ progresso }};">
+        <div class="hero-chip-row">
+          <span class="hero-chip hero-chip--phase">{{ fase_portal }}</span>
+          <span class="hero-chip">{{ tipologia_resumida }}</span>
         </div>
 
-        <div class="obs-card">
-          <span class="label">Observação do responsável</span>
-          <div class="obs {% if not obs_cliente %}empty{% endif %}">
-            {{ obs_cliente or "O responsável pela obra ainda não publicou uma observação para o cliente." }}
+        <h1 class="hero-title">{{ obra.nome }}</h1>
+        <p class="hero-location">{{ endereco_resumido }}</p>
+
+        <div class="hero-progress">
+          <div class="progress-spot">
+            <div>
+              <strong>{{ progresso }}%</strong>
+              <span>andamento</span>
+            </div>
+          </div>
+          <div class="progress-copy">
+            <strong>{{ fase_portal }}</strong>
+            <p>Seu portal mostra com clareza em que etapa a obra esta agora e qual o proximo movimento previsto pela
+              equipe.</p>
+            <div class="progress-bar"><i></i></div>
           </div>
         </div>
+      </div>
+    </section>
 
-        {% if atualizacoes %}
-        <div class="updates-card">
-          <span class="label">Atualizações do responsável</span>
-          <div class="updates-list">
-            {% for atualizacao in atualizacoes %}
-            <article class="update-item">
-              <time>{{ formatar_data(atualizacao.data_hora, "", True) }}</time>
-              <p>{{ atualizacao.descricao|replace("Atualização para o cliente:", "")|trim }}</p>
+    <div class="portal-stack">
+      <section class="portal-card">
+        <div class="portal-card-body">
+          <div class="hero-metrics">
+            <div class="hero-metric">
+              <span>Entrega prevista</span>
+              <strong>{{ formatar_data(obra.data_fim_prevista, 'Em definicao') }}</strong>
+            </div>
+            <div class="hero-metric">
+              <span>Proxima etapa</span>
+              <strong>{{ proxima_etapa }}</strong>
+            </div>
+            <div class="hero-metric">
+              <span>Ultima atualizacao</span>
+              <strong>{{ atualizacao_label }}</strong>
+            </div>
+            <div class="hero-metric">
+              <span>Status do portal</span>
+              <strong>{{ 'Obra concluida' if (obra.status or '')|lower in ['concluida', 'vendida'] else 'Em
+                acompanhamento' }}</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="portal-card message-card">
+        <div class="portal-card-body">
+          <span class="portal-section-kicker">Mensagem do responsavel</span>
+          <h2 class="portal-section-title">Resumo da obra para voce</h2>
+          <p class="{% if not obra.observacao_responsavel %}is-empty{% endif %}">
+            {{ obra.observacao_responsavel or "O responsavel tecnico ainda nao publicou uma mensagem detalhada. Assim
+            que houver uma nova atualizacao, ela aparecera aqui com destaque." }}
+          </p>
+          <div class="meta-row">
+            <span class="meta-pill">Fase atual: {{ fase_portal }}</span>
+            <span class="meta-pill">Atualizado em {{ atualizacao_label }}</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="portal-card">
+        <div class="portal-card-body">
+          <span class="portal-section-kicker">Fotos recentes</span>
+          <h2 class="portal-section-title">Galeria visual da obra</h2>
+          {% if foto_principal or fotos_galeria %}
+          <div class="gallery-grid">
+            {% if foto_principal %}
+            <div class="gallery-lead">
+              <img src="{{ foto_principal }}" alt="Foto principal da obra {{ obra.nome }}">
+              <div class="gallery-lead-copy">
+                <strong>{{ obra.nome }}</strong>
+                <span>{{ fase_portal }}{% if ultima_atualizacao %} · {{ atualizacao_label }}{% endif %}</span>
+              </div>
+            </div>
+            {% endif %}
+
+            {% if fotos_galeria %}
+            <div class="gallery-thumbs">
+              {% for foto in fotos_galeria[:3] %}
+              <div class="gallery-thumb" data-caption="{{ foto.fase or foto.titulo or 'Registro recente' }}">
+                <img src="{{ foto.caminho }}" alt="{{ foto.titulo or ('Foto da obra ' ~ obra.nome) }}">
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+          {% else %}
+          <div class="gallery-empty">
+            <div class="gallery-empty-card">As primeiras imagens da obra aparecerao aqui em um mural visual pensado para
+              o seu acompanhamento.</div>
+            <div class="gallery-empty-card">Mesmo com poucas fotos, o portal continua organizado e pronto para receber
+              novos registros.</div>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="portal-card">
+        <div class="portal-card-body">
+          <span class="portal-section-kicker">Linha do tempo</span>
+          <h2 class="portal-section-title">Etapas principais da obra</h2>
+          <div class="timeline">
+            {% for item in timeline_portal %}
+            <article
+              class="timeline-item {% if item.status == 'done' %}is-done{% elif item.status == 'current' %}is-current{% endif %}">
+              <div class="timeline-dot">
+                {% if item.status == 'done' %}OK{% elif item.status == 'current' %}AG{% else %}{{ loop.index }}{% endif
+                %}
+              </div>
+              <div class="timeline-card">
+                <div class="timeline-top">
+                  <strong>{{ item.titulo }}</strong>
+                  <span class="timeline-date">{{ formatar_data(item.data, 'A definir') }}</span>
+                </div>
+                <p>{{ item.descricao }}</p>
+              </div>
             </article>
             {% endfor %}
           </div>
         </div>
-        {% endif %}
-      </div>
-    </section>
+      </section>
 
-    <div class="footer">Central de Obras - acompanhamento exclusivo desta obra.</div>
+      <section class="portal-card">
+        <div class="portal-card-body">
+          <span class="portal-section-kicker">Atualizacoes publicadas</span>
+          <h2 class="portal-section-title">Historico recente do portal</h2>
+          {% if atualizacoes %}
+          <div class="updates-list">
+            {% for atualizacao in atualizacoes[:4] %}
+            <article class="update-card">
+              <time>{{ formatar_data(atualizacao.data_hora, '-', True) }}</time>
+              <p>{{ atualizacao.descricao|replace('Atualizacao para o cliente:', '')|replace('Atualização para o
+                cliente:', '')|trim }}</p>
+              {% if atualizacao.autor %}
+              <small>Publicado por {{ atualizacao.autor }}</small>
+              {% endif %}
+            </article>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="updates-empty">
+            Nenhuma atualizacao detalhada foi publicada ainda. Quando houver novos registros do responsavel tecnico,
+            eles aparecerao aqui em ordem cronologica.
+          </div>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+
+    <div class="portal-footer">
+      Portal exclusivo para acompanhamento desta obra. As informacoes exibidas aqui foram selecionadas para oferecer
+      visibilidade clara, organizada e facil de entender.
+    </div>
   </main>
 </body>
 

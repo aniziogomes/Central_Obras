@@ -1,4 +1,5 @@
 import re
+import unicodedata
 import pandas as pd
 from io import BytesIO
 from pathlib import Path
@@ -6,15 +7,16 @@ from uuid import uuid4
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, jsonify
 from werkzeug.utils import secure_filename
 from database import query_one, query_all, execute
-from services.validators import limpar_texto, parse_valor_monetario, valor_negativo, validar_intervalo_percentual
+from services.validators import caminho_redirecionamento_seguro, limpar_texto, parse_valor_monetario, valor_negativo, validar_intervalo_percentual
 from services.validators import CATEGORIAS_CUSTO_VALIDAS
-from auth import usuario_logado, eh_admin, eh_gestor, eh_leitura
+from auth import usuario_logado, eh_admin, eh_gestor, pode_visualizar
 from services.log_service import registrar_log
 from services.tenant import (
     empresa_id_para_insert,
     listar_empresas,
     obter_obra_acessivel,
     sincronizar_empresa_filhos_obra,
+    tem_acesso_global,
     where_empresa,
 )
 from utils import formatar_moeda, formatar_tipo_obra, formatar_data
@@ -22,6 +24,25 @@ from utils import formatar_moeda, formatar_tipo_obra, formatar_data
 obras_bp = Blueprint("obras_bp", __name__)
 UPLOAD_OBRAS_DIR = Path("static/uploads/obras")
 EXTENSOES_IMAGEM = {"png", "jpg", "jpeg", "webp", "gif"}
+STATUS_OBRA_LABELS = {
+    "planejamento": "Planejamento",
+    "andamento": "Em andamento",
+    "atrasada": "Atrasada",
+    "concluida": "Concluída",
+    "vendida": "Vendida",
+}
+FASE_OBRA_LABELS = {
+    "planejamento": "Planejamento",
+    "fundacao": "Fundação",
+    "estrutura": "Estrutura",
+    "alvenaria": "Alvenaria",
+    "telhado": "Telhado",
+    "instalacoes": "Instalações",
+    "revestimento": "Revestimento",
+    "acabamento": "Acabamento",
+    "vistoria": "Vistoria",
+    "concluida": "Concluída",
+}
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -51,6 +72,28 @@ def extensao_permitida(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in EXTENSOES_IMAGEM
 
 
+def _slug_texto(valor):
+    texto = unicodedata.normalize("NFKD", str(valor or ""))
+    return "".join(ch for ch in texto if not unicodedata.combining(ch)).strip().lower()
+
+
+def formatar_status_obra(status):
+    return STATUS_OBRA_LABELS.get((status or "").strip().lower(), (status or "-").strip() or "-")
+
+
+def formatar_fase_obra(fase):
+    if not fase:
+        return "Não definida"
+    return FASE_OBRA_LABELS.get(_slug_texto(fase), str(fase).strip())
+
+
+def formatar_nome_obra(nome):
+    texto = (nome or "").strip()
+    if not texto:
+        return ""
+    return " ".join(parte[:1].upper() + parte[1:] if parte else "" for parte in texto.split())
+
+
 def buscar_obras_filtradas(busca="", status=""):
     where, params = where_empresa("o")
     lista_obras = query_all(
@@ -75,7 +118,8 @@ def buscar_obras_filtradas(busca="", status=""):
                 f"{o['endereco'] or ''} "
                 f"{o['tipo_obra'] or ''} "
                 f"{o['fase_obra'] if 'fase_obra' in o.keys() and o['fase_obra'] else ''} "
-                f"{o['observacao_responsavel'] if 'observacao_responsavel' in o.keys() and o['observacao_responsavel'] else ''}"
+                f"{o['observacao_responsavel'] if 'observacao_responsavel' in o.keys() and o['observacao_responsavel'] else ''} "
+                f"{o['proxima_etapa_portal'] if 'proxima_etapa_portal' in o.keys() and o['proxima_etapa_portal'] else ''}"
             ).lower()
         ]
 
@@ -88,6 +132,34 @@ def buscar_obras_filtradas(busca="", status=""):
     return lista_obras
 
 
+def enriquecer_resumo_financeiro_obras(lista_obras):
+    if not lista_obras:
+        return lista_obras
+
+    totais = query_all(
+        """
+        SELECT obra_id, COALESCE(SUM(valor_total), 0) AS gasto_total
+        FROM custos
+        WHERE obra_id IS NOT NULL
+        GROUP BY obra_id
+        """
+    )
+    gastos_por_obra = {item["obra_id"]: item["gasto_total"] or 0 for item in totais}
+
+    obras_enriquecidas = []
+    for obra in lista_obras:
+        obra_dict = dict(obra)
+        gasto_total = gastos_por_obra.get(obra["id"], 0)
+        obra_dict["gasto_total"] = gasto_total
+        obra_dict["saldo_disponivel"] = (obra["receita_total"] or 0) - gasto_total
+        obra_dict["nome_formatado"] = formatar_nome_obra(obra["nome"] or "")
+        obra_dict["status_formatado"] = formatar_status_obra(obra["status"] or "")
+        obra_dict["fase_obra_formatada"] = formatar_fase_obra(obra["fase_obra"] if "fase_obra" in obra.keys() else "")
+        obras_enriquecidas.append(obra_dict)
+
+    return obras_enriquecidas
+
+
 def serializar_obras(lista_obras):
     result = []
     for o in lista_obras:
@@ -96,6 +168,7 @@ def serializar_obras(lista_obras):
             "id": o["id"],
             "codigo": o["codigo"] or "",
             "nome": o["nome"] or "",
+            "nome_formatado": formatar_nome_obra(o["nome"] or ""),
             "tipo_obra": o["tipo_obra"] or "contrato",
             "tipo_obra_formatado": formatar_tipo_obra(o["tipo_obra"]),
             "tipologia": o["tipologia"] or "-",
@@ -104,8 +177,13 @@ def serializar_obras(lista_obras):
             "orcamento_formatado": formatar_moeda(o["orcamento"] or 0),
             "receita_total": o["receita_total"] or 0,
             "receita_total_formatado": formatar_moeda(o["receita_total"] or 0),
+            "gasto_total": o["gasto_total"] if "gasto_total" in keys and o["gasto_total"] else 0,
+            "gasto_total_formatado": formatar_moeda((o["gasto_total"] if "gasto_total" in keys and o["gasto_total"] else 0)),
+            "saldo_disponivel": o["saldo_disponivel"] if "saldo_disponivel" in keys and o["saldo_disponivel"] else 0,
+            "saldo_disponivel_formatado": formatar_moeda((o["saldo_disponivel"] if "saldo_disponivel" in keys and o["saldo_disponivel"] else 0)),
             "progresso_percentual": o["progresso_percentual"] or 0,
             "status": o["status"] or "",
+            "status_formatado": formatar_status_obra(o["status"] or ""),
             "endereco": o["endereco"] or "",
             "data_inicio": o["data_inicio"] or "",
             "data_inicio_formatada": formatar_data(o["data_inicio"], ""),
@@ -113,8 +191,10 @@ def serializar_obras(lista_obras):
             "data_fim_prevista_formatada": formatar_data(o["data_fim_prevista"], ""),
             # Campos do canteiro
             "fase_obra": (o["fase_obra"] if "fase_obra" in keys and o["fase_obra"] else ""),
+            "fase_obra_formatada": formatar_fase_obra(o["fase_obra"] if "fase_obra" in keys and o["fase_obra"] else ""),
             "observacao_responsavel": (o["observacao_responsavel"] if "observacao_responsavel" in keys and o["observacao_responsavel"] else ""),
             "foto_capa": (o["foto_capa"] if "foto_capa" in keys and o["foto_capa"] else ""),
+            "proxima_etapa_portal": (o["proxima_etapa_portal"] if "proxima_etapa_portal" in keys and o["proxima_etapa_portal"] else ""),
             "token_publico": (o["token_publico"] if "token_publico" in keys and o["token_publico"] else ""),
         })
     return result
@@ -124,13 +204,15 @@ def serializar_obras(lista_obras):
 
 @obras_bp.route("/obras")
 def obras():
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return redirect(url_for("auth_bp.login"))
 
     filtros = obter_filtros_obras()
-    lista_obras = buscar_obras_filtradas(busca=filtros["busca"], status=filtros["status"])
+    lista_obras = enriquecer_resumo_financeiro_obras(
+        buscar_obras_filtradas(busca=filtros["busca"], status=filtros["status"])
+    )
     proximo_codigo = gerar_codigo_obra()
-    empresas = listar_empresas(apenas_ativas=True) if eh_admin() else []
+    empresas = listar_empresas(apenas_ativas=True) if tem_acesso_global() else []
 
     return render_template(
         "obras.html",
@@ -144,11 +226,13 @@ def obras():
 
 @obras_bp.route("/obras/dados")
 def obras_dados():
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return jsonify({"erro": "não autorizado"}), 401
 
     filtros = obter_filtros_obras()
-    lista_obras = buscar_obras_filtradas(busca=filtros["busca"], status=filtros["status"])
+    lista_obras = enriquecer_resumo_financeiro_obras(
+        buscar_obras_filtradas(busca=filtros["busca"], status=filtros["status"])
+    )
 
     return jsonify({
         "filtros": {
@@ -173,22 +257,17 @@ def nova_obra():
     try:
         codigo              = limpar_texto(request.form.get("codigo", ""), max_len=40)
         nome                = limpar_texto(request.form.get("nome", ""), max_len=140, obrigatorio=True, campo="Nome")
-        endereco            = limpar_texto(request.form.get("endereco", ""), max_len=240)
         tipologia           = limpar_texto(request.form.get("tipologia", ""), max_len=100, obrigatorio=True, campo="Tipologia")
         tipo_obra           = limpar_texto(request.form.get("tipo_obra", "contrato"), max_len=30).lower()
-        fase_obra           = limpar_texto(request.form.get("fase_obra", ""), max_len=120)
         data_inicio         = limpar_texto(request.form.get("data_inicio", ""), max_len=10)
         data_fim_prevista   = limpar_texto(request.form.get("data_fim_prevista", ""), max_len=10)
         status              = limpar_texto(request.form.get("status", ""), max_len=60, obrigatorio=True, campo="Status")
-        observacao          = limpar_texto(request.form.get("observacao_responsavel", ""), max_len=1000)
-        foto_capa           = limpar_texto(request.form.get("foto_capa", ""), max_len=500)
     except ValueError as e:
         flash(str(e), "erro")
         return redirect(url_for("obras_bp.obras"))
     area_m2             = request.form.get("area_m2", "").strip()
     orcamento           = request.form.get("orcamento", "").strip()
     receita_total       = request.form.get("receita_total", "").strip()
-    progresso_percentual= request.form.get("progresso_percentual", "").strip()
 
     if not codigo:
         codigo = gerar_codigo_obra()
@@ -211,7 +290,7 @@ def nova_obra():
         area_valor       = float(area_m2) if area_m2 else 0
         orcamento_valor  = parse_valor_monetario(orcamento)
         receita_valor    = parse_valor_monetario(receita_total)
-        progresso_valor  = parse_valor_monetario(progresso_percentual)
+        progresso_valor  = 0
 
         if valor_negativo(area_valor):
             raise ValueError("Área não pode ser negativa.")
@@ -234,10 +313,10 @@ def nova_obra():
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
-            empresa_id, codigo, nome, endereco, tipologia, tipo_obra, fase_obra or None,
+            empresa_id, codigo, nome, None, tipologia, tipo_obra, None,
             area_valor, data_inicio or None, data_fim_prevista or None,
             orcamento_valor, receita_valor, progresso_valor, status,
-            observacao or None, foto_capa or None
+            None, None
         )
     )
 
@@ -256,10 +335,10 @@ def nova_obra():
 
 @obras_bp.route("/obra/<codigo>")
 def obra_detalhe(codigo):
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return redirect(url_for("auth_bp.login"))
 
-    obra = obter_obra_acessivel(codigo=codigo)
+    obra = obter_obra_acessivel(codigo=codigo, campos="o.*, e.nome AS empresa_nome")
     if not obra:
         flash("Obra não encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
@@ -310,10 +389,10 @@ def obra_detalhe(codigo):
 
 @obras_bp.route("/obra/<codigo>/detalhes")
 def obra_detalhes(codigo):
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return redirect(url_for("auth_bp.login"))
 
-    obra = obter_obra_acessivel(codigo=codigo)
+    obra = obter_obra_acessivel(codigo=codigo, campos="o.*, e.nome AS empresa_nome")
     if not obra:
         flash("Obra nao encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
@@ -331,6 +410,7 @@ def obra_detalhes(codigo):
         f"SELECT * FROM fornecedores {fornecedores_where} ORDER BY nome ASC",
         fornecedores_params,
     )
+    empresas = listar_empresas(apenas_ativas=True) if tem_acesso_global() else []
     fotos_obra = query_all("SELECT * FROM fotos_obra WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
     custos_importados = query_all(
         "SELECT * FROM custos_importados_categoria WHERE obra_id = ? ORDER BY categoria ASC",
@@ -364,6 +444,7 @@ def obra_detalhes(codigo):
         equipe=equipe,
         compras=compras,
         fornecedores=fornecedores,
+        empresas=empresas,
         categorias_custo=CATEGORIAS_CUSTO_VALIDAS,
         custos_importados=custos_importados,
         fotos_obra=fotos_obra,
@@ -380,14 +461,18 @@ def obra_detalhes(codigo):
 
 @obras_bp.route("/obras/<int:obra_id>/fotos/nova", methods=["POST"])
 def nova_foto_obra(obra_id):
+    redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), "")
     if not usuario_logado() or not eh_gestor():
         flash("Voce nao tem permissao para adicionar fotos.", "erro")
-        return redirect(url_for("obras_bp.obras"))
+        return redirect(redirect_to or url_for("obras_bp.obras"))
 
-    obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.nome, o.empresa_id")
+    obra = obter_obra_acessivel(
+        obra_id=obra_id,
+        campos="o.id, o.codigo, o.nome, o.empresa_id, o.proxima_etapa_portal",
+    )
     if not obra:
         flash("Obra nao encontrada.", "erro")
-        return redirect(url_for("obras_bp.obras"))
+        return redirect(redirect_to or url_for("obras_bp.obras"))
 
     arquivo = request.files.get("foto_arquivo")
     try:
@@ -397,13 +482,13 @@ def nova_foto_obra(obra_id):
         data_registro = limpar_texto(request.form.get("data_registro", ""), max_len=10)
     except ValueError as e:
         flash(str(e), "erro")
-        return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+        return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
     usar_como_capa = request.form.get("usar_como_capa") == "1"
 
     if arquivo and arquivo.filename:
         if not extensao_permitida(arquivo.filename):
             flash("Envie uma imagem nos formatos PNG, JPG, JPEG, WEBP ou GIF.", "erro")
-            return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+            return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
         UPLOAD_OBRAS_DIR.mkdir(parents=True, exist_ok=True)
         nome_seguro = secure_filename(arquivo.filename)
@@ -414,7 +499,7 @@ def nova_foto_obra(obra_id):
 
     if not caminho:
         flash("Selecione uma foto do seu dispositivo para adicionar a galeria.", "erro")
-        return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+        return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
     foto_id = execute(
         """
@@ -445,19 +530,20 @@ def nova_foto_obra(obra_id):
         )
 
     flash("Foto adicionada a galeria com sucesso.", "sucesso")
-    return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+    return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
 
 @obras_bp.route("/obras/<int:obra_id>/fotos/<int:foto_id>/capa", methods=["POST"])
 def usar_foto_como_capa(obra_id, foto_id):
+    redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), "")
     if not usuario_logado() or not eh_gestor():
         flash("Voce nao tem permissao para alterar a capa.", "erro")
-        return redirect(url_for("obras_bp.obras"))
+        return redirect(redirect_to or url_for("obras_bp.obras"))
 
     obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.nome, o.empresa_id")
     if not obra:
         flash("Obra nao encontrada.", "erro")
-        return redirect(url_for("obras_bp.obras"))
+        return redirect(redirect_to or url_for("obras_bp.obras"))
 
     foto = query_one(
         "SELECT caminho FROM fotos_obra WHERE id = ? AND obra_id = ?",
@@ -465,7 +551,7 @@ def usar_foto_como_capa(obra_id, foto_id):
     )
     if not foto:
         flash("Foto nao encontrada na galeria.", "erro")
-        return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+        return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
     execute("UPDATE obras SET foto_capa = ? WHERE id = ?", (foto["caminho"], obra_id))
     registrar_log(
@@ -476,21 +562,22 @@ def usar_foto_como_capa(obra_id, foto_id):
     )
 
     flash("Foto definida como capa da Visao do Canteiro.", "sucesso")
-    return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+    return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
 
 # ─── Editar ──────────────────────────────────────────────────────────────────
 
 @obras_bp.route("/obras/<int:obra_id>/fotos/<int:foto_id>/excluir", methods=["POST"])
 def excluir_foto_obra(obra_id, foto_id):
+    redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), "")
     if not usuario_logado() or not eh_gestor():
         flash("Voce nao tem permissao para excluir fotos.", "erro")
-        return redirect(url_for("obras_bp.obras"))
+        return redirect(redirect_to or url_for("obras_bp.obras"))
 
     obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.nome, o.foto_capa, o.empresa_id")
     if not obra:
         flash("Obra nao encontrada.", "erro")
-        return redirect(url_for("obras_bp.obras"))
+        return redirect(redirect_to or url_for("obras_bp.obras"))
 
     foto = query_one(
         "SELECT id, caminho FROM fotos_obra WHERE id = ? AND obra_id = ?",
@@ -498,7 +585,7 @@ def excluir_foto_obra(obra_id, foto_id):
     )
     if not foto:
         flash("Foto nao encontrada na galeria.", "erro")
-        return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+        return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
     execute("DELETE FROM fotos_obra WHERE id = ? AND obra_id = ?", (foto_id, obra_id))
 
@@ -522,26 +609,31 @@ def excluir_foto_obra(obra_id, foto_id):
     )
 
     flash("Foto excluida da galeria.", "sucesso")
-    return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+    return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
 
 @obras_bp.route("/obras/<int:obra_id>/canteiro", methods=["POST"])
 def atualizar_canteiro_obra(obra_id):
+    redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), "")
     if not usuario_logado() or not eh_gestor():
         flash("Voce nao tem permissao para atualizar o canteiro.", "erro")
-        return redirect(url_for("obras_bp.obras"))
+        return redirect(redirect_to or url_for("obras_bp.obras"))
 
     obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.nome, o.empresa_id")
     if not obra:
         flash("Obra nao encontrada.", "erro")
-        return redirect(url_for("obras_bp.obras"))
+        return redirect(redirect_to or url_for("obras_bp.obras"))
 
     try:
         fase_obra = limpar_texto(request.form.get("fase_obra", ""), max_len=120)
         observacao = limpar_texto(request.form.get("observacao_responsavel", ""), max_len=1000)
+        if "proxima_etapa_portal" in request.form:
+            proxima_etapa_portal = limpar_texto(request.form.get("proxima_etapa_portal", ""), max_len=160)
+        else:
+            proxima_etapa_portal = obra["proxima_etapa_portal"] if "proxima_etapa_portal" in obra.keys() else None
     except ValueError as e:
         flash(str(e), "erro")
-        return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+        return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
     progresso_percentual = request.form.get("progresso_percentual", "").strip()
 
     try:
@@ -549,18 +641,19 @@ def atualizar_canteiro_obra(obra_id):
         validar_intervalo_percentual(progresso_valor, "Conclusao (%)")
     except ValueError as e:
         flash(str(e), "erro")
-        return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+        return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
     execute(
         """
         UPDATE obras
-        SET fase_obra = ?, progresso_percentual = ?, observacao_responsavel = ?
+        SET fase_obra = ?, progresso_percentual = ?, observacao_responsavel = ?, proxima_etapa_portal = ?
         WHERE id = ?
         """,
         (
             fase_obra or None,
             progresso_valor,
             observacao or None,
+            proxima_etapa_portal or None,
             obra_id,
         )
     )
@@ -574,7 +667,7 @@ def atualizar_canteiro_obra(obra_id):
     )
 
     flash("Avanco do canteiro salvo com sucesso.", "sucesso")
-    return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+    return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
 
 @obras_bp.route("/obras/<int:obra_id>/canteiro/atualizacao/<int:log_id>", methods=["POST"])
@@ -623,42 +716,40 @@ def editar_atualizacao_canteiro(obra_id, log_id):
 
 @obras_bp.route("/obras/editar/<int:obra_id>", methods=["POST"])
 def editar_obra(obra_id):
+    redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), "")
     if not usuario_logado() or not eh_gestor():
-        flash("Você não tem permissão para editar obras.", "erro")
-        return redirect(url_for("obras_bp.obras"))
+        flash("Voce nao tem permissao para editar obras.", "erro")
+        return redirect(redirect_to or url_for("obras_bp.obras"))
 
-    # Busca a obra para saber o codigo (para redirecionar de volta)
-    obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.empresa_id")
+    obra = obter_obra_acessivel(obra_id=obra_id, campos="o.*")
     if not obra:
         flash("Obra nao encontrada.", "erro")
-        return redirect(url_for("obras_bp.obras"))
+        return redirect(redirect_to or url_for("obras_bp.obras"))
 
-    # Descobre de onde veio o request para redirecionar corretamente
     veio_do_detalhe = obra and (
         "obra_detalhe" in (request.referrer or "") or
         f"/obra/" in (request.referrer or "")
     )
 
     try:
-        nome                = limpar_texto(request.form.get("nome", ""), max_len=140, obrigatorio=True, campo="Nome")
-        endereco            = limpar_texto(request.form.get("endereco", ""), max_len=240)
-        tipologia           = limpar_texto(request.form.get("tipologia", ""), max_len=100, obrigatorio=True, campo="Tipologia")
-        tipo_obra           = limpar_texto(request.form.get("tipo_obra", "contrato"), max_len=30).lower()
-        fase_obra           = limpar_texto(request.form.get("fase_obra", ""), max_len=120)
-        data_inicio         = limpar_texto(request.form.get("data_inicio", ""), max_len=10)
-        data_fim_prevista   = limpar_texto(request.form.get("data_fim_prevista", ""), max_len=10)
-        status              = limpar_texto(request.form.get("status", ""), max_len=60, obrigatorio=True, campo="Status")
-        observacao          = limpar_texto(request.form.get("observacao_responsavel", ""), max_len=1000)
-        foto_capa           = limpar_texto(request.form.get("foto_capa", ""), max_len=500)
+        nome = limpar_texto(request.form.get("nome", ""), max_len=140, obrigatorio=True, campo="Nome")
+        endereco = limpar_texto(request.form.get("endereco", ""), max_len=240)
+        tipologia = limpar_texto(request.form.get("tipologia", ""), max_len=100, obrigatorio=True, campo="Tipologia")
+        tipo_obra = limpar_texto(request.form.get("tipo_obra", "contrato"), max_len=30).lower()
+        data_inicio = limpar_texto(request.form.get("data_inicio", ""), max_len=10)
+        data_fim_prevista = limpar_texto(request.form.get("data_fim_prevista", ""), max_len=10)
+        status = limpar_texto(request.form.get("status", ""), max_len=60, obrigatorio=True, campo="Status")
     except ValueError as e:
         flash(str(e), "erro")
+        if redirect_to:
+            return redirect(redirect_to)
         if obra and veio_do_detalhe:
             return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
         return redirect(url_for("obras_bp.obras"))
-    area_m2             = request.form.get("area_m2", "").strip()
-    orcamento           = request.form.get("orcamento", "").strip()
-    receita_total       = request.form.get("receita_total", "").strip()
-    progresso_percentual= request.form.get("progresso_percentual", "").strip()
+
+    area_m2 = request.form.get("area_m2", "").strip()
+    orcamento = request.form.get("orcamento", "").strip()
+    receita_total = request.form.get("receita_total", "").strip()
 
     if tipo_obra not in ["venda", "contrato"]:
         tipo_obra = "contrato"
@@ -666,20 +757,20 @@ def editar_obra(obra_id):
     empresa_id = empresa_id_para_insert(request.form.get("empresa_id")) if eh_admin() else obra["empresa_id"]
 
     try:
-        area_valor       = float(area_m2) if area_m2 else 0
-        orcamento_valor  = parse_valor_monetario(orcamento)
-        receita_valor    = parse_valor_monetario(receita_total)
-        progresso_valor  = parse_valor_monetario(progresso_percentual)
+        area_valor = float(area_m2) if area_m2 else 0
+        orcamento_valor = parse_valor_monetario(orcamento)
+        receita_valor = parse_valor_monetario(receita_total)
 
         if valor_negativo(area_valor):
-            raise ValueError("Área não pode ser negativa.")
+            raise ValueError("Area nao pode ser negativa.")
         if valor_negativo(orcamento_valor):
-            raise ValueError("Custo previsto não pode ser negativo.")
+            raise ValueError("Custo previsto nao pode ser negativo.")
         if valor_negativo(receita_valor):
-            raise ValueError("Receita prevista não pode ser negativa.")
-        validar_intervalo_percentual(progresso_valor, "Execução (%)")
+            raise ValueError("Receita prevista nao pode ser negativa.")
     except ValueError as e:
         flash(str(e), "erro")
+        if redirect_to:
+            return redirect(redirect_to)
         if obra and veio_do_detalhe:
             return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
         return redirect(url_for("obras_bp.obras"))
@@ -687,18 +778,15 @@ def editar_obra(obra_id):
     execute(
         """
         UPDATE obras
-        SET empresa_id = ?, nome = ?, endereco = ?, tipologia = ?, tipo_obra = ?, fase_obra = ?,
+        SET empresa_id = ?, nome = ?, endereco = ?, tipologia = ?, tipo_obra = ?,
             area_m2 = ?, data_inicio = ?, data_fim_prevista = ?,
-            orcamento = ?, receita_total = ?, progresso_percentual = ?,
-            status = ?, observacao_responsavel = ?, foto_capa = ?
+            orcamento = ?, receita_total = ?, status = ?
         WHERE id = ?
         """,
         (
-            empresa_id, nome, endereco, tipologia, tipo_obra, fase_obra or None,
+            empresa_id, nome, endereco or None, tipologia, tipo_obra,
             area_valor, data_inicio or None, data_fim_prevista or None,
-            orcamento_valor, receita_valor, progresso_valor,
-            status, observacao or None, foto_capa or None,
-            obra_id
+            orcamento_valor, receita_valor, status, obra_id
         )
     )
 
@@ -706,7 +794,7 @@ def editar_obra(obra_id):
         sincronizar_empresa_filhos_obra(obra_id, empresa_id)
 
     registrar_log(
-        acao="edição",
+        acao="edicao",
         entidade="obra",
         entidade_id=obra_id,
         descricao=f"Obra atualizada: {nome}"
@@ -714,17 +802,17 @@ def editar_obra(obra_id):
 
     flash("Obra atualizada com sucesso.", "sucesso")
 
-    # Redireciona de volta para a ficha se veio de lá, senão vai para a lista
+    if redirect_to:
+        return redirect(redirect_to)
     if obra and veio_do_detalhe:
         return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
     return redirect(url_for("obras_bp.obras"))
-
 
 # ─── Exportar ────────────────────────────────────────────────────────────────
 
 @obras_bp.route("/obras/exportar")
 def obras_exportar():
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return redirect(url_for("auth_bp.login"))
 
     filtros = obter_filtros_obras()
@@ -750,6 +838,11 @@ def obras_exportar():
 def excluir_obra(obra_id):
     if not usuario_logado() or not eh_gestor():
         flash("Você não tem permissão para excluir obras.", "erro")
+        return redirect(url_for("obras_bp.obras"))
+
+    obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id")
+    if not obra:
+        flash("Obra nao encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
     execute("DELETE FROM custos WHERE obra_id = ?", (obra_id,))

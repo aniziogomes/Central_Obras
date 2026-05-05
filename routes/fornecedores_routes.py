@@ -3,7 +3,7 @@ from io import BytesIO
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from database import query_one, query_all, execute
 from services.validators import limpar_texto, parse_int_nao_negativo, validar_nota
-from auth import usuario_logado, eh_gestor, eh_leitura
+from auth import usuario_logado, eh_gestor, pode_visualizar
 from services.log_service import registrar_log
 from services.tenant import empresa_id_para_insert, obter_registro_acessivel, where_empresa
 
@@ -12,7 +12,7 @@ fornecedores_bp = Blueprint("fornecedores_bp", __name__)
 
 @fornecedores_bp.route("/fornecedores")
 def fornecedores():
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return redirect(url_for("auth_bp.login"))
 
     where, params = where_empresa()
@@ -189,7 +189,7 @@ def excluir_fornecedor(fornecedor_id):
 
 @fornecedores_bp.route("/fornecedores/exportar")
 def fornecedores_exportar():
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return redirect(url_for("auth_bp.login"))
 
     where, params = where_empresa()

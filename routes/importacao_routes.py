@@ -4,7 +4,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from werkzeug.utils import secure_filename
 from database import query_all
 from importar_planilha import importar_planilha
-from auth import usuario_logado, eh_gestor, eh_leitura
+from auth import usuario_logado, eh_gestor, pode_visualizar
 from services.validators import limpar_texto
 from services.log_service import registrar_log
 from services.tenant import and_empresa, empresa_id_para_insert, listar_obras_acessiveis, where_empresa
@@ -20,7 +20,7 @@ def extensao_planilha_permitida(filename):
 
 @importacao_bp.route("/importacao")
 def importacao():
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return redirect(url_for("auth_bp.login"))
 
     obras = listar_obras_acessiveis(order_by="o.id DESC", campos="o.*")
@@ -83,7 +83,7 @@ def importar_planilha_route():
 
 @importacao_bp.route("/orcamento-importado")
 def orcamento_importado():
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return redirect(url_for("auth_bp.login"))
 
     obras = listar_obras_acessiveis(order_by="o.id DESC", campos="o.*")

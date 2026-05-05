@@ -10,7 +10,7 @@ from services.validators import (
     valor_negativo,
     validar_intervalo_percentual,
 )
-from auth import usuario_logado, eh_gestor, eh_leitura
+from auth import usuario_logado, eh_gestor, pode_visualizar
 from services.log_service import registrar_log
 from services.tenant import and_empresa, listar_obras_acessiveis, obter_obra_acessivel, obter_registro_acessivel
 
@@ -19,7 +19,7 @@ medicoes_bp = Blueprint("medicoes_bp", __name__)
 
 @medicoes_bp.route("/medicoes")
 def medicoes():
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return redirect(url_for("auth_bp.login"))
 
     filtro_empresa, params_empresa = and_empresa("o")
@@ -207,7 +207,7 @@ def excluir_medicao(medicao_id):
 
 @medicoes_bp.route("/medicoes/exportar")
 def medicoes_exportar():
-    if not usuario_logado() or not eh_leitura():
+    if not usuario_logado() or not pode_visualizar():
         return redirect(url_for("auth_bp.login"))
 
     filtro_empresa, params_empresa = and_empresa("o")
