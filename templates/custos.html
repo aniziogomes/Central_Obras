@@ -3,6 +3,7 @@
 {% block title %}Custos - Central de Obras{% endblock %}
 
 {% block content %}
+{% set custos_filtros_ativos = filtro_obra or filtro_categoria or data_inicio or data_fim %}
 <div class="hdr">
     <div>
         <h1>Custos</h1>
@@ -16,9 +17,9 @@
 </div>
 
 <div class="dashboard-filter-shell">
-    <div class="dashboard-filter-card dashboard-filter-card--clean">
+    <div class="dashboard-filter-card dashboard-filter-card--clean {% if not custos_filtros_ativos %}dashboard-filter-card--idle{% endif %}" id="custosFilterCard">
         <div class="dashboard-filter-top">
-            <div class="dashboard-filter-left">
+            <div class="dashboard-filter-left" id="custosFilterSummary" {% if not custos_filtros_ativos %}hidden{% endif %}>
                 <div class="dashboard-filter-chip dashboard-filter-chip--soft">
                     <span>Filtros</span>
                     <strong id="custosResumoTotal">{{ custos|length }} lançamento(s)</strong>
@@ -838,15 +839,22 @@
             const resumoPeriodo = document.getElementById("resumoPeriodo");
             const resumoTotal = document.getElementById("custosResumoTotal");
             const linkExportar = document.querySelector("[data-export-action]");
+            const filtros = payload.filtros || {};
+            const filtrosAtivos = Boolean(filtros.obra || filtros.categoria || filtros.data_inicio || filtros.data_fim);
+            const filterSummary = document.getElementById("custosFilterSummary");
+            const filterCard = document.getElementById("custosFilterCard");
+
+            if (filterSummary) filterSummary.hidden = !filtrosAtivos;
+            if (filterCard) filterCard.classList.toggle("dashboard-filter-card--idle", !filtrosAtivos);
 
             if (resumoObra) {
-                resumoObra.textContent = payload.filtros.obra || "Todas";
+                resumoObra.textContent = filtros.obra || "Todas";
             }
 
             if (resumoPeriodo) {
                 let periodo = "livre";
-                if (payload.filtros.data_inicio || payload.filtros.data_fim) {
-                    periodo = `${payload.filtros.data_inicio_formatada || "início livre"} até ${payload.filtros.data_fim_formatada || "fim livre"}`;
+                if (filtros.data_inicio || filtros.data_fim) {
+                    periodo = `${filtros.data_inicio_formatada || "início livre"} até ${filtros.data_fim_formatada || "fim livre"}`;
                 }
                 resumoPeriodo.textContent = periodo;
             }
@@ -857,10 +865,10 @@
 
             if (linkExportar) {
                 const params = new URLSearchParams();
-                if (payload.filtros.obra) params.set("obra", payload.filtros.obra);
-                if (payload.filtros.data_inicio) params.set("data_inicio", payload.filtros.data_inicio);
-                if (payload.filtros.data_fim) params.set("data_fim", payload.filtros.data_fim);
-                if (payload.filtros.categoria) params.set("categoria", payload.filtros.categoria);
+                if (filtros.obra) params.set("obra", filtros.obra);
+                if (filtros.data_inicio) params.set("data_inicio", filtros.data_inicio);
+                if (filtros.data_fim) params.set("data_fim", filtros.data_fim);
+                if (filtros.categoria) params.set("categoria", filtros.categoria);
                 linkExportar.href = `/custos/exportar?${params.toString()}`;
             }
         }

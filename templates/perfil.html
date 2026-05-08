@@ -68,7 +68,8 @@
 </div>
 
 {% if eh_admin() %}
-<section class="card usuarios-create-card" id="usuarios">
+{% if not usuarios %}
+<section class="card usuarios-create-card">
   <div class="card-hdr">
     <div>
       <div class="card-title">Usuários</div>
@@ -103,8 +104,9 @@
     </div>
   </form>
 </section>
+{% endif %}
 
-<section class="card usuarios-list-card">
+<section class="card usuarios-list-card" id="usuarios">
   <div class="card-hdr">
     <div>
       <div class="card-title">Usuários cadastrados</div>

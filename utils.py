@@ -22,6 +22,8 @@ def formatar_data(valor, vazio="-", mostrar_hora=None):
     texto = str(valor).strip()
     if not texto or texto == "-":
         return vazio
+    if texto.lower() in {"sem horario", "sem horário"}:
+        return "Nenhum lançamento hoje"
 
     if "/" in texto and len(texto) >= 10:
         return texto

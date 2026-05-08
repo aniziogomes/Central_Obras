@@ -146,12 +146,12 @@ obra.observacao_responsavel else '' %}
                 </div>
 
                 <div class="obra-card-progress-compact obra-card-progress-compact--inline">
-                    <div class="obra-card-progress-top">
-                        <span>Conclus&atilde;o</span>
-                        <strong>{{ obra.progresso_percentual or 0 }}%</strong>
-                    </div>
-                    <div class="progress-bar-bg obra-progress-wide">
-                        <div class="progress-bar-fill progress-dinamica" data-width="{{ obra.progresso_percentual or 0 }}"></div>
+                    <div class="obra-progress-inline">
+                        <span class="obra-progress-inline-label">Conclus&atilde;o</span>
+                        <div class="progress-bar-bg obra-progress-wide obra-progress-track">
+                            <div class="progress-bar-fill progress-dinamica" data-width="{{ obra.progresso_percentual or 0 }}"></div>
+                        </div>
+                        <span class="obra-progress-inline-value">{{ obra.progresso_percentual or 0 }}%</span>
                     </div>
                 </div>
             </div>
@@ -471,13 +471,38 @@ obra.observacao_responsavel else '' %}
                 .replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
         }
 
+        function parseFinanceNumber(value) {
+            if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+            if (value === null || value === undefined) return 0;
+
+            let text = String(value).trim();
+            if (!text) return 0;
+
+            text = text.replace(/\s+/g, "").replace(/[R$r$]/g, "");
+            text = text.replace(/[^\d,.\-]/g, "");
+            if (!text) return 0;
+
+            const lastComma = text.lastIndexOf(",");
+            const lastDot = text.lastIndexOf(".");
+            if (lastComma > -1 && lastDot > -1) {
+                if (lastComma > lastDot) {
+                    text = text.replace(/\./g, "").replace(",", ".");
+                } else {
+                    text = text.replace(/,/g, "");
+                }
+            } else if (lastComma > -1) {
+                text = text.replace(",", ".");
+            }
+
+            const parsed = Number.parseFloat(text);
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+
         function aplicarBarras(root) {
             (root || document).querySelectorAll(".progress-dinamica").forEach(el => {
                 el.style.width = (el.dataset.width || 0) + "%";
             });
         }
-
-
 
         function atualizarChips(status) {
             document.querySelectorAll(".obra-chip").forEach(c => {
@@ -553,7 +578,8 @@ obra.observacao_responsavel else '' %}
                 const proximaEtapaPortal = o.proxima_etapa_portal || "";
                 const search = [o.codigo, o.nome, o.tipologia, o.endereco, o.tipo_obra, observacao, proximaEtapaPortal]
                     .map(v => (v || "").toLowerCase()).join(" ");
-                const saldoClass = Number(o.saldo_disponivel || 0) >= 0 ? "valor-positivo" : "valor-negativo";
+                const saldoValue = parseFinanceNumber(o.saldo_disponivel ?? o.saldo_disponivel_formatado ?? 0);
+                const saldoClass = saldoValue >= 0 ? "valor-positivo" : "valor-negativo";
                 const statusLabel = o.status_formatado || o.status || "-";
                 const faseLabel = o.fase_obra_formatada || o.fase_obra || "Nao definida";
                 const nomeLabel = o.nome_formatado || o.nome || "Obra";
@@ -584,12 +610,12 @@ obra.observacao_responsavel else '' %}
                             <div><span>Fase</span><strong>${esc(faseLabel)}</strong></div>
                         </div>
                         <div class="obra-card-progress-compact obra-card-progress-compact--inline">
-                            <div class="obra-card-progress-top">
-                                <span>Conclus&atilde;o</span>
-                                <strong>${Number(o.progresso_percentual || 0)}%</strong>
-                            </div>
-                            <div class="progress-bar-bg obra-progress-wide">
-                                <div class="progress-bar-fill" style="width:${Number(o.progresso_percentual || 0)}%"></div>
+                            <div class="obra-progress-inline">
+                                <span class="obra-progress-inline-label">Conclus&atilde;o</span>
+                                <div class="progress-bar-bg obra-progress-wide obra-progress-track">
+                                    <div class="progress-bar-fill" style="width:${Number(o.progresso_percentual || 0)}%"></div>
+                                </div>
+                                <span class="obra-progress-inline-value">${Number(o.progresso_percentual || 0)}%</span>
                             </div>
                         </div>
                     </div>
