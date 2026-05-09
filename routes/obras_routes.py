@@ -136,13 +136,16 @@ def enriquecer_resumo_financeiro_obras(lista_obras):
     if not lista_obras:
         return lista_obras
 
+    where_custos, params_custos = where_empresa()
     totais = query_all(
-        """
+        f"""
         SELECT obra_id, COALESCE(SUM(valor_total), 0) AS gasto_total
         FROM custos
-        WHERE obra_id IS NOT NULL
+        {where_custos}
+        {'AND' if where_custos else 'WHERE'} obra_id IS NOT NULL
         GROUP BY obra_id
-        """
+        """,
+        params_custos,
     )
     gastos_por_obra = {item["obra_id"]: item["gasto_total"] or 0 for item in totais}
 
@@ -343,28 +346,29 @@ def obra_detalhe(codigo):
         flash("Obra não encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
-    custos           = query_all("SELECT * FROM custos WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
-    medicoes         = query_all("SELECT * FROM medicoes WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
-    equipe           = query_all("SELECT * FROM equipe WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
+    custos           = query_all("SELECT * FROM custos WHERE obra_id = ? AND empresa_id = ? ORDER BY id DESC", (obra["id"], obra["empresa_id"]))
+    medicoes         = query_all("SELECT * FROM medicoes WHERE obra_id = ? AND empresa_id = ? ORDER BY id DESC", (obra["id"], obra["empresa_id"]))
+    equipe           = query_all("SELECT * FROM equipe WHERE obra_id = ? AND empresa_id = ? ORDER BY id DESC", (obra["id"], obra["empresa_id"]))
     compras          = [
         c for c in custos
         if (c["categoria"] or "") == "Material"
         and (c["status_entrega"] or c["data_entrega_prevista"] or c["quantidade"] or c["valor_unitario"])
     ]
-    fotos_obra       = query_all("SELECT * FROM fotos_obra WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
+    fotos_obra       = query_all("SELECT * FROM fotos_obra WHERE obra_id = ? AND empresa_id = ? ORDER BY id DESC", (obra["id"], obra["empresa_id"]))
     atualizacoes_cliente = query_all("""
         SELECT l.id, l.descricao, l.data_hora, u.nome AS autor
         FROM logs l
         LEFT JOIN usuarios u ON l.usuario_id = u.id
         WHERE l.entidade = 'obra'
           AND l.entidade_id = ?
+          AND l.empresa_id = ?
           AND l.acao = 'atualizacao_canteiro'
           AND l.descricao LIKE 'Atualização para o cliente:%'
         ORDER BY l.data_hora DESC
-    """, (obra["id"],))
+    """, (obra["id"], obra["empresa_id"]))
     custos_importados = query_all(
-        "SELECT * FROM custos_importados_categoria WHERE obra_id = ? ORDER BY categoria ASC",
-        (obra["id"],)
+        "SELECT * FROM custos_importados_categoria WHERE obra_id = ? AND empresa_id = ? ORDER BY categoria ASC",
+        (obra["id"], obra["empresa_id"])
     )
 
     custo_total   = sum((c["valor_total"] or 0) for c in custos)
@@ -394,12 +398,12 @@ def obra_detalhes(codigo):
 
     obra = obter_obra_acessivel(codigo=codigo, campos="o.*, e.nome AS empresa_nome")
     if not obra:
-        flash("Obra nao encontrada.", "erro")
+        flash("Obra no encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
-    custos = query_all("SELECT * FROM custos WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
-    medicoes = query_all("SELECT * FROM medicoes WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
-    equipe = query_all("SELECT * FROM equipe WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
+    custos = query_all("SELECT * FROM custos WHERE obra_id = ? AND empresa_id = ? ORDER BY id DESC", (obra["id"], obra["empresa_id"]))
+    medicoes = query_all("SELECT * FROM medicoes WHERE obra_id = ? AND empresa_id = ? ORDER BY id DESC", (obra["id"], obra["empresa_id"]))
+    equipe = query_all("SELECT * FROM equipe WHERE obra_id = ? AND empresa_id = ? ORDER BY id DESC", (obra["id"], obra["empresa_id"]))
     compras = [
         c for c in custos
         if (c["categoria"] or "") == "Material"
@@ -411,10 +415,10 @@ def obra_detalhes(codigo):
         fornecedores_params,
     )
     empresas = listar_empresas(apenas_ativas=True) if tem_acesso_global() else []
-    fotos_obra = query_all("SELECT * FROM fotos_obra WHERE obra_id = ? ORDER BY id DESC", (obra["id"],))
+    fotos_obra = query_all("SELECT * FROM fotos_obra WHERE obra_id = ? AND empresa_id = ? ORDER BY id DESC", (obra["id"], obra["empresa_id"]))
     custos_importados = query_all(
-        "SELECT * FROM custos_importados_categoria WHERE obra_id = ? ORDER BY categoria ASC",
-        (obra["id"],)
+        "SELECT * FROM custos_importados_categoria WHERE obra_id = ? AND empresa_id = ? ORDER BY categoria ASC",
+        (obra["id"], obra["empresa_id"])
     )
 
     custo_total = sum((c["valor_total"] or 0) for c in custos)
@@ -430,7 +434,7 @@ def obra_detalhes(codigo):
         key=lambda m: (m["data_medicao"] or "", m["id"] or 0)
     )
     medicao_labels = [
-        m["medicao_nome"] or m["etapa"] or m["data_medicao"] or f"Medicao {i + 1}"
+        m["medicao_nome"] or m["etapa"] or m["data_medicao"] or f"Medio {i + 1}"
         for i, m in enumerate(medicoes_ordenadas)
     ]
     medicao_percentuais = [m["percentual_acumulado"] or m["percentual"] or 0 for m in medicoes_ordenadas]
@@ -463,7 +467,7 @@ def obra_detalhes(codigo):
 def nova_foto_obra(obra_id):
     redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), "")
     if not usuario_logado() or not eh_gestor():
-        flash("Voce nao tem permissao para adicionar fotos.", "erro")
+        flash("Voc? no tem permisso para adicionar fotos.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
     obra = obter_obra_acessivel(
@@ -471,7 +475,7 @@ def nova_foto_obra(obra_id):
         campos="o.id, o.codigo, o.nome, o.empresa_id, o.proxima_etapa_portal",
     )
     if not obra:
-        flash("Obra nao encontrada.", "erro")
+        flash("Obra no encontrada.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
     arquivo = request.files.get("foto_arquivo")
@@ -525,8 +529,8 @@ def nova_foto_obra(obra_id):
 
     if usar_como_capa:
         execute(
-            "UPDATE obras SET foto_capa = ? WHERE id = ?",
-            (caminho, obra_id)
+            "UPDATE obras SET foto_capa = ? WHERE id = ? AND empresa_id = ?",
+            (caminho, obra_id, obra["empresa_id"])
         )
 
     flash("Foto adicionada a galeria com sucesso.", "sucesso")
@@ -537,23 +541,23 @@ def nova_foto_obra(obra_id):
 def usar_foto_como_capa(obra_id, foto_id):
     redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), "")
     if not usuario_logado() or not eh_gestor():
-        flash("Voce nao tem permissao para alterar a capa.", "erro")
+        flash("Voc? no tem permisso para alterar a capa.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
     obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.nome, o.empresa_id")
     if not obra:
-        flash("Obra nao encontrada.", "erro")
+        flash("Obra no encontrada.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
     foto = query_one(
-        "SELECT caminho FROM fotos_obra WHERE id = ? AND obra_id = ?",
-        (foto_id, obra_id)
+        "SELECT caminho FROM fotos_obra WHERE id = ? AND obra_id = ? AND empresa_id = ?",
+        (foto_id, obra_id, obra["empresa_id"])
     )
     if not foto:
-        flash("Foto nao encontrada na galeria.", "erro")
+        flash("Foto no encontrada na galeria.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
-    execute("UPDATE obras SET foto_capa = ? WHERE id = ?", (foto["caminho"], obra_id))
+    execute("UPDATE obras SET foto_capa = ? WHERE id = ? AND empresa_id = ?", (foto["caminho"], obra_id, obra["empresa_id"]))
     registrar_log(
         acao="foto_capa",
         entidade="obra",
@@ -571,26 +575,26 @@ def usar_foto_como_capa(obra_id, foto_id):
 def excluir_foto_obra(obra_id, foto_id):
     redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), "")
     if not usuario_logado() or not eh_gestor():
-        flash("Voce nao tem permissao para excluir fotos.", "erro")
+        flash("Voc? no tem permisso para excluir fotos.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
     obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.nome, o.foto_capa, o.empresa_id")
     if not obra:
-        flash("Obra nao encontrada.", "erro")
+        flash("Obra no encontrada.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
     foto = query_one(
-        "SELECT id, caminho FROM fotos_obra WHERE id = ? AND obra_id = ?",
-        (foto_id, obra_id)
+        "SELECT id, caminho FROM fotos_obra WHERE id = ? AND obra_id = ? AND empresa_id = ?",
+        (foto_id, obra_id, obra["empresa_id"])
     )
     if not foto:
-        flash("Foto nao encontrada na galeria.", "erro")
+        flash("Foto no encontrada na galeria.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
-    execute("DELETE FROM fotos_obra WHERE id = ? AND obra_id = ?", (foto_id, obra_id))
+    execute("DELETE FROM fotos_obra WHERE id = ? AND obra_id = ? AND empresa_id = ?", (foto_id, obra_id, obra["empresa_id"]))
 
     if obra["foto_capa"] == foto["caminho"]:
-        execute("UPDATE obras SET foto_capa = NULL WHERE id = ?", (obra_id,))
+        execute("UPDATE obras SET foto_capa = NULL WHERE id = ? AND empresa_id = ?", (obra_id, obra["empresa_id"]))
 
     caminho = foto["caminho"] or ""
     if caminho.startswith("/static/uploads/obras/"):
@@ -616,12 +620,12 @@ def excluir_foto_obra(obra_id, foto_id):
 def atualizar_canteiro_obra(obra_id):
     redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), "")
     if not usuario_logado() or not eh_gestor():
-        flash("Voce nao tem permissao para atualizar o canteiro.", "erro")
+        flash("Voc? no tem permisso para atualizar o canteiro.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
     obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.nome, o.empresa_id")
     if not obra:
-        flash("Obra nao encontrada.", "erro")
+        flash("Obra no encontrada.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
     try:
@@ -647,7 +651,7 @@ def atualizar_canteiro_obra(obra_id):
         """
         UPDATE obras
         SET fase_obra = ?, progresso_percentual = ?, observacao_responsavel = ?, proxima_etapa_portal = ?
-        WHERE id = ?
+        WHERE id = ? AND empresa_id = ?
         """,
         (
             fase_obra or None,
@@ -655,6 +659,7 @@ def atualizar_canteiro_obra(obra_id):
             observacao or None,
             proxima_etapa_portal or None,
             obra_id,
+            obra["empresa_id"],
         )
     )
 
@@ -673,12 +678,12 @@ def atualizar_canteiro_obra(obra_id):
 @obras_bp.route("/obras/<int:obra_id>/canteiro/atualizacao/<int:log_id>", methods=["POST"])
 def editar_atualizacao_canteiro(obra_id, log_id):
     if not usuario_logado() or not eh_gestor():
-        flash("Voce nao tem permissao para editar atualizacoes do portal.", "erro")
+        flash("Voc? no tem permisso para editar atualizacoes do portal.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
     obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.empresa_id")
     if not obra:
-        flash("Obra nao encontrada.", "erro")
+        flash("Obra no encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
     try:
@@ -686,7 +691,7 @@ def editar_atualizacao_canteiro(obra_id, log_id):
             request.form.get("mensagem_cliente", ""),
             max_len=1000,
             obrigatorio=True,
-            campo="Atualizacao do cliente",
+            campo="Atualizao do cliente",
         )
     except ValueError as e:
         flash(str(e), "erro")
@@ -698,19 +703,20 @@ def editar_atualizacao_canteiro(obra_id, log_id):
         WHERE id = ?
           AND entidade = 'obra'
           AND entidade_id = ?
+          AND empresa_id = ?
           AND acao = 'atualizacao_canteiro'
           AND descricao LIKE 'Atualização para o cliente:%'
-    """, (log_id, obra_id))
+    """, (log_id, obra_id, obra["empresa_id"]))
     if not atualizacao:
-        flash("Atualizacao nao encontrada.", "erro")
+        flash("Atualizao no encontrada.", "erro")
         return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
     execute(
-        "UPDATE logs SET descricao = ? WHERE id = ?",
-        (f"Atualização para o cliente: {mensagem_cliente}", log_id)
+        "UPDATE logs SET descricao = ? WHERE id = ? AND empresa_id = ?",
+        (f"Atualização para o cliente: {mensagem_cliente}", log_id, obra["empresa_id"])
     )
 
-    flash("Atualizacao do portal editada com sucesso.", "sucesso")
+    flash("Atualizao do portal editada com sucesso.", "sucesso")
     return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
 
@@ -718,12 +724,12 @@ def editar_atualizacao_canteiro(obra_id, log_id):
 def editar_obra(obra_id):
     redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), "")
     if not usuario_logado() or not eh_gestor():
-        flash("Voce nao tem permissao para editar obras.", "erro")
+        flash("Voc? no tem permisso para editar obras.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
     obra = obter_obra_acessivel(obra_id=obra_id, campos="o.*")
     if not obra:
-        flash("Obra nao encontrada.", "erro")
+        flash("Obra no encontrada.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
     veio_do_detalhe = obra and (
@@ -762,11 +768,11 @@ def editar_obra(obra_id):
         receita_valor = parse_valor_monetario(receita_total)
 
         if valor_negativo(area_valor):
-            raise ValueError("Area nao pode ser negativa.")
+            raise ValueError("Area no pode ser negativa.")
         if valor_negativo(orcamento_valor):
-            raise ValueError("Custo previsto nao pode ser negativo.")
+            raise ValueError("Custo previsto no pode ser negativo.")
         if valor_negativo(receita_valor):
-            raise ValueError("Receita prevista nao pode ser negativa.")
+            raise ValueError("Receita prevista no pode ser negativa.")
     except ValueError as e:
         flash(str(e), "erro")
         if redirect_to:
@@ -781,12 +787,12 @@ def editar_obra(obra_id):
         SET empresa_id = ?, nome = ?, endereco = ?, tipologia = ?, tipo_obra = ?,
             area_m2 = ?, data_inicio = ?, data_fim_prevista = ?,
             orcamento = ?, receita_total = ?, status = ?
-        WHERE id = ?
+        WHERE id = ? AND empresa_id = ?
         """,
         (
             empresa_id, nome, endereco or None, tipologia, tipo_obra,
             area_valor, data_inicio or None, data_fim_prevista or None,
-            orcamento_valor, receita_valor, status, obra_id
+            orcamento_valor, receita_valor, status, obra_id, obra["empresa_id"]
         )
     )
 
@@ -840,17 +846,18 @@ def excluir_obra(obra_id):
         flash("Você não tem permissão para excluir obras.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
-    obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id")
+    obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.empresa_id")
     if not obra:
-        flash("Obra nao encontrada.", "erro")
+        flash("Obra no encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
-    execute("DELETE FROM custos WHERE obra_id = ?", (obra_id,))
-    execute("DELETE FROM medicoes WHERE obra_id = ?", (obra_id,))
-    execute("DELETE FROM equipe WHERE obra_id = ?", (obra_id,))
-    execute("DELETE FROM compras WHERE obra_id = ?", (obra_id,))
-    execute("DELETE FROM custos_importados_categoria WHERE obra_id = ?", (obra_id,))
-    execute("DELETE FROM obras WHERE id = ?", (obra_id,))
+    execute("DELETE FROM custos WHERE obra_id = ? AND empresa_id = ?", (obra_id, obra["empresa_id"]))
+    execute("DELETE FROM medicoes WHERE obra_id = ? AND empresa_id = ?", (obra_id, obra["empresa_id"]))
+    execute("DELETE FROM equipe WHERE obra_id = ? AND empresa_id = ?", (obra_id, obra["empresa_id"]))
+    execute("DELETE FROM compras WHERE obra_id = ? AND empresa_id = ?", (obra_id, obra["empresa_id"]))
+    execute("DELETE FROM custos_importados_categoria WHERE obra_id = ? AND empresa_id = ?", (obra_id, obra["empresa_id"]))
+    execute("DELETE FROM fotos_obra WHERE obra_id = ? AND empresa_id = ?", (obra_id, obra["empresa_id"]))
+    execute("DELETE FROM obras WHERE id = ? AND empresa_id = ?", (obra_id, obra["empresa_id"]))
 
     registrar_log(
         acao="exclusão",

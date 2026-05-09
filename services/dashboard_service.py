@@ -2,7 +2,7 @@ from datetime import datetime
 from database import query_all, query_one
 from utils import calcular_media_fornecedor, formatar_moeda, formatar_data
 from services.validators import data_no_periodo
-from services.tenant import where_empresa
+from services.tenant import and_empresa, where_empresa
 
 
 def calcular_alertas(obra_ids_filtradas=None):
@@ -18,6 +18,7 @@ def calcular_alertas(obra_ids_filtradas=None):
     alertas_keys = set()
     custos_totais_por_obra = {}
     hoje = datetime.today().date()
+    filtro_custos, params_custos = and_empresa()
 
     def adicionar_alerta(tipo, codigo, nome, mensagem, contexto="", acao="Ver obra", destino="obra", obra_codigo=None):
         chave = (tipo, codigo, nome, mensagem)
@@ -36,8 +37,8 @@ def calcular_alertas(obra_ids_filtradas=None):
 
     for obra in obras:
         custo_obra = query_one(
-            "SELECT COALESCE(SUM(valor_total), 0) AS total FROM custos WHERE obra_id = ?",
-            (obra["id"],)
+            f"SELECT COALESCE(SUM(valor_total), 0) AS total FROM custos WHERE obra_id = ? {filtro_custos}",
+            (obra["id"],) + tuple(params_custos)
         )
         custo_total = custo_obra["total"] if custo_obra else 0
         custos_totais_por_obra[obra["codigo"]] = custo_total

@@ -134,32 +134,34 @@ def portal_obra(token):
             abort(404)
 
     # LGPD: o portal publico recebe apenas atualizacoes e fotos publicadas ao cliente.
-    # Custos, fornecedores, equipe, documentos e valores internos nao sao consultados aqui.
+    # Custos, fornecedores, equipe, documentos e valores internos no sao consultados aqui.
     atualizacoes = query_all("""
         SELECT l.descricao, l.data_hora, u.nome AS autor
         FROM logs l
         LEFT JOIN usuarios u ON l.usuario_id = u.id
         WHERE l.entidade = 'obra'
           AND l.entidade_id = ?
+          AND l.empresa_id = ?
           AND l.acao = 'atualizacao_canteiro'
           AND l.descricao LIKE 'Atualização para o cliente:%'
         ORDER BY l.data_hora DESC
-    """, (obra["id"],))
+    """, (obra["id"], obra["empresa_id"]))
 
     fotos_obra = query_all("""
         SELECT caminho, titulo, fase, data_registro
         FROM fotos_obra
         WHERE obra_id = ?
+          AND empresa_id = ?
         ORDER BY id DESC
         LIMIT 12
-    """, (obra["id"],))
+    """, (obra["id"], obra["empresa_id"]))
 
     foto_principal = obra["foto_capa"] if "foto_capa" in obra.keys() and obra["foto_capa"] else ""
     if not foto_principal and fotos_obra:
         foto_principal = fotos_obra[0]["caminho"]
 
     galeria_portal = [foto for foto in fotos_obra if foto["caminho"] != foto_principal]
-    fase_portal = obra["fase_obra"] if obra["fase_obra"] else "Atualizacao em breve"
+    fase_portal = obra["fase_obra"] if obra["fase_obra"] else "Atualizao em breve"
     proxima_etapa = obra["proxima_etapa_portal"] if obra["proxima_etapa_portal"] else _proxima_etapa(fase_portal, obra["status"])
     ultima_atualizacao = _ultima_atualizacao(obra, atualizacoes, fotos_obra)
     timeline_portal = _montar_timeline_portal(obra, fase_portal, proxima_etapa, ultima_atualizacao)
@@ -201,8 +203,8 @@ def gerar_link(obra_id):
     novo_token = gerar_token_portal()
     expira_em = calcular_expiracao_portal()
     execute(
-        "UPDATE obras SET token_publico = ?, portal_expira_em = ?, portal_revogado_em = NULL WHERE id = ?",
-        (novo_token, expira_em, obra_id)
+        "UPDATE obras SET token_publico = ?, portal_expira_em = ?, portal_revogado_em = NULL WHERE id = ? AND empresa_id = ?",
+        (novo_token, expira_em, obra_id, obra["empresa_id"])
     )
 
     registrar_log(
@@ -230,8 +232,8 @@ def revogar_link(obra_id):
         return redirect(url_for("obras_bp.obras"))
 
     execute(
-        "UPDATE obras SET token_publico = NULL, portal_expira_em = NULL, portal_revogado_em = CURRENT_TIMESTAMP WHERE id = ?",
-        (obra_id,)
+        "UPDATE obras SET token_publico = NULL, portal_expira_em = NULL, portal_revogado_em = CURRENT_TIMESTAMP WHERE id = ? AND empresa_id = ?",
+        (obra_id, obra["empresa_id"])
     )
 
     registrar_log(

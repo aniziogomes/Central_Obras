@@ -274,13 +274,13 @@ def novo_custo():
         valor_total_float, quantidade_float, valor_unitario_float = calcular_valores_custo(valor_total, quantidade, valor_unitario)
         obra = obter_obra_acessivel(obra_id=obra_id_int, campos="o.id, o.empresa_id")
         if not obra:
-            raise ValueError("Obra nao encontrada para este usuario.")
+            raise ValueError("Obra no encontrada para este usuario.")
         if valor_negativo(valor_total_float):
             raise ValueError("Valor do custo não pode ser negativo.")
         if valor_negativo(quantidade_float):
-            raise ValueError("Quantidade nao pode ser negativa.")
+            raise ValueError("Quantidade no pode ser negativa.")
         if valor_negativo(valor_unitario_float):
-            raise ValueError("Valor unitario nao pode ser negativo.")
+            raise ValueError("Valor unitario no pode ser negativo.")
         if valor_total_float <= 0:
             raise ValueError("Informe o valor total ou quantidade e valor unitario.")
     except ValueError as e:
@@ -333,7 +333,7 @@ def editar_custo(custo_id):
 
     custo_atual = obter_registro_acessivel("custos", custo_id, campos="id")
     if not custo_atual:
-        flash("Custo nao encontrado.", "erro")
+        flash("Custo no encontrado.", "erro")
         return redirect(url_for("custos_bp.custos"))
 
     try:
@@ -359,9 +359,9 @@ def editar_custo(custo_id):
         if valor_negativo(valor_total_float):
             raise ValueError("Valor do custo não pode ser negativo.")
         if valor_negativo(quantidade_float):
-            raise ValueError("Quantidade nao pode ser negativa.")
+            raise ValueError("Quantidade no pode ser negativa.")
         if valor_negativo(valor_unitario_float):
-            raise ValueError("Valor unitario nao pode ser negativo.")
+            raise ValueError("Valor unitario no pode ser negativo.")
         if valor_total_float <= 0:
             raise ValueError("Informe o valor total ou quantidade e valor unitario.")
     except ValueError as e:
@@ -413,7 +413,7 @@ def excluir_custo(custo_id):
 
     custo = obter_registro_acessivel("custos", custo_id)
     if not custo:
-        flash("Custo nao encontrado.", "erro")
+        flash("Custo no encontrado.", "erro")
         return redirect(url_for("custos_bp.custos"))
     descricao_custo = custo["descricao"] if custo else f"ID {custo_id}"
 

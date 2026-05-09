@@ -220,7 +220,7 @@
                     {% if atualizacoes_cliente %}
                     <div class="portal-publisher-timeline">
                         {% for atualizacao in atualizacoes_cliente %}
-                        {% set mensagem_atualizacao = atualizacao.descricao|replace("Atualizacao para o cliente:", "")|replace("AtualizaÃ§Ã£o para o cliente:", "")|trim %}
+                        {% set mensagem_atualizacao = atualizacao.descricao|replace("Atualizao para o cliente:", "")|replace("Atualização para o cliente:", "")|trim %}
                         <article class="portal-publisher-timeline__item">
                             <div class="portal-publisher-timeline__head">
                                 <strong>{{ formatar_data(atualizacao.data_hora, "-", True) }}</strong>
@@ -239,7 +239,7 @@
                     </div>
                     {% else %}
                     <div class="portal-publisher-empty portal-publisher-empty--history">
-                        <p>Assim que voce salvar a primeira atualizacao, o historico do portal aparece aqui.</p>
+                        <p>Assim que voc? salvar a primeira atualizacao, o histrico do portal aparece aqui.</p>
                     </div>
                     {% endif %}
                 </div>

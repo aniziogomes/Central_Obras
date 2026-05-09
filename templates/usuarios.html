@@ -145,18 +145,13 @@
         </label>
         {% if admin_global %}
         <label class="form-field">
-          <span>Empresa / cliente</span>
-          <select name="empresa_id">
-            <option value="">Sem empresa (admin global)</option>
-            {% for empresa in empresas %}
-            <option value="{{ empresa.id }}">{{ empresa.nome }}</option>
-            {% endfor %}
-          </select>
-          <small class="usuarios-field-help">Obrigatorio para Gestor e Leitura.</small>
+          <span>Nome da empresa</span>
+          <input type="text" name="empresa_nome" required autocomplete="off" placeholder="Ex.: Construtora Atlas LTDA">
         </label>
         <label class="form-field">
-          <span>Nova empresa</span>
-          <input type="text" name="empresa_nome" autocomplete="off" placeholder="Criar empresa ao salvar">
+          <span>CNPJ ou CPF da empresa/responsável</span>
+          <input type="text" name="empresa_documento" required autocomplete="off" placeholder="Somente números ou com máscara">
+          <small class="usuarios-field-help">Se já existir empresa com este documento, o usuário será vinculado automaticamente.</small>
         </label>
         {% endif %}
         <label class="form-field">

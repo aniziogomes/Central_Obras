@@ -211,7 +211,7 @@
           });
 
           if (!response.ok) {
-            let message = "Nao foi possivel desativar este usuario.";
+            let message = "No foi possvel desativar este usuario.";
             try {
               const data = await response.json();
               if (data.message) message = data.message;
@@ -226,7 +226,7 @@
 
           window.location.href = "{{ url_for('auth_bp.perfil') }}#usuarios";
         } catch (err) {
-          alert("Nao foi possivel desativar este usuario.");
+          alert("No foi possvel desativar este usuario.");
           button.disabled = false;
           button.textContent = "Desativar";
         }

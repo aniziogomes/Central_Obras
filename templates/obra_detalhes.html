@@ -180,7 +180,7 @@
         <div class="card obra-section-card obra-overview-ops-card">
             <div class="card-hdr">
                 <div>
-                    <div class="card-title">Atualizacao operacional</div>
+                    <div class="card-title">Atualizao operacional</div>
                     <div class="obra-card-subtitle">Fase, conclusao e observacao do responsavel.</div>
                 </div>
             </div>
@@ -329,7 +329,7 @@
         </div>
         <div class="obra-info-grid">
             <div><span>Empresa / cliente</span><strong>{{ obra.empresa_nome if obra.empresa_nome is defined and obra.empresa_nome else "Sem empresa vinculada" }}</strong></div>
-            <div><span>Endereco</span><strong>{{ obra.endereco or "Nao informado" }}</strong></div>
+            <div><span>Endereco</span><strong>{{ obra.endereco or "No informado" }}</strong></div>
             <div><span>Codigo</span><strong>{{ obra.codigo }}</strong></div>
             <div><span>Tipo da obra</span><strong>{{ formatar_tipo_obra(obra.tipo_obra) }}</strong></div>
             <div><span>Tipologia</span><strong>{{ obra.tipologia or "-" }}</strong></div>
@@ -534,11 +534,11 @@
                     <div class="card-title">Medicoes</div>
                     <div class="obra-card-subtitle">{{ medicoes|length }} registro(s)</div>
                 </div>
-                {% if eh_gestor() %}<button type="button" class="btn btn-small btn-primary" data-open-quick-modal="modalQuickMedicao">+ Medicao</button>{% endif %}
+                {% if eh_gestor() %}<button type="button" class="btn btn-small btn-primary" data-open-quick-modal="modalQuickMedicao">+ Medio</button>{% endif %}
             </div>
             {% if medicoes %}
             <div class="obra-mini-lista">
-                <div class="obra-mini-head obra-mini-head--4"><span>Medicao</span><span>Etapa</span><span>%</span><span>Valor</span></div>
+                <div class="obra-mini-head obra-mini-head--4"><span>Medio</span><span>Etapa</span><span>%</span><span>Valor</span></div>
                 {% for item in medicoes %}
                 <div class="obra-mini-row obra-mini-row--4"><span>{{ item.medicao_nome }}</span><span>{{ item.etapa }}</span><span>{{ item.percentual or 0 }}%</span><strong>{{ formatar_moeda(item.valor_realizado) }}</strong></div>
                 {% endfor %}
@@ -688,7 +688,7 @@
             <input type="hidden" name="obra_id" value="{{ obra.id }}">
             <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
             <div class="form-grid modal-form-grid">
-                <div class="form-group"><label>Medicao *</label><input type="text" name="medicao_nome" required placeholder="Ex: 1 BM"></div>
+                <div class="form-group"><label>Medio *</label><input type="text" name="medicao_nome" required placeholder="Ex: 1 BM"></div>
                 <div class="form-group"><label>Etapa *</label><input type="text" name="etapa" required></div>
                 <div class="form-group"><label>Percentual %</label><input type="number" step="0.01" name="percentual" value="0"></div>
                 <div class="form-group"><label>Acumulado %</label><input type="number" step="0.01" name="percentual_acumulado" value="0"></div>

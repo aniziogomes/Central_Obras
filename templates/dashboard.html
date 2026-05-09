@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}Dashboard - Central de Obras{% endblock %}
 
@@ -51,7 +51,7 @@
             <h1>Visão geral operacional</h1>
             <p>Central ativa para acompanhar a obra em andamento, com alertas e próximos passos em linguagem simples.</p>
         </div>
-        <div class="dashboard-ops-live">Monitoramento ativo em tempo real</div>
+        <div class="dashboard-ops-live"><strong id="opsMonitoradasQtd">{{ obras|length }}</strong> obras monitoradas</div>
     </header>
 
     <div class="dashboard-filter-shell">
@@ -194,7 +194,7 @@
                 data-finance-state="{% if percentual_comprometido > 100 %}critical{% elif percentual_comprometido >= 70 %}warning{% elif total_receita > 0 %}healthy{% else %}info{% endif %}">
                 <span>Orçamento usado</span>
                 <strong id="kpiOrcamentoUsado">{{ '%.1f'|format(percentual_comprometido) }}%</strong>
-                <small id="kpiOrcamentoUsadoSub">Parte do contrato já comprometida</small>
+                <small id="kpiOrcamentoUsadoSub">{{ formatar_moeda(total_custo) }} de {{ formatar_moeda(total_receita) }}</small>
             </article>
             <article class="dashboard-support-card"
                 data-finance-state="{% if margem < 0 %}critical{% elif percentual_comprometido >= 85 %}warning{% elif total_receita > 0 %}healthy{% else %}info{% endif %}"
@@ -300,7 +300,7 @@
                         {% for custo in custos[:4] %}
                         {% set obra_ref = (obras|selectattr('id', 'equalto', custo.obra_id)|list|first) %}
                         <article class="dashboard-timeline-item">
-                            <div class="dashboard-timeline-badge">CT</div>
+                            <div class="dashboard-timeline-badge">Custo</div>
                             <div>
                                 <div class="dashboard-timeline-top">
                                     <strong>Novo custo registrado</strong>
@@ -315,7 +315,7 @@
                         {% for medicao in medicoes[:3] %}
                         {% set obra_ref = (obras|selectattr('id', 'equalto', medicao.obra_id)|list|first) %}
                         <article class="dashboard-timeline-item">
-                            <div class="dashboard-timeline-badge">MD</div>
+                            <div class="dashboard-timeline-badge">Medição</div>
                             <div>
                                 <div class="dashboard-timeline-top">
                                     <strong>Medição registrada</strong>
@@ -329,11 +329,11 @@
 
                         {% for alerta in alertas[:3] %}
                         <article class="dashboard-timeline-item">
-                            <div class="dashboard-timeline-badge">AL</div>
+                            <div class="dashboard-timeline-badge">Alerta</div>
                             <div>
                                 <div class="dashboard-timeline-top">
                                     <strong>Alerta operacional detectado</strong>
-                                    <span class="dashboard-time-chip">agora</span>
+                                    <span class="dashboard-time-chip">Evento recente</span>
                                 </div>
                                 <p class="dashboard-timeline-meta">Responsável: Sistema · Obra: {{ alerta.codigo }}</p>
                                 <p class="dashboard-timeline-copy">{{ alerta.mensagem }}</p>
@@ -411,28 +411,28 @@
                 </div>
 
                 <div class="dashboard-activity-grid">
-                    <article class="dashboard-activity-card">
+                    <article class="dashboard-activity-card" id="activityUltimaObraCard">
                         <span>Última obra atualizada</span>
                         <strong id="activityUltimaObraNome">{{ ultima_obra.nome if ultima_obra else "Sem obra" }}</strong>
                         <small id="activityUltimaObraHora" data-relative-date="{{ ultima_obra.criado_em if ultima_obra else '' }}">
                             {{ formatar_data(ultima_obra.criado_em, "Sem horário", True) if ultima_obra else "Sem dados" }}
                         </small>
                     </article>
-                    <article class="dashboard-activity-card">
+                    <article class="dashboard-activity-card" id="activityUltimoCustoCard">
                         <span>Último custo lançado</span>
                         <strong id="activityUltimoCustoNome">{{ ultimo_custo.descricao if ultimo_custo else "Sem custo" }}</strong>
                         <small id="activityUltimoCustoHora" data-relative-date="{{ ultimo_custo.data_lancamento if ultimo_custo else '' }}">
                             {{ formatar_data(ultimo_custo.data_lancamento, "Sem horário", True) if ultimo_custo else "Sem dados" }}
                         </small>
                     </article>
-                    <article class="dashboard-activity-card">
+                    <article class="dashboard-activity-card" id="activityUltimaMedicaoCard" {% if not ultima_medicao %}hidden{% endif %}>
                         <span>Última medição</span>
                         <strong id="activityUltimaMedicaoNome">{{ ultima_medicao.medicao_nome if ultima_medicao else "Sem medição" }}</strong>
                         <small id="activityUltimaMedicaoHora" data-relative-date="{{ ultima_medicao.data_medicao if ultima_medicao else '' }}">
                             {{ formatar_data(ultima_medicao.data_medicao, "Sem horário", True) if ultima_medicao else "Sem dados" }}
                         </small>
                     </article>
-                    <article class="dashboard-activity-card">
+                    <article class="dashboard-activity-card" id="activityUltimaPublicacaoCard" {% if not (alertas and alertas|length) %}hidden{% endif %}>
                         <span>Última publicação no portal</span>
                         <strong id="activityUltimaPublicacaoNome">
                             {% if alertas and alertas|length %}
@@ -490,20 +490,28 @@
                 {% for obra in margem_por_obra %}
                 <div class="dashboard-v2-table-row">
                     <a href="/obra/{{ obra.codigo }}/detalhes" class="dashboard-v2-obra-cell">
-                        <strong>{{ obra.nome }}</strong>
+                        <strong>{{ (obra.nome or '')|title }}</strong>
                         <small>{{ obra.codigo }}</small>
                     </a>
                     <span>{{ "Para venda" if obra.tipo_obra == "venda" else "Por contrato" }}<small>{{ obra.tipologia or "-" }}</small></span>
-                    <span>{{ obra.fase_obra or obra.status or "-" }}</span>
+                    <span>{{ (obra.fase_obra or obra.status or "-")|replace('fundacao', 'Fundação')|replace('concluida', 'Concluída')|replace('instalacoes', 'Instalações')|replace('planejamento', 'Planejamento')|replace('andamento', 'Andamento')|replace('atrasada', 'Atrasada') }}</span>
                     <span>
+                        {% if (obra.execucao or 0) > 0 %}
                         <div class="dashboard-v2-mini-progress"><i style="width: {{ obra.execucao or 0 }}%;"></i></div>
+                        {% endif %}
                         {{ obra.execucao or 0 }}%
                     </span>
                     <span>{{ formatar_moeda(obra.receita_total) }}</span>
                     <span>{{ formatar_moeda(obra.custo_realizado) }}</span>
                     <strong class="{% if obra.margem_valor >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">{{ formatar_moeda(obra.margem_valor) }}</strong>
                     <span class="badge {{ obra.status }}">{{ obra.status or "-" }}</span>
-                    <a href="/obra/{{ obra.codigo }}" class="btn btn-small btn-ghost">Abrir portal</a>
+                    <a href="/obra/{{ obra.codigo }}" class="dashboard-portal-icon-btn" aria-label="Abrir portal da obra {{ obra.nome }}" title="Abrir portal">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M14 4h6v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M10 14L20 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M20 14v6H4V4h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </a>
                 </div>
                 {% else %}
                 <div class="dashboard-summary-empty dashboard-summary-empty--rich">
@@ -574,13 +582,9 @@
         white-space: nowrap;
     }
 
-    .dashboard-ops-live::before {
-        content: "";
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: #38c978;
-        box-shadow: 0 0 0 5px rgba(56, 201, 120, 0.14);
+    .dashboard-ops-live strong {
+        color: #d7ffe9;
+        font-size: 12px;
     }
 
     .dashboard-empty-state {
@@ -868,7 +872,7 @@
 
     .dashboard-timeline-item {
         display: grid;
-        grid-template-columns: 34px minmax(0, 1fr);
+        grid-template-columns: 66px minmax(0, 1fr);
         gap: 9px;
         border-radius: 10px;
         border: 1px solid rgba(255, 255, 255, .08);
@@ -877,15 +881,15 @@
     }
 
     .dashboard-timeline-badge {
-        width: 34px;
+        width: 66px;
         height: 34px;
         border-radius: 10px;
         display: grid;
         place-items: center;
         color: #cce2ff;
-        font-size: 10px;
+        font-size: 9px;
         font-weight: 900;
-        letter-spacing: .05em;
+        letter-spacing: .03em;
         background: rgba(47, 125, 240, .2);
         border: 1px solid rgba(47, 125, 240, .34);
     }
@@ -1094,14 +1098,29 @@
     .dashboard-v2-table-head span:nth-child(8),
     .dashboard-v2-table-head span:nth-child(9),
     .dashboard-v2-table-row > .badge,
-    .dashboard-v2-table-row > .btn {
+    .dashboard-v2-table-row > .dashboard-portal-icon-btn {
         justify-self: center;
     }
 
-    .dashboard-v2-table-row > .btn {
-        min-width: 88px;
-        min-height: 30px;
-        padding-inline: 10px;
+    .dashboard-portal-icon-btn {
+        width: 30px;
+        height: 30px;
+        display: inline-grid;
+        place-items: center;
+        border-radius: 9px;
+        border: 1px solid rgba(62, 125, 229, .45);
+        background: rgba(34, 97, 204, .16);
+        color: #9ac3ff;
+        transition: transform .16s ease, border-color .16s ease, background-color .16s ease, color .16s ease;
+        text-decoration: none;
+    }
+
+    .dashboard-portal-icon-btn:hover,
+    .dashboard-portal-icon-btn:focus-visible {
+        color: #d9e9ff;
+        border-color: rgba(93, 156, 255, .75);
+        background: rgba(52, 119, 238, .28);
+        transform: translateY(-1px);
     }
 
     .dashboard-v2-table-row span small,
@@ -1143,6 +1162,22 @@
         max-width: 100%;
         border-radius: inherit;
         background: #2f7df0;
+    }
+
+    .valor-negativo::before {
+        content: "!";
+        display: inline-grid;
+        place-items: center;
+        width: 14px;
+        height: 14px;
+        margin-right: 6px;
+        border-radius: 999px;
+        color: #ffd5d9;
+        background: rgba(235, 87, 87, .32);
+        border: 1px solid rgba(255, 122, 122, .46);
+        font-size: 10px;
+        font-weight: 800;
+        vertical-align: middle;
     }
 
     .dashboard-v2-table-foot {
@@ -1353,6 +1388,40 @@
             return null;
         }
 
+        function formatAbsoluteDateTime(date) {
+            if (!date) return "Sem horário";
+            return date.toLocaleString("pt-BR", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+        }
+
+        function toTitleCase(text) {
+            return String(text || "")
+                .toLowerCase()
+                .split(" ")
+                .filter(Boolean)
+                .map(function (p) { return p.charAt(0).toUpperCase() + p.slice(1); })
+                .join(" ");
+        }
+
+        function normalizarFase(text) {
+            const base = String(text || "").toLowerCase().trim();
+            if (!base) return "-";
+            const mapa = {
+                "fundacao": "Fundação",
+                "concluida": "Concluída",
+                "instalacoes": "Instalações",
+                "planejamento": "Planejamento",
+                "andamento": "Andamento",
+                "atrasada": "Atrasada"
+            };
+            return mapa[base] || toTitleCase(base);
+        }
+
         function formatRelative(date) {
             if (!date) return "sem horário";
             const diffMs = Date.now() - date.getTime();
@@ -1370,7 +1439,7 @@
             document.querySelectorAll("[data-relative-date]").forEach(function (el) {
                 const date = parseDate(el.getAttribute("data-relative-date"));
                 if (date) {
-                    el.textContent = formatRelative(date);
+                    el.textContent = `${formatAbsoluteDateTime(date)} (${formatRelative(date)})`;
                 }
             });
         }
@@ -1422,6 +1491,7 @@
             const saldoState = margemValor < 0 ? "critical" : (custoPct >= 85 ? "warning" : (totalReceitaValor > 0 ? "healthy" : "info"));
 
             setText("kpiObrasFiltradas", p.quick_strip.obras_filtradas);
+            setText("opsMonitoradasQtd", totalObras);
             setText("kpiReceita", p.kpis.total_receita_formatado);
             setText("kpiReceitaObras", `${p.kpis.total_obras} obras`);
             setText("kpiReceitaMedicoes", `${p.kpis.total_medicoes} medições`);
@@ -1432,12 +1502,7 @@
             setText("kpiCustosLancados", `${p.kpis.total_custos_lancados} lançamentos`);
             setText("kpiCustoSub", `${p.kpis.total_custos_lancados} ${Number(p.kpis.total_custos_lancados || 0) === 1 ? "lançamento" : "lançamentos"}`);
             setText("kpiOrcamentoUsado", `${custoPct.toFixed(1)}%`);
-            setText(
-                "kpiOrcamentoUsadoSub",
-                custoPct > 100
-                    ? "Acima do valor de contrato"
-                    : (custoPct >= 70 ? "Faixa de atenção de custos" : "Uso controlado do contrato")
-            );
+            setText("kpiOrcamentoUsadoSub", `${p.kpis.total_custo_formatado} de ${p.kpis.total_receita_formatado}`);
             setText("kpiAlertas", p.kpis.total_alertas);
             setText("kpiObrasAtrasadas", p.kpis.obras_atrasadas);
             setText("kpiObrasAtivas", andamento);
@@ -1511,13 +1576,19 @@
             if (cardAtualizacao) cardAtualizacao.hidden = !hasAtualizacao;
 
             if (hasFinanceiro) {
-                setText("kpiUltimoLancamentoFinanceiro", "há instantes");
+                const dataUltimoLancamento = parseDate((p.custos && p.custos[0] && p.custos[0].data_lancamento) ? p.custos[0].data_lancamento : "");
+                setText("kpiUltimoLancamentoFinanceiro", dataUltimoLancamento ? formatAbsoluteDateTime(dataUltimoLancamento) : "Sem horário");
                 setText("kpiUltimoLancamentoFinanceiroSub", `${p.kpis.total_custos_lancados} lançamento(s) no período`);
             }
 
             if (hasAtualizacao) {
-                setText("kpiUltimaAtualizacaoGeral", "agora");
-                setText("kpiUltimaAtualizacaoGeralSub", "Central em atualização contínua");
+                const dataAtualizacao = parseDate(
+                    (p.custos && p.custos[0] && p.custos[0].data_lancamento)
+                    || (p.medicoes && p.medicoes[0] && p.medicoes[0].data_medicao)
+                    || ""
+                );
+                setText("kpiUltimaAtualizacaoGeral", dataAtualizacao ? formatAbsoluteDateTime(dataAtualizacao) : "Sem horário");
+                setText("kpiUltimaAtualizacaoGeralSub", dataAtualizacao ? formatRelative(dataAtualizacao) : "Sem atualização recente");
             }
 
             const fotoVisivel = cardFoto ? !cardFoto.hidden : false;
@@ -1575,9 +1646,9 @@
             const eventos = [];
             (p.alertas || []).slice(0, 3).forEach(function (a) {
                 eventos.push({
-                    badge: "AL",
+                    badge: "Alerta",
                     titulo: "Alerta operacional detectado",
-                    tempo: "agora",
+                    tempo: "Evento recente",
                     meta: `Responsável: Sistema · Obra: ${a.codigo || "N/A"}`,
                     copy: a.mensagem || "Alerta operacional registrado."
                 });
@@ -1585,9 +1656,9 @@
 
             (p.margem_por_obra || []).slice(0, 4).forEach(function (obra) {
                 eventos.push({
-                    badge: "OB",
+                    badge: "Obra",
                     titulo: "Atualização de fase da obra",
-                    tempo: "agora",
+                    tempo: "Atualização em andamento",
                     meta: `Responsável: Gestão da obra · Obra: ${obra.nome}`,
                     copy: `Fase atual: ${obra.fase_obra || obra.status || "-"} · Próxima etapa: ${estimarProximaEtapa(Number(obra.execucao || 0), obra.status)}`
                 });
@@ -1631,39 +1702,45 @@
             list.innerHTML = ativas.map(function (obra) {
                 const execucao = Number(obra.execucao || 0);
                 const codigoObra = String(obra.codigo || "").trim();
-                const nomeObra = esc(obra.nome || "-");
+                const nomeObra = esc(toTitleCase(obra.nome || "-"));
                 const linkNome = codigoObra
                     ? `<a href="/obra/${encodeURIComponent(codigoObra)}/detalhes" class="dashboard-step-link" data-spa>${nomeObra}</a>`
                     : `<span class="dashboard-step-link dashboard-step-link--disabled">${nomeObra}</span>`;
+                const prazoRaw = parseDate(obra.data_fim_prevista || "");
+                const prazoLabel = prazoRaw ? formatAbsoluteDateTime(prazoRaw) : "Definir no cronograma";
                 return `
                 <article class="dashboard-step-card">
                     <div class="dashboard-step-top">
                         ${linkNome}
                         <span class="dashboard-step-badge">${esc(obra.status || "em andamento")}</span>
                     </div>
-                    <p><strong>Fase atual:</strong> ${esc(obra.fase_obra || obra.status || "-")}</p>
+                    <p><strong>Fase atual:</strong> ${esc(normalizarFase(obra.fase_obra || obra.status || "-"))}</p>
                     <p><strong>Próxima etapa:</strong> ${esc(estimarProximaEtapa(execucao, obra.status))}</p>
-                    <p><strong>Prazo:</strong> Conforme cronograma da obra</p>
+                    <p><strong>Prazo:</strong> ${esc(prazoLabel)}</p>
                 </article>`;
             }).join("");
         }
 
         function atualizarAtividadesRecentes(p) {
             const primeiraObra = (p.margem_por_obra || [])[0];
-            setText("activityUltimaObraNome", primeiraObra ? (primeiraObra.nome || "Sem obra") : "Sem obra");
-            setText("activityUltimaObraHora", primeiraObra ? "agora" : "Sem dados");
+            setText("activityUltimaObraNome", primeiraObra ? toTitleCase(primeiraObra.nome || "Sem obra") : "Sem obra");
+            setText("activityUltimaObraHora", primeiraObra ? "Registro disponível no período" : "Sem dados");
 
             const custosLancados = Number(p.kpis.total_custos_lancados || 0);
             setText("activityUltimoCustoNome", custosLancados > 0 ? `${custosLancados} lançamento(s)` : "Sem custo");
-            setText("activityUltimoCustoHora", custosLancados > 0 ? "agora" : "Sem dados");
+            setText("activityUltimoCustoHora", custosLancados > 0 ? "Lançamento disponível no período" : "Sem dados");
 
             const medicoes = Number(p.kpis.total_medicoes || 0);
-            setText("activityUltimaMedicaoNome", medicoes > 0 ? `${medicoes} medição(ões)` : "Sem medição");
-            setText("activityUltimaMedicaoHora", medicoes > 0 ? "agora" : "Sem dados");
+            const cardMedicao = document.getElementById("activityUltimaMedicaoCard");
+            if (cardMedicao) cardMedicao.hidden = medicoes <= 0;
+            setText("activityUltimaMedicaoNome", medicoes > 0 ? `${medicoes} medição(ões)` : "");
+            setText("activityUltimaMedicaoHora", medicoes > 0 ? "Medição disponível no período" : "");
 
             const ultimaPublicacao = (p.alertas || [])[0];
-            setText("activityUltimaPublicacaoNome", ultimaPublicacao ? (ultimaPublicacao.codigo || "Obra monitorada") : "Sem publicação");
-            setText("activityUltimaPublicacaoHora", ultimaPublicacao ? "Atualização de monitoramento em execução" : "Sem dados recentes no dashboard");
+            const cardPublicacao = document.getElementById("activityUltimaPublicacaoCard");
+            if (cardPublicacao) cardPublicacao.hidden = !ultimaPublicacao;
+            setText("activityUltimaPublicacaoNome", ultimaPublicacao ? (ultimaPublicacao.codigo || "Obra monitorada") : "");
+            setText("activityUltimaPublicacaoHora", ultimaPublicacao ? "Atualização de monitoramento em execução" : "");
         }
 
         function atualizarResumoObras(p) {
@@ -1686,20 +1763,26 @@
                 return `
                 <div class="dashboard-v2-table-row">
                     <a href="/obra/${encodeURIComponent(o.codigo)}/detalhes" class="dashboard-v2-obra-cell">
-                        <strong>${esc(o.nome)}</strong>
+                        <strong>${esc(toTitleCase(o.nome))}</strong>
                         <small>${esc(o.codigo)}</small>
                     </a>
                     <span>${o.tipo_obra === "venda" ? "Para venda" : "Por contrato"}<small>${esc(o.tipologia || "-")}</small></span>
-                    <span>${esc(o.fase_obra || o.status || "-")}</span>
+                    <span>${esc(normalizarFase(o.fase_obra || o.status || "-"))}</span>
                     <span>
-                        <div class="dashboard-v2-mini-progress"><i style="width: ${Number(o.execucao || 0)}%;"></i></div>
+                        ${Number(o.execucao || 0) > 0 ? `<div class="dashboard-v2-mini-progress"><i style="width: ${Number(o.execucao || 0)}%;"></i></div>` : ""}
                         ${Number(o.execucao || 0).toFixed(1)}%
                     </span>
                     <span>${esc(o.receita_total_formatada || fmt(o.receita_total))}</span>
                     <span>${esc(o.custo_realizado_formatado || fmt(o.custo_realizado))}</span>
-                    <strong class="${parseFinanceNumber(o.margem_valor ?? o.margem_valor_formatado ?? 0) >= 0 ? "valor-positivo" : "valor-negativo"}">${esc(o.margem_valor_formatado)}</strong>
+                    <strong class="${parseFinanceNumber(o.margem_valor ?? o.margem_valor_formatado ?? 0) >= 0 ? "valor-positivo" : "valor-negativo"}">${esc(o.margem_valor_formatada || o.margem_valor_formatado)}</strong>
                     <span class="badge ${esc(o.status)}">${esc(o.status || "-")}</span>
-                    <a href="/obra/${encodeURIComponent(o.codigo)}" class="btn btn-small btn-ghost">Abrir portal</a>
+                    <a href="/obra/${encodeURIComponent(o.codigo)}" class="dashboard-portal-icon-btn" aria-label="Abrir portal da obra ${esc(o.nome)}" title="Abrir portal">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M14 4h6v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M10 14L20 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M20 14v6H4V4h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </a>
                 </div>`;
             }).join("");
         }
@@ -1826,3 +1909,6 @@
     })();
 </script>
 {% endblock %}
+
+
+

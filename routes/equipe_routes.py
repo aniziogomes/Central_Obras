@@ -55,7 +55,7 @@ def novo_membro_equipe():
         obra_id_int = parse_int_positivo(obra_id, "Obra")
         obra = obter_obra_acessivel(obra_id=obra_id_int, campos="o.id, o.empresa_id")
         if not obra:
-            raise ValueError("Obra nao encontrada para este usuario.")
+            raise ValueError("Obra no encontrada para este usuario.")
 
         if valor_negativo(valor_contratado_float):
             raise ValueError("Valor contratado não pode ser negativo.")
@@ -95,7 +95,7 @@ def editar_equipe(equipe_id):
 
     membro = obter_registro_acessivel("equipe", equipe_id, campos="id")
     if not membro:
-        flash("Profissional nao encontrado.", "erro")
+        flash("Profissional no encontrado.", "erro")
         return redirect(url_for("equipe_bp.equipe"))
 
     try:
@@ -130,7 +130,7 @@ def excluir_equipe(equipe_id):
 
     membro = obter_registro_acessivel("equipe", equipe_id, campos="id")
     if not membro:
-        flash("Profissional nao encontrado.", "erro")
+        flash("Profissional no encontrado.", "erro")
         return redirect(url_for("equipe_bp.equipe"))
 
     execute("DELETE FROM equipe WHERE id = ?", (equipe_id,))

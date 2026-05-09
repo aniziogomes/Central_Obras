@@ -11,6 +11,7 @@ EMPRESA_PADRAO_NOME = "Canteiro Interno"
 
 def get_connection():
     conn = sqlite3.connect(DB_PATH)
+    conn.execute("PRAGMA encoding = 'UTF-8'")
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -47,9 +48,19 @@ def init_db():
         CREATE TABLE IF NOT EXISTS empresas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nome TEXT NOT NULL UNIQUE,
+            documento TEXT UNIQUE,
             ativo INTEGER NOT NULL DEFAULT 1,
             criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
+        """
+    )
+
+    adicionar_coluna("empresas", "documento", "TEXT")
+    executar_sem_quebrar(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_empresas_documento_unico
+        ON empresas(documento)
+        WHERE documento IS NOT NULL AND documento != ''
         """
     )
 

@@ -78,7 +78,7 @@ def enviar_email_reset_senha(usuario, link_reset):
         f"Ola, {usuario['nome']}.\n\n"
         "Recebemos uma solicitacao para redefinir sua senha no Canteiro.\n"
         f"Acesse este link em ate {RESET_SENHA_EXPIRACAO_MINUTOS} minutos:\n{link_reset}\n\n"
-        "Se voce nao solicitou essa redefinicao, ignore este email."
+        "Se voc? no solicitou essa redefinicao, ignore este email."
     )
     html = f"""
     <div style="font-family:Arial,sans-serif;line-height:1.5;color:#20232a">
@@ -87,7 +87,7 @@ def enviar_email_reset_senha(usuario, link_reset):
       <p>Recebemos uma solicitacao para redefinir sua senha no Canteiro.</p>
       <p><a href="{link}" style="display:inline-block;background:#e8621a;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:700">Criar nova senha</a></p>
       <p>Este link expira em {RESET_SENHA_EXPIRACAO_MINUTOS} minutos.</p>
-      <p>Se voce nao solicitou essa redefinicao, ignore este email.</p>
+      <p>Se voc? no solicitou essa redefinicao, ignore este email.</p>
     </div>
     """
     return enviar_email_resend(usuario["email"], assunto, html, texto)
@@ -281,7 +281,7 @@ def redefinir_senha(token):
             return render_template("redefinir_senha.html", token=token)
 
         if nova_senha != confirmar_senha:
-            flash("A confirmacao da senha nao confere.", "erro")
+            flash("A confirmao da senha no confere.", "erro")
             return render_template("redefinir_senha.html", token=token)
 
         execute(
@@ -451,11 +451,13 @@ def novo_usuario():
                 perfil,
                 request.form.get("empresa_id", ""),
                 request.form.get("empresa_nome", ""),
+                request.form.get("empresa_documento", ""),
+                exigir_documento=True,
             )
         else:
             empresa_id = empresa_id_atual()
             if not empresa_id:
-                raise ValueError("Administrador sem empresa nao pode criar usuarios de empresa.")
+                raise ValueError("Administrador sem empresa no pode criar usuarios de empresa.")
     except ValueError as e:
         flash(str(e), "erro")
         return redirecionar_usuarios()
@@ -465,19 +467,62 @@ def novo_usuario():
         return redirecionar_usuarios()
 
     if senha != confirmar_senha:
-        flash("A confirmacao da senha nao confere.", "erro")
+        flash("A confirmao da senha no confere.", "erro")
         return redirecionar_usuarios()
 
     if query_one("SELECT id FROM usuarios WHERE username = ?", (username,)):
         flash("Ja existe um usuario com esse username.", "erro")
         return redirecionar_usuarios()
 
-    if email and query_one("SELECT id FROM usuarios WHERE lower(email) = ?", (email,)):
-        flash("Ja existe um usuario com esse email.", "erro")
-        return redirecionar_usuarios()
+    usuario_existente_email = None
+    if email:
+        usuario_existente_email = query_one(
+            "SELECT id, ativo, empresa_id FROM usuarios WHERE lower(email) = ?",
+            (email,),
+        )
+        if usuario_existente_email and int(usuario_existente_email["ativo"] or 0) == 1:
+            flash("Ja existe um usuario com esse email.", "erro")
+            return redirecionar_usuarios()
 
     onboarding_pendente = 1 if perfil == "gestor" else 0
     onboarding_completo = 0 if onboarding_pendente else 1
+
+    # Reaproveita cadastro inativo com o mesmo email para evitar bloqueio de recriacao.
+    if email and usuario_existente_email and int(usuario_existente_email["ativo"] or 0) == 0:
+        usuario_id = usuario_existente_email["id"]
+
+        conflito_username = query_one(
+            "SELECT id FROM usuarios WHERE username = ? AND id != ?",
+            (username, usuario_id),
+        )
+        if conflito_username:
+            flash("Ja existe um usuario com esse username.", "erro")
+            return redirecionar_usuarios()
+
+        execute(
+            """
+            UPDATE usuarios
+            SET empresa_id = ?, nome = ?, username = ?, email = ?, senha_hash = ?, perfil = ?, ativo = ?,
+                onboarding_completo = ?, onboarding_pendente = ?
+            WHERE id = ?
+            """,
+            (
+                empresa_id,
+                nome,
+                username,
+                email,
+                gerar_hash_senha(senha),
+                perfil,
+                ativo,
+                onboarding_completo,
+                onboarding_pendente,
+                usuario_id,
+            ),
+        )
+        registrar_log("reativar_usuario", "usuario", usuario_id, f"Usuario {username} reativado pelo cadastro")
+        guardar_credenciais_usuario(nome, username, senha, "reativado")
+        flash("Usuario existente foi reativado com sucesso.", "sucesso")
+        return redirecionar_usuarios()
 
     usuario_id = execute(
         """
@@ -553,7 +598,7 @@ def editar_usuario(usuario_id):
 
     usuario = obter_usuario_administravel(usuario_id)
     if not usuario:
-        flash("Usuario nao encontrado.", "erro")
+        flash("Usuario no encontrado.", "erro")
         return redirecionar_usuarios()
 
     try:
@@ -576,17 +621,18 @@ def editar_usuario(usuario_id):
                 perfil,
                 request.form.get("empresa_id", ""),
                 request.form.get("empresa_nome", ""),
+                request.form.get("empresa_documento", ""),
             )
         else:
             empresa_id = empresa_id_atual()
             if not empresa_id:
-                raise ValueError("Administrador sem empresa nao pode editar usuarios de empresa.")
+                raise ValueError("Administrador sem empresa no pode editar usuarios de empresa.")
     except ValueError as e:
         flash(str(e), "erro")
         return redirecionar_usuarios()
 
     if usuario_id == session.get("usuario_id") and ativo == 0:
-        flash("Voce nao pode desativar sua propria conta.", "erro")
+        flash("Voc? no pode desativar sua propria conta.", "erro")
         return redirecionar_usuarios()
 
     if query_one("SELECT id FROM usuarios WHERE username = ? AND id != ?", (username, usuario_id)):
@@ -634,21 +680,21 @@ def toggle_usuario(usuario_id):
 
     if not usuario_logado() or not eh_admin():
         if requisicao_ajax:
-            return jsonify({"ok": False, "message": "Nao autorizado."}), 403
+            return jsonify({"ok": False, "message": "No autorizado."}), 403
         flash("Apenas administradores podem alterar usuarios.", "erro")
         return redirecionar_usuarios()
 
     if usuario_id == session.get("usuario_id"):
         if requisicao_ajax:
-            return jsonify({"ok": False, "message": "Voce nao pode desativar sua propria conta."}), 400
-        flash("Voce nao pode desativar sua propria conta.", "erro")
+            return jsonify({"ok": False, "message": "Voc? no pode desativar sua propria conta."}), 400
+        flash("Voc? no pode desativar sua propria conta.", "erro")
         return redirecionar_usuarios()
 
     usuario = obter_usuario_administravel(usuario_id, "id, ativo")
     if not usuario:
         if requisicao_ajax:
-            return jsonify({"ok": False, "message": "Usuario nao encontrado."}), 404
-        flash("Usuario nao encontrado.", "erro")
+            return jsonify({"ok": False, "message": "Usuario no encontrado."}), 404
+        flash("Usuario no encontrado.", "erro")
         return redirecionar_usuarios()
 
     novo_status = 0 if usuario["ativo"] else 1
@@ -668,12 +714,12 @@ def excluir_usuario(usuario_id):
         return redirecionar_usuarios()
 
     if usuario_id == session.get("usuario_id"):
-        flash("Voce nao pode excluir sua propria conta.", "erro")
+        flash("Voc? no pode excluir sua propria conta.", "erro")
         return redirecionar_usuarios()
 
     usuario = obter_usuario_administravel(usuario_id, "id, username")
     if not usuario:
-        flash("Usuario nao encontrado.", "erro")
+        flash("Usuario no encontrado.", "erro")
         return redirecionar_usuarios()
 
     execute("DELETE FROM usuarios WHERE id = ?", (usuario_id,))
@@ -697,8 +743,8 @@ def desativar_usuario(usuario_id):
     usuario = obter_usuario_administravel(usuario_id, "id, ativo")
     if not usuario:
         if requisicao_ajax:
-            return jsonify({"ok": False, "message": "Usuario nao encontrado."}), 404
-        flash("Usuario nao encontrado.", "erro")
+            return jsonify({"ok": False, "message": "Usuario no encontrado."}), 404
+        flash("Usuario no encontrado.", "erro")
         return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
     if not usuario["ativo"]:
@@ -721,7 +767,7 @@ def reativar_usuario(usuario_id):
 
     usuario = obter_usuario_administravel(usuario_id)
     if not usuario:
-        flash("Usuario nao encontrado.", "erro")
+        flash("Usuario no encontrado.", "erro")
         return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
     execute("UPDATE usuarios SET ativo = 1 WHERE id = ?", (usuario_id,))
@@ -743,12 +789,12 @@ def resetar_senha_usuario(usuario_id):
         return redirecionar_usuarios()
 
     if confirmar_senha and nova_senha != confirmar_senha:
-        flash("A confirmacao da senha nao confere.", "erro")
+        flash("A confirmao da senha no confere.", "erro")
         return redirecionar_usuarios()
 
     usuario = obter_usuario_administravel(usuario_id, "id, nome, username")
     if not usuario:
-        flash("Usuario nao encontrado.", "erro")
+        flash("Usuario no encontrado.", "erro")
         return redirecionar_usuarios()
 
     execute("UPDATE usuarios SET senha_hash = ? WHERE id = ?", (gerar_hash_senha(nova_senha), usuario_id))
@@ -766,7 +812,7 @@ def atualizar_foto_usuario(usuario_id):
 
     usuario = obter_usuario_administravel(usuario_id)
     if not usuario:
-        flash("Usuario nao encontrado.", "erro")
+        flash("Usuario no encontrado.", "erro")
         return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
     try:

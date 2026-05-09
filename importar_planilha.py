@@ -39,9 +39,13 @@ def importar_planilha(caminho_arquivo, codigo_obra, nome_obra, empresa_id=None):
     # --------------------------------------------------
     # 1. GARANTIR A OBRA
     # --------------------------------------------------
-    obra = query_one("SELECT * FROM obras WHERE codigo = ?", (codigo_obra,))
-    if obra and empresa_id is not None and obra["empresa_id"] != empresa_id:
-        raise ValueError("Este codigo de obra ja pertence a outra empresa.")
+    if empresa_id is not None:
+        obra = query_one(
+            "SELECT * FROM obras WHERE codigo = ? AND empresa_id = ?",
+            (codigo_obra, empresa_id),
+        )
+    else:
+        obra = query_one("SELECT * FROM obras WHERE codigo = ?", (codigo_obra,))
     if obra:
         obra_id = obra["id"]
         empresa_id_obra = obra["empresa_id"] if "empresa_id" in obra.keys() else empresa_id
@@ -119,7 +123,13 @@ def importar_planilha(caminho_arquivo, codigo_obra, nome_obra, empresa_id=None):
             "EQUIPAMENTOS": "Equipamentos"
         }
 
-        execute("DELETE FROM custos_importados_categoria WHERE obra_id = ?", (obra_id,))
+        if empresa_id_obra is not None:
+            execute(
+                "DELETE FROM custos_importados_categoria WHERE obra_id = ? AND empresa_id = ?",
+                (obra_id, empresa_id_obra),
+            )
+        else:
+            execute("DELETE FROM custos_importados_categoria WHERE obra_id = ?", (obra_id,))
 
         for linha in range(1, ws.max_row + 1):
             valor_b = texto_seguro(ws[f"B{linha}"].value).upper()
@@ -152,7 +162,10 @@ def importar_planilha(caminho_arquivo, codigo_obra, nome_obra, empresa_id=None):
     if "MEDIÇÕES" in wb.sheetnames:
         ws = wb["MEDIÇÕES"]
 
-        execute("DELETE FROM medicoes WHERE obra_id = ?", (obra_id,))
+        if empresa_id_obra is not None:
+            execute("DELETE FROM medicoes WHERE obra_id = ? AND empresa_id = ?", (obra_id, empresa_id_obra))
+        else:
+            execute("DELETE FROM medicoes WHERE obra_id = ?", (obra_id,))
 
         for linha in range(28, 60):
             mes = texto_seguro(ws[f"C{linha}"].value)

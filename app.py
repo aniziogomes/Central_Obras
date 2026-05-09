@@ -40,6 +40,8 @@ except ImportError:
 load_dotenv()
 
 app = Flask(__name__)
+app.config["JSON_AS_ASCII"] = False
+app.json.ensure_ascii = False
 app.config.update(
     SECRET_KEY=os.environ.get("SECRET_KEY") or os.environ.get("FLASK_SECRET_KEY") or secrets.token_urlsafe(32),
     SESSION_COOKIE_HTTPONLY=True,
@@ -145,6 +147,8 @@ def aplicar_seguranca_minima():
 
 @app.after_request
 def aplicar_headers_seguranca(response):
+    if response.mimetype == "text/html":
+        response.headers["Content-Type"] = "text/html; charset=utf-8"
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")

@@ -91,7 +91,7 @@ def parse_int_nao_negativo(valor, campo="Numero"):
     except (TypeError, ValueError):
         raise ValueError(f"{campo} invalido.")
     if numero < 0:
-        raise ValueError(f"{campo} nao pode ser negativo.")
+        raise ValueError(f"{campo} no pode ser negativo.")
     return numero
 
 

@@ -11,7 +11,7 @@ def enviar_email_resend(destinatario, assunto, html, texto=None):
     remetente = os.environ.get("RESEND_FROM_EMAIL", "").strip()
 
     if not api_key or not remetente:
-        print("Resend nao configurado: defina RESEND_API_KEY e RESEND_FROM_EMAIL.")
+        print("Resend no configurado: defina RESEND_API_KEY e RESEND_FROM_EMAIL.")
         return False
 
     payload = {

@@ -45,7 +45,7 @@ def nova_medicao():
     obra_id = request.form.get("obra_id", "").strip()
     try:
         mes = limpar_texto(request.form.get("mes", ""), max_len=20)
-        medicao_nome = limpar_texto(request.form.get("medicao_nome", ""), max_len=120, obrigatorio=True, campo="Medicao")
+        medicao_nome = limpar_texto(request.form.get("medicao_nome", ""), max_len=120, obrigatorio=True, campo="Medio")
         etapa = limpar_texto(request.form.get("etapa", ""), max_len=120, obrigatorio=True, campo="Etapa")
         data_medicao = limpar_texto(request.form.get("data_medicao", ""), max_len=10)
         observacao = limpar_texto(request.form.get("observacao", ""), max_len=1000)
@@ -67,7 +67,7 @@ def nova_medicao():
         obra_id_int = parse_int_positivo(obra_id, "Obra")
         obra = obter_obra_acessivel(obra_id=obra_id_int, campos="o.id, o.empresa_id")
         if not obra:
-            raise ValueError("Obra nao encontrada para este usuario.")
+            raise ValueError("Obra no encontrada para este usuario.")
 
         validar_intervalo_percentual(percentual_float, "Percentual")
         validar_intervalo_percentual(percentual_acumulado_float, "Percentual acumulado")
@@ -119,12 +119,12 @@ def editar_medicao(medicao_id):
 
     medicao_atual = obter_registro_acessivel("medicoes", medicao_id, campos="id")
     if not medicao_atual:
-        flash("Medicao nao encontrada.", "erro")
+        flash("Medio no encontrada.", "erro")
         return redirect(url_for("medicoes_bp.medicoes"))
 
     try:
         mes = limpar_texto(request.form.get("mes", ""), max_len=20)
-        medicao_nome = limpar_texto(request.form.get("medicao_nome", ""), max_len=120, obrigatorio=True, campo="Medicao")
+        medicao_nome = limpar_texto(request.form.get("medicao_nome", ""), max_len=120, obrigatorio=True, campo="Medio")
         etapa = limpar_texto(request.form.get("etapa", ""), max_len=120, obrigatorio=True, campo="Etapa")
         data_medicao = limpar_texto(request.form.get("data_medicao", ""), max_len=10)
         observacao = limpar_texto(request.form.get("observacao", ""), max_len=1000)
@@ -188,7 +188,7 @@ def excluir_medicao(medicao_id):
 
     medicao = obter_registro_acessivel("medicoes", medicao_id)
     if not medicao:
-        flash("Medicao nao encontrada.", "erro")
+        flash("Medio no encontrada.", "erro")
         return redirect(url_for("medicoes_bp.medicoes"))
     nome_medicao = medicao["medicao_nome"] if medicao else f"ID {medicao_id}"
 

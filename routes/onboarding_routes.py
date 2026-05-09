@@ -78,7 +78,7 @@ def _garantir_token_portal(obra):
             )
             return token
 
-    raise RuntimeError("Nao foi possivel gerar o link do portal.")
+    raise RuntimeError("No foi possvel gerar o link do portal.")
 
 
 def _renderizar_onboarding(passo):

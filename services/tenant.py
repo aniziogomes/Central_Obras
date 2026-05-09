@@ -51,6 +51,10 @@ def normalizar_empresa_id(valor):
     return empresa_id if empresa_id > 0 else None
 
 
+def normalizar_documento_empresa(valor):
+    return "".join(ch for ch in str(valor or "") if ch.isdigit())
+
+
 def empresa_padrao_id():
     empresa = query_one("SELECT id FROM empresas WHERE nome = ?", (EMPRESA_PADRAO_NOME,))
     if empresa:
@@ -73,28 +77,61 @@ def obter_empresa(empresa_id):
     return query_one("SELECT * FROM empresas WHERE id = ?", (empresa_id,))
 
 
-def obter_ou_criar_empresa(nome):
+def obter_ou_criar_empresa(nome, documento=None):
     nome = (nome or "").strip()
     if not nome:
         raise ValueError("Informe a empresa do usuario.")
-    empresa = query_one("SELECT id FROM empresas WHERE lower(nome) = lower(?)", (nome,))
-    if empresa:
-        execute("UPDATE empresas SET ativo = 1 WHERE id = ?", (empresa["id"],))
-        return empresa["id"]
-    return execute("INSERT INTO empresas (nome, ativo) VALUES (?, 1)", (nome,))
+    documento_norm = normalizar_documento_empresa(documento)
+
+    if documento is not None and not documento_norm:
+        raise ValueError("Informe o CNPJ/CPF da empresa.")
+
+    if documento_norm:
+        empresa = query_one("SELECT id FROM empresas WHERE documento = ?", (documento_norm,))
+        if empresa:
+            execute("UPDATE empresas SET ativo = 1 WHERE id = ?", (empresa["id"],))
+            return empresa["id"]
+        empresa_mesmo_nome = query_one(
+            "SELECT id, documento FROM empresas WHERE lower(nome) = lower(?)",
+            (nome,),
+        )
+        if empresa_mesmo_nome:
+            documento_atual = normalizar_documento_empresa(empresa_mesmo_nome["documento"])
+            if documento_atual and documento_atual != documento_norm:
+                raise ValueError("Ja existe empresa com este nome vinculada a outro CNPJ/CPF.")
+            execute(
+                "UPDATE empresas SET documento = ?, ativo = 1 WHERE id = ?",
+                (documento_norm, empresa_mesmo_nome["id"]),
+            )
+            return empresa_mesmo_nome["id"]
+    else:
+        empresa = query_one("SELECT id FROM empresas WHERE lower(nome) = lower(?)", (nome,))
+        if empresa:
+            execute("UPDATE empresas SET ativo = 1 WHERE id = ?", (empresa["id"],))
+            return empresa["id"]
+
+    return execute(
+        "INSERT INTO empresas (nome, documento, ativo) VALUES (?, ?, 1)",
+        (nome, documento_norm or None),
+    )
 
 
-def empresa_usuario_por_form(perfil, empresa_id_form="", empresa_nome_form=""):
+def empresa_usuario_por_form(perfil, empresa_id_form="", empresa_nome_form="", empresa_documento_form="", exigir_documento=False):
     empresa_nome_form = (empresa_nome_form or "").strip()
+    empresa_documento_form = normalizar_documento_empresa(empresa_documento_form)
     empresa_id = normalizar_empresa_id(empresa_id_form)
 
-    if empresa_nome_form:
-        return obter_ou_criar_empresa(empresa_nome_form)
+    if empresa_nome_form or empresa_documento_form:
+        if not empresa_nome_form:
+            raise ValueError("Informe o nome da empresa.")
+        if exigir_documento and not empresa_documento_form:
+            raise ValueError("Informe o CNPJ/CPF da empresa.")
+        return obter_ou_criar_empresa(empresa_nome_form, empresa_documento_form or None)
 
     if empresa_id:
         empresa = obter_empresa(empresa_id)
         if not empresa:
-            raise ValueError("Empresa nao encontrada.")
+            raise ValueError("Empresa no encontrada.")
         return empresa_id
 
     if perfil == "admin":

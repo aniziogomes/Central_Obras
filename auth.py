@@ -32,7 +32,7 @@ def criar_usuario_admin():
     precisa_trocar_senha_padrao = bool(usuario and verificar_senha("123456", usuario["senha_hash"]))
     if not precisa_criar and not precisa_trocar_senha_padrao:
         execute(
-            "UPDATE usuarios SET perfil = 'admin', ativo = 1, onboarding_completo = 1, onboarding_pendente = 0 WHERE id = ?",
+            "UPDATE usuarios SET empresa_id = NULL, perfil = 'admin', ativo = 1, onboarding_completo = 1, onboarding_pendente = 0 WHERE id = ?",
             (usuario["id"],)
         )
         return
@@ -41,7 +41,7 @@ def criar_usuario_admin():
     if not senha_inicial:
         senha_inicial = secrets.token_urlsafe(18)
         print(
-            "AVISO DE SEGURANCA: ADMIN_PASSWORD nao definido. "
+            "AVISO DE SEGURANCA: ADMIN_PASSWORD no definido. "
             f"Senha inicial temporaria do admin: {senha_inicial}"
         )
     if len(senha_inicial) < 8:
@@ -58,7 +58,7 @@ def criar_usuario_admin():
         )
     else:
         execute(
-            "UPDATE usuarios SET senha_hash = ?, perfil = 'admin', ativo = 1, onboarding_completo = 1, onboarding_pendente = 0 WHERE id = ?",
+            "UPDATE usuarios SET empresa_id = NULL, senha_hash = ?, perfil = 'admin', ativo = 1, onboarding_completo = 1, onboarding_pendente = 0 WHERE id = ?",
             (senha_hash, usuario["id"])
         )
         print("AVISO DE SEGURANCA: senha padrao antiga do admin foi substituida.")

@@ -780,7 +780,7 @@
               <strong>{{ formatar_data(obra.data_fim_prevista, 'Em definicao') }}</strong>
             </div>
             <div class="hero-metric">
-              <span>Proxima etapa</span>
+              <span>Próxima etapa</span>
               <strong>{{ proxima_etapa }}</strong>
             </div>
             <div class="hero-metric">
@@ -789,7 +789,7 @@
             </div>
             <div class="hero-metric">
               <span>Status do portal</span>
-              <strong>{{ 'Obra concluida' if (obra.status or '')|lower in ['concluida', 'vendida'] else 'Em
+              <strong>{{ 'Obra concluída' if (obra.status or '')|lower in ['concluida', 'vendida'] else 'Em
                 acompanhamento' }}</strong>
             </div>
           </div>
@@ -798,10 +798,10 @@
 
       <section class="portal-card message-card">
         <div class="portal-card-body">
-          <span class="portal-section-kicker">Mensagem do responsavel</span>
-          <h2 class="portal-section-title">Resumo da obra para voce</h2>
+          <span class="portal-section-kicker">Mensagem do responsável</span>
+          <h2 class="portal-section-title">Resumo da obra para voc?</h2>
           <p class="{% if not obra.observacao_responsavel %}is-empty{% endif %}">
-            {{ obra.observacao_responsavel or "O responsavel tecnico ainda nao publicou uma mensagem detalhada. Assim
+            {{ obra.observacao_responsavel or "O responsável técnico ainda não publicou uma mensagem detalhada. Assim
             que houver uma nova atualizacao, ela aparecera aqui com destaque." }}
           </p>
           <div class="meta-row">
@@ -876,13 +876,13 @@
       <section class="portal-card">
         <div class="portal-card-body">
           <span class="portal-section-kicker">Atualizacoes publicadas</span>
-          <h2 class="portal-section-title">Historico recente do portal</h2>
+          <h2 class="portal-section-title">Histórico recente do portal</h2>
           {% if atualizacoes %}
           <div class="updates-list">
             {% for atualizacao in atualizacoes[:4] %}
             <article class="update-card">
               <time>{{ formatar_data(atualizacao.data_hora, '-', True) }}</time>
-              <p>{{ atualizacao.descricao|replace('Atualizacao para o cliente:', '')|replace('Atualização para o
+              <p>{{ atualizacao.descricao|replace('Atualizao para o cliente:', '')|replace('Atualização para o
                 cliente:', '')|trim }}</p>
               {% if atualizacao.autor %}
               <small>Publicado por {{ atualizacao.autor }}</small>
@@ -892,8 +892,8 @@
           </div>
           {% else %}
           <div class="updates-empty">
-            Nenhuma atualizacao detalhada foi publicada ainda. Quando houver novos registros do responsavel tecnico,
-            eles aparecerao aqui em ordem cronologica.
+            Nenhuma atualização detalhada foi publicada ainda. Quando houver novos registros do responsável técnico,
+            eles aparecerão aqui em ordem cronológica.
           </div>
           {% endif %}
         </div>
