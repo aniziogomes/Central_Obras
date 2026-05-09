@@ -4,7 +4,7 @@
 
 {% block content %}
 {% set total_obras_dash = obras|length %}
-{% set status_ns = namespace(concluidas=0, andamento=0, atrasadas=0, nao_definidas=0) %}
+{% set status_ns = namespace(concluidas=0, andamento=0, atrasadas=0) %}
 {% for obra in obras %}
 {% set st = (obra.status or '')|lower %}
 {% if st == 'concluida' or st == 'vendida' %}
@@ -13,16 +13,10 @@
 {% set status_ns.andamento = status_ns.andamento + 1 %}
 {% elif st == 'atrasada' %}
 {% set status_ns.atrasadas = status_ns.atrasadas + 1 %}
-{% else %}
-{% set status_ns.nao_definidas = status_ns.nao_definidas + 1 %}
 {% endif %}
 {% endfor %}
 {% set perc_receita_usada = custo_percentual_receita if custo_percentual_receita < 100 else 100 %}
 {% set perc_saldo = margem_percentual if margem_percentual > 0 else 0 %}
-{% set sem_dados_financeiros = total_receita <= 0 and total_custo <= 0 and margem == 0 %}
-{% set status_concluidas_pct = (status_ns.concluidas / total_obras_dash * 100) if total_obras_dash > 0 else 0 %}
-{% set status_andamento_pct = (status_ns.andamento / total_obras_dash * 100) if total_obras_dash > 0 else 0 %}
-{% set status_atrasadas_pct = (status_ns.atrasadas / total_obras_dash * 100) if total_obras_dash > 0 else 0 %}
 {% set dashboard_vazio_total = total_obras_dash == 0 and (custos|length) == 0 %}
 {% set dashboard_filtros_ativos = filtro_obra or filtro_tipo_obra or filtro_categoria or filtro_status or data_inicio or data_fim %}
 {% set ultimo_custo = custos[0] if custos else none %}
@@ -41,17 +35,17 @@
 {% set tem_lancamento_financeiro = (ultimo_custo and ultimo_custo.data_lancamento) %}
 {% set tem_foto_publicada = (ns_foto.obra is not none) %}
 {% set tem_atualizacao_geral = (ultimo_custo and ultimo_custo.data_lancamento) or (ultima_medicao and ultima_medicao.data_medicao) %}
-{% set percentual_comprometido = (total_custo / total_receita * 100) if total_receita > 0 else (100 if total_custo > 0 else 0) %}
+{% set percentual_comprometido = (total_custo / total_receita * 100) if total_receita > 0 else 0 %}
 {% set risco_financeiro_global = margem < 0 %}
-{% set acima_previsto_global = percentual_comprometido > 100 %}
+{% set acima_previsto_global = total_receita > 0 and percentual_comprometido > 100 %}
 
 <div class="dashboard-ops">
     <header class="dashboard-ops-header">
         <div>
             <h1>Visão geral operacional</h1>
             <p>Central ativa para acompanhar a obra em andamento, com alertas e próximos passos em linguagem simples.</p>
+            <div class="dashboard-ops-live"><strong id="opsMonitoradasQtd">{{ obras|length }}</strong> <span id="opsMonitoradasLabel">{{ "obra monitorada" if obras|length == 1 else "obras monitoradas" }}</span></div>
         </div>
-        <div class="dashboard-ops-live"><strong id="opsMonitoradasQtd">{{ obras|length }}</strong> obras monitoradas</div>
     </header>
 
     <div class="dashboard-filter-shell">
@@ -129,7 +123,7 @@
 
     <section id="dashboardKpisSection" class="dashboard-kpis-section" {% if dashboard_vazio_total %}hidden{% endif %}>
         <div class="dashboard-kpis-grid">
-            <article class="dashboard-kpi dashboard-kpi--live">
+            <article id="kpiObrasHojeCard" class="dashboard-kpi dashboard-kpi--live">
                 <span>Obras com movimento hoje</span>
                 <strong id="kpiObrasHoje">{{ 1 if (custos|length or medicoes|length) else 0 }}</strong>
                 <small id="kpiObrasHojeSub">Custos e medições lançados no período filtrado</small>
@@ -193,16 +187,44 @@
             <article class="dashboard-support-card"
                 data-finance-state="{% if percentual_comprometido > 100 %}critical{% elif percentual_comprometido >= 70 %}warning{% elif total_receita > 0 %}healthy{% else %}info{% endif %}">
                 <span>Orçamento usado</span>
-                <strong id="kpiOrcamentoUsado">{{ '%.1f'|format(percentual_comprometido) }}%</strong>
-                <small id="kpiOrcamentoUsadoSub">{{ formatar_moeda(total_custo) }} de {{ formatar_moeda(total_receita) }}</small>
+                <strong id="kpiOrcamentoUsado">{% if total_receita > 0 %}{{ '%.1f'|format(percentual_comprometido) }}%{% else %}Sem base{% endif %}</strong>
+                <small id="kpiOrcamentoUsadoSub">{% if total_receita > 0 %}{{ formatar_moeda(total_custo) }} de {{ formatar_moeda(total_receita) }}{% else %}Sem orçamento definido{% endif %}</small>
             </article>
             <article class="dashboard-support-card"
                 data-finance-state="{% if margem < 0 %}critical{% elif percentual_comprometido >= 85 %}warning{% elif total_receita > 0 %}healthy{% else %}info{% endif %}"
                 id="cardSaldoFinanceiro">
                 <span>Saldo disponível</span>
                 <strong id="kpiMargem">{{ formatar_moeda(margem) }}</strong>
-                <small id="kpiMargemPercentual">Valor que ainda pode ser usado na obra</small>
+                <small id="kpiMargemPercentual">{% if margem < 0 %}Custo ultrapassa o orçamento em {{ formatar_moeda((margem * -1)) }}{% else %}Valor que ainda pode ser usado na obra{% endif %}</small>
             </article>
+        </div>
+
+        <div class="dashboard-finance-card" id="financeAnaliseCard">
+            <div class="dashboard-finance-head">
+                <strong>Análise financeira</strong>
+            </div>
+            <div class="dashboard-finance-chart" id="financeChartBlock" {% if total_receita <= 0 %}hidden{% endif %}>
+                {% set base_fin = [total_receita, total_custo, (margem if margem > 0 else (margem * -1))]|max %}
+                {% set base_fin = base_fin if base_fin > 0 else 1 %}
+                <div class="dashboard-fin-line">
+                    <span>Receita prevista</span>
+                    <div class="dashboard-fin-bar"><i id="financeBarReceita" style="width: {{ ((total_receita / base_fin) * 100)|round(1) }}%"></i></div>
+                    <strong id="financeValorReceita">{{ formatar_moeda(total_receita) }}</strong>
+                </div>
+                <div class="dashboard-fin-line">
+                    <span>Custo realizado</span>
+                    <div class="dashboard-fin-bar"><i id="financeBarCusto" class="is-custo" style="width: {{ ((total_custo / base_fin) * 100)|round(1) }}%"></i></div>
+                    <strong id="financeValorCusto">{{ formatar_moeda(total_custo) }}</strong>
+                </div>
+                <div class="dashboard-fin-line">
+                    <span id="financeSaldoRotulo">{% if margem < 0 %}Saldo negativo{% else %}Saldo{% endif %}</span>
+                    <div class="dashboard-fin-bar"><i id="financeBarSaldo" class="{% if margem < 0 %}is-negativo{% endif %}" style="width: {{ (((margem if margem > 0 else (margem * -1)) / base_fin) * 100)|round(1) }}%"></i></div>
+                    <strong id="financeValorSaldo">{{ formatar_moeda(margem) }}</strong>
+                </div>
+            </div>
+            <div class="dashboard-fin-empty" id="financeChartEmpty" {% if total_receita > 0 %}hidden{% endif %}>
+                Cadastre o orçamento para ver análise financeira
+            </div>
         </div>
 
         <span id="kpiObrasAtrasadas" hidden>{{ obras_atrasadas }}</span>
@@ -231,7 +253,7 @@
                     <a href="{{ url_for('dashboard_bp.alertas') }}" class="dashboard-panel-link">Ver todos</a>
                 </div>
 
-                <div class="dashboard-alert-levels">
+                <div class="dashboard-alert-levels" id="dashboardAlertLevels" {% if not alertas %}hidden{% endif %}>
                     <article class="dashboard-alert dashboard-alert--critical">
                         <div class="dashboard-alert-top">
                             <span class="dashboard-alert-badge">Crítico</span>
@@ -243,11 +265,11 @@
                             {% if alerta_critico_principal %}
                             {{ alerta_critico_principal.mensagem }}
                             {% else %}
-                            Sem risco crítico confirmado neste filtro. Continue monitorando saldo, prazo e desvio de custo.
+                            Sem risco crítico no momento.
                             {% endif %}
                         </p>
-                        <p class="dashboard-alert-meta" id="alertaCriticoObra">
-                            Obra relacionada: {{ alerta_critico_principal.codigo if alerta_critico_principal else "Todas as obras ativas" }}
+                        <p class="dashboard-alert-meta" id="alertaCriticoObra" {% if not alerta_critico_principal %}hidden{% endif %}>
+                            Obra relacionada: {{ alerta_critico_principal.codigo if alerta_critico_principal else "" }}
                         </p>
                     </article>
 
@@ -262,11 +284,11 @@
                             {% if alerta_atencao_principal %}
                             {{ alerta_atencao_principal.mensagem }}
                             {% else %}
-                            Sem alerta de atenção imediato. Mantenha medições e atualizações com cadência.
+                            Sem alerta de atenção no momento.
                             {% endif %}
                         </p>
-                        <p class="dashboard-alert-meta" id="alertaAtencaoObra">
-                            Obra relacionada: {{ alerta_atencao_principal.codigo if alerta_atencao_principal else "Todas as obras monitoradas" }}
+                        <p class="dashboard-alert-meta" id="alertaAtencaoObra" {% if not alerta_atencao_principal %}hidden{% endif %}>
+                            Obra relacionada: {{ alerta_atencao_principal.codigo if alerta_atencao_principal else "" }}
                         </p>
                     </article>
 
@@ -279,18 +301,20 @@
                             {% if (custos|length == 0) and (medicoes|length == 0) %}
                             Portal pode estar desatualizado para parte das obras: sem custos nem medições recentes no filtro atual.
                             {% else %}
-                            Fluxo operacional ativo. Reforce fotos e publicações no portal para manter transparência com o cliente.
+                            Sem fotos enviadas essa semana.
                             {% endif %}
                         </p>
-                        <p class="dashboard-alert-meta" id="alertaInfoObra">Obra relacionada: visão consolidada do período</p>
                     </article>
+                </div>
+                <div class="dashboard-alert-empty" id="dashboardAlertEmpty" {% if alertas %}hidden{% endif %}>
+                    Nenhum alerta no momento. Sistema monitorando automaticamente.
                 </div>
             </article>
 
             <article class="card dashboard-panel">
                 <div class="dashboard-panel-head">
                     <div>
-                        <h2>Timeline operacional recente</h2>
+                        <h2>Últimas movimentações</h2>
                         <p>Movimentações com contexto, obra e responsável</p>
                     </div>
                 </div>
@@ -333,7 +357,7 @@
                             <div>
                                 <div class="dashboard-timeline-top">
                                     <strong>Alerta operacional detectado</strong>
-                                    <span class="dashboard-time-chip">Evento recente</span>
+                                    <span class="dashboard-time-chip">Alerta gerado</span>
                                 </div>
                                 <p class="dashboard-timeline-meta">Responsável: Sistema · Obra: {{ alerta.codigo }}</p>
                                 <p class="dashboard-timeline-copy">{{ alerta.mensagem }}</p>
@@ -341,7 +365,7 @@
                         </article>
                         {% endfor %}
                     {% else %}
-                        <div class="dashboard-empty-inline">Sem movimentações recentes para exibir na timeline.</div>
+                        <div class="dashboard-empty-inline">Sem movimentações recentes.</div>
                     {% endif %}
                 </div>
             </article>
@@ -392,7 +416,7 @@
                             Fechamento final e vistoria
                             {% endif %}
                         </p>
-                        <p><strong>Prazo:</strong> {{ formatar_data(meta.prazo, "Em definição") }}</p>
+                        <p class="dashboard-step-prazo">{{ formatar_data(meta.prazo, "Sem prazo definido") }}</p>
                     </article>
                     {% endif %}
                     {% endfor %}
@@ -452,27 +476,6 @@
                 </div>
             </article>
 
-            <span id="financeReceitaBar" hidden></span>
-            <span id="financeCustoBar" hidden></span>
-            <span id="financeSaldoBar" hidden></span>
-            <span id="financeReceita" hidden>{{ formatar_moeda(total_receita) }}</span>
-            <span id="financeCusto" hidden>{{ formatar_moeda(total_custo) }}</span>
-            <span id="financeSaldo" hidden>{{ formatar_moeda(margem) }}</span>
-            <span id="financeCustoPct" hidden>{{ '%.1f'|format(custo_percentual_receita) }}%</span>
-            <span id="financeSaldoPct" hidden>{{ '%.1f'|format(margem_percentual) }}%</span>
-            <span id="financeNota" hidden>
-                {% if sem_dados_financeiros %}
-                Cadastre suas obras para ver o desempenho financeiro.
-                {% else %}
-                Você ainda tem <strong id="financeNotaPct">{{ '%.1f'|format(margem_percentual) }}%</strong> do valor total disponível para novas despesas.
-                {% endif %}
-            </span>
-            <span id="statusDonut" hidden></span>
-            <span id="statusTotal" hidden>{{ total_obras_dash }}</span>
-            <span id="statusConcluidas" hidden>{{ status_ns.concluidas }} ({{ '%.1f'|format(status_concluidas_pct) }}%)</span>
-            <span id="statusAndamento" hidden>{{ status_ns.andamento }} ({{ '%.1f'|format(status_andamento_pct) }}%)</span>
-            <span id="statusAtrasadas" hidden>{{ status_ns.atrasadas }} ({{ '%.1f'|format(status_atrasadas_pct) }}%)</span>
-            <span id="statusNaoDefinidas" hidden>{{ status_ns.nao_definidas }} ({{ '%.1f'|format((status_ns.nao_definidas / total_obras_dash * 100) if total_obras_dash > 0 else 0) }}%)</span>
         </div>
     </section>
 
@@ -484,16 +487,22 @@
 
         <div class="dashboard-v2-table">
             <div class="dashboard-v2-table-head">
-                <span>Obra</span><span>Tipo</span><span>Fase atual</span><span>Conclusão</span><span>Orçamento</span><span>Gasto até hoje</span><span>Saldo disponível</span><span>Status</span><span>Portal</span>
+                <span>Obra</span><span>Tipo</span><span>Fase atual</span><span>Conclusão</span><span>Orçamento</span><span>Gasto até hoje</span><span>Saldo disponível</span><span>Status</span><span>Portal da obra</span>
             </div>
             <div id="resumoObrasBody">
                 {% for obra in margem_por_obra %}
+                {% set ns_portal = namespace(ativo=false) %}
+                {% for obra_ref in obras %}
+                {% if obra_ref.codigo == obra.codigo and obra_ref.token_publico %}
+                {% set ns_portal.ativo = true %}
+                {% endif %}
+                {% endfor %}
                 <div class="dashboard-v2-table-row">
                     <a href="/obra/{{ obra.codigo }}/detalhes" class="dashboard-v2-obra-cell">
                         <strong>{{ (obra.nome or '')|title }}</strong>
                         <small>{{ obra.codigo }}</small>
                     </a>
-                    <span>{{ "Para venda" if obra.tipo_obra == "venda" else "Por contrato" }}<small>{{ obra.tipologia or "-" }}</small></span>
+                    <span>{{ "Para venda" if obra.tipo_obra == "venda" else "Por contrato" }}{% if obra.tipologia %}<small>{{ obra.tipologia }}</small>{% endif %}</span>
                     <span>{{ (obra.fase_obra or obra.status or "-")|replace('fundacao', 'Fundação')|replace('concluida', 'Concluída')|replace('instalacoes', 'Instalações')|replace('planejamento', 'Planejamento')|replace('andamento', 'Andamento')|replace('atrasada', 'Atrasada') }}</span>
                     <span>
                         {% if (obra.execucao or 0) > 0 %}
@@ -505,13 +514,14 @@
                     <span>{{ formatar_moeda(obra.custo_realizado) }}</span>
                     <strong class="{% if obra.margem_valor >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">{{ formatar_moeda(obra.margem_valor) }}</strong>
                     <span class="badge {{ obra.status }}">{{ obra.status or "-" }}</span>
-                    <a href="/obra/{{ obra.codigo }}" class="dashboard-portal-icon-btn" aria-label="Abrir portal da obra {{ obra.nome }}" title="Abrir portal">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <path d="M14 4h6v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M10 14L20 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M20 14v6H4V4h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </a>
+                    <div class="dashboard-portal-cell" data-obra-codigo="{{ obra.codigo }}" data-portal-ativo="{{ 1 if ns_portal.ativo else 0 }}">
+                        <span class="dashboard-portal-state {% if ns_portal.ativo %}is-active{% else %}is-empty{% endif %}">{% if ns_portal.ativo %}Ativo{% else %}Sem portal{% endif %}</span>
+                        {% if ns_portal.ativo %}
+                        <a href="/obra/{{ obra.codigo }}" class="dashboard-portal-open" aria-label="Abrir portal da obra {{ obra.nome }}">Abrir</a>
+                        {% else %}
+                        <span class="dashboard-portal-open is-disabled">—</span>
+                        {% endif %}
+                    </div>
                 </div>
                 {% else %}
                 <div class="dashboard-summary-empty dashboard-summary-empty--rich">
@@ -549,8 +559,8 @@
     .dashboard-ops-header {
         display: flex;
         align-items: flex-start;
-        justify-content: space-between;
-        gap: 14px;
+        justify-content: flex-start;
+        gap: 10px;
     }
 
     .dashboard-ops-header h1 {
@@ -572,6 +582,7 @@
         align-items: center;
         gap: 8px;
         min-height: 34px;
+        margin-top: 9px;
         padding: 0 12px;
         border-radius: 999px;
         border: 1px solid rgba(56, 201, 120, 0.28);
@@ -675,6 +686,10 @@
         background:
             linear-gradient(180deg, rgba(47, 125, 240, .16), rgba(255, 255, 255, .018)),
             var(--bg2);
+    }
+
+    #kpiObrasHojeCard {
+        grid-column: auto;
     }
 
     .dashboard-kpi-empty {
@@ -791,58 +806,73 @@
 
     .dashboard-alert-levels {
         display: grid;
-        gap: 9px;
+        gap: 5px;
     }
 
     .dashboard-alert {
-        border-radius: 10px;
+        border-radius: 8px;
         border: 1px solid rgba(255, 255, 255, .09);
         background: rgba(255, 255, 255, .02);
-        padding: 11px;
+        padding: 7px 8px;
         display: grid;
-        gap: 7px;
+        gap: 4px;
     }
 
     .dashboard-alert--critical {
         border-color: rgba(255, 95, 116, .34);
-        background: linear-gradient(180deg, rgba(255, 95, 116, .12), rgba(255, 255, 255, .02));
+        background: linear-gradient(180deg, rgba(255, 95, 116, .17), rgba(255, 255, 255, .02));
     }
 
     .dashboard-alert--warning {
         border-color: rgba(255, 191, 72, .35);
-        background: linear-gradient(180deg, rgba(255, 191, 72, .12), rgba(255, 255, 255, .02));
+        background: linear-gradient(180deg, rgba(255, 191, 72, .17), rgba(255, 255, 255, .02));
     }
 
     .dashboard-alert--info {
         border-color: rgba(113, 176, 255, .33);
-        background: linear-gradient(180deg, rgba(113, 176, 255, .12), rgba(255, 255, 255, .02));
+        background: linear-gradient(180deg, rgba(113, 176, 255, .08), rgba(255, 255, 255, .02));
+    }
+
+    .dashboard-alert--critical .dashboard-alert-badge {
+        background: transparent;
+        color: #ffd8de;
+    }
+
+    .dashboard-alert--warning .dashboard-alert-badge {
+        background: transparent;
+        color: #ffe7b7;
+    }
+
+    .dashboard-alert--info .dashboard-alert-badge {
+        background: transparent;
+        color: #d7e8ff;
     }
 
     .dashboard-alert-top {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 8px;
+        gap: 6px;
     }
 
     .dashboard-alert-badge {
         display: inline-flex;
         align-items: center;
-        min-height: 24px;
-        padding: 0 10px;
+        min-height: 16px;
+        padding: 0 6px;
         border-radius: 999px;
         color: #dbe8ff;
         background: rgba(47, 125, 240, .24);
-        font-size: 10px;
+        font-size: 8px;
         font-weight: 800;
-        letter-spacing: .08em;
+        letter-spacing: .04em;
         text-transform: uppercase;
     }
 
     .dashboard-alert-action {
         color: #f7f8fb;
         text-decoration: none;
-        font-size: 11px;
+        font-size: 9px;
         font-weight: 700;
         border-bottom: 1px solid transparent;
     }
@@ -854,15 +884,33 @@
     .dashboard-alert-text {
         margin: 0;
         color: #f2f6ff;
-        font-size: 13px;
-        line-height: 1.5;
+        font-size: 11.5px;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
 
     .dashboard-alert-meta {
         margin: 0;
         color: var(--text2);
-        font-size: 11px;
-        line-height: 1.4;
+        font-size: 10px;
+        line-height: 1.25;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .dashboard-alert-empty {
+        border-radius: 10px;
+        border: 1px dashed rgba(255, 255, 255, .14);
+        background: rgba(255, 255, 255, .02);
+        color: var(--text2);
+        font-size: 12px;
+        line-height: 1.45;
+        padding: 12px;
     }
 
     .dashboard-timeline-list {
@@ -997,6 +1045,78 @@
         font-weight: 700;
     }
 
+    .dashboard-step-prazo {
+        color: var(--text2);
+        opacity: .9;
+    }
+
+    .dashboard-finance-card {
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, .08);
+        background: rgba(255, 255, 255, .02);
+        padding: 12px;
+        display: grid;
+        gap: 9px;
+    }
+
+    .dashboard-finance-head strong {
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .dashboard-finance-chart {
+        display: grid;
+        gap: 8px;
+    }
+
+    .dashboard-fin-line {
+        display: grid;
+        grid-template-columns: minmax(112px, .55fr) minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .dashboard-fin-line span {
+        color: var(--text2);
+        font-size: 11px;
+        line-height: 1.2;
+    }
+
+    .dashboard-fin-line strong {
+        color: var(--text);
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .dashboard-fin-bar {
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, .08);
+        overflow: hidden;
+    }
+
+    .dashboard-fin-bar i {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: #2f7df0;
+    }
+
+    .dashboard-fin-bar i.is-custo {
+        background: #ffb34d;
+    }
+
+    .dashboard-fin-bar i.is-negativo {
+        background: #ff6c7f;
+    }
+
+    .dashboard-fin-empty {
+        color: var(--text2);
+        font-size: 12px;
+        line-height: 1.4;
+    }
+
     .dashboard-activity-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1098,29 +1218,56 @@
     .dashboard-v2-table-head span:nth-child(8),
     .dashboard-v2-table-head span:nth-child(9),
     .dashboard-v2-table-row > .badge,
-    .dashboard-v2-table-row > .dashboard-portal-icon-btn {
+    .dashboard-v2-table-row > .dashboard-portal-cell {
         justify-self: center;
     }
 
-    .dashboard-portal-icon-btn {
-        width: 30px;
-        height: 30px;
-        display: inline-grid;
-        place-items: center;
-        border-radius: 9px;
-        border: 1px solid rgba(62, 125, 229, .45);
-        background: rgba(34, 97, 204, .16);
-        color: #9ac3ff;
-        transition: transform .16s ease, border-color .16s ease, background-color .16s ease, color .16s ease;
+    .dashboard-portal-cell {
+        display: grid;
+        gap: 4px;
+        justify-items: center;
+        min-width: 76px;
+    }
+
+    .dashboard-portal-state {
+        min-height: 20px;
+        padding: 0 7px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid transparent;
+    }
+
+    .dashboard-portal-state.is-active {
+        color: #b9f8d3;
+        background: rgba(40, 181, 106, .2);
+        border-color: rgba(40, 181, 106, .35);
+    }
+
+    .dashboard-portal-state.is-empty {
+        color: #b9c0cf;
+        background: rgba(148, 163, 184, .14);
+        border-color: rgba(148, 163, 184, .26);
+    }
+
+    .dashboard-portal-open {
+        color: #8ab8ff;
+        font-size: 11px;
+        font-weight: 700;
         text-decoration: none;
     }
 
-    .dashboard-portal-icon-btn:hover,
-    .dashboard-portal-icon-btn:focus-visible {
-        color: #d9e9ff;
-        border-color: rgba(93, 156, 255, .75);
-        background: rgba(52, 119, 238, .28);
-        transform: translateY(-1px);
+    .dashboard-portal-open:hover,
+    .dashboard-portal-open:focus-visible {
+        text-decoration: underline;
+    }
+
+    .dashboard-portal-open.is-disabled {
+        color: var(--text2);
+        text-decoration: none;
+        pointer-events: none;
     }
 
     .dashboard-v2-table-row span small,
@@ -1350,11 +1497,6 @@
             if (el) el.textContent = value;
         }
 
-        function setHtml(id, value) {
-            const el = document.getElementById(id);
-            if (el) el.innerHTML = value;
-        }
-
         function setFinanceStateByChild(childId, state) {
             const child = document.getElementById(childId);
             const card = child ? child.closest(".dashboard-support-card") : null;
@@ -1389,7 +1531,7 @@
         }
 
         function formatAbsoluteDateTime(date) {
-            if (!date) return "Sem horário";
+            if (!date) return "—";
             return date.toLocaleString("pt-BR", {
                 day: "2-digit",
                 month: "2-digit",
@@ -1478,31 +1620,33 @@
             const concluidas = (p.margem_por_obra || []).filter(o => ["concluida", "vendida"].includes(String(o.status || "").toLowerCase())).length;
             const andamento = (p.margem_por_obra || []).filter(o => ["andamento", "planejamento"].includes(String(o.status || "").toLowerCase())).length;
             const atrasadas = Number(p.kpis.obras_atrasadas || 0);
-            const naoDefinidas = Math.max(0, totalObras - concluidas - andamento - atrasadas);
-            const pct = totalObras > 0 ? (v) => (v / totalObras * 100) : () => 0;
-            const margemPct = parseFinanceNumber(p.kpis.margem_percentual || 0);
             const totalReceitaValor = parseFinanceNumber(p.kpis.total_receita ?? p.kpis.total_receita_formatado ?? 0);
             const totalCustoValor = parseFinanceNumber(p.kpis.total_custo ?? p.kpis.total_custo_formatado ?? 0);
             const margemValor = parseFinanceNumber(p.kpis.margem ?? p.kpis.margem_formatada ?? 0);
-            const custoPct = totalReceitaValor > 0 ? (totalCustoValor / totalReceitaValor) * 100 : (totalCustoValor > 0 ? 100 : 0);
-            const semDadosFinanceiros = totalReceitaValor <= 0 && totalCustoValor <= 0 && margemValor === 0;
+            const custoPct = totalReceitaValor > 0 ? (totalCustoValor / totalReceitaValor) * 100 : 0;
             const custoState = (custoPct > 100 || margemValor < 0) ? "critical" : (custoPct >= 70 ? "warning" : "healthy");
             const orcamentoState = custoPct > 100 ? "critical" : (custoPct >= 70 ? "warning" : (totalReceitaValor > 0 ? "healthy" : "info"));
             const saldoState = margemValor < 0 ? "critical" : (custoPct >= 85 ? "warning" : (totalReceitaValor > 0 ? "healthy" : "info"));
 
             setText("kpiObrasFiltradas", p.quick_strip.obras_filtradas);
             setText("opsMonitoradasQtd", totalObras);
+            setText("opsMonitoradasLabel", totalObras === 1 ? "obra monitorada" : "obras monitoradas");
             setText("kpiReceita", p.kpis.total_receita_formatado);
             setText("kpiReceitaObras", `${p.kpis.total_obras} obras`);
             setText("kpiReceitaMedicoes", `${p.kpis.total_medicoes} medições`);
             setText("kpiReceitaSub", `${p.kpis.total_obras} ${totalObras === 1 ? "obra" : "obras"}`);
             setText("kpiMargem", p.kpis.margem_formatada);
-            setText("kpiMargemPercentual", margemValor < 0 ? "Saldo negativo: revisar gastos urgentes" : "Valor ainda disponível para uso");
+            setText("kpiMargemPercentual", margemValor < 0 ? `Custo ultrapassa o orçamento em ${fmt(Math.abs(margemValor))}` : "Valor que ainda pode ser usado na obra");
             setText("kpiCusto", p.kpis.total_custo_formatado);
             setText("kpiCustosLancados", `${p.kpis.total_custos_lancados} lançamentos`);
             setText("kpiCustoSub", `${p.kpis.total_custos_lancados} ${Number(p.kpis.total_custos_lancados || 0) === 1 ? "lançamento" : "lançamentos"}`);
-            setText("kpiOrcamentoUsado", `${custoPct.toFixed(1)}%`);
-            setText("kpiOrcamentoUsadoSub", `${p.kpis.total_custo_formatado} de ${p.kpis.total_receita_formatado}`);
+            if (totalReceitaValor > 0) {
+                setText("kpiOrcamentoUsado", `${custoPct.toFixed(1)}%`);
+                setText("kpiOrcamentoUsadoSub", `${p.kpis.total_custo_formatado} de ${p.kpis.total_receita_formatado}`);
+            } else {
+                setText("kpiOrcamentoUsado", "Sem base");
+                setText("kpiOrcamentoUsadoSub", "Sem orçamento definido");
+            }
             setText("kpiAlertas", p.kpis.total_alertas);
             setText("kpiObrasAtrasadas", p.kpis.obras_atrasadas);
             setText("kpiObrasAtivas", andamento);
@@ -1521,42 +1665,10 @@
             setFinanceStateByChild("kpiOrcamentoUsado", orcamentoState);
             setFinanceStateByChild("kpiMargem", saldoState);
 
-            setText("financeReceita", p.kpis.total_receita_formatado);
-            setText("financeCusto", p.kpis.total_custo_formatado);
-            setText("financeSaldo", p.kpis.margem_formatada);
-            setText("financeCustoPct", `${custoPct.toFixed(1)}%`);
-            setText("financeSaldoPct", `${margemPct.toFixed(1)}%`);
-
-            const receitaBar = document.getElementById("financeReceitaBar");
-            const custoBar = document.getElementById("financeCustoBar");
-            const saldoBar = document.getElementById("financeSaldoBar");
-            if (receitaBar) receitaBar.style.width = totalReceitaValor > 0 ? "100%" : "0%";
-            if (custoBar) custoBar.style.width = `${Math.max(0, Math.min(100, custoPct))}%`;
-            if (saldoBar) saldoBar.style.width = `${Math.max(0, Math.min(100, margemPct))}%`;
-
-            if (semDadosFinanceiros) {
-                setText("financeNota", "Cadastre suas obras para ver o desempenho financeiro.");
-            } else {
-                setHtml("financeNota", `Você ainda tem <strong id="financeNotaPct">${margemPct.toFixed(1)}%</strong> do valor total disponível para novas despesas.`);
-            }
-
             setText("tableTotalObras", totalObras);
             setText("tableTotalReceita", p.kpis.total_receita_formatado);
             setText("tableTotalCusto", p.kpis.total_custo_formatado);
             setText("tableTotalMargem", p.kpis.margem_formatada);
-
-            setText("statusTotal", totalObras);
-            setText("statusConcluidas", `${concluidas} (${pct(concluidas).toFixed(1)}%)`);
-            setText("statusAndamento", `${andamento} (${pct(andamento).toFixed(1)}%)`);
-            setText("statusAtrasadas", `${atrasadas} (${pct(atrasadas).toFixed(1)}%)`);
-            setText("statusNaoDefinidas", `${naoDefinidas} (${pct(naoDefinidas).toFixed(1)}%)`);
-
-            const donut = document.getElementById("statusDonut");
-            if (donut) {
-                donut.style.setProperty("--done", `${pct(concluidas) * 3.6}deg`);
-                donut.style.setProperty("--doing", `${pct(andamento) * 3.6}deg`);
-                donut.style.setProperty("--late", `${pct(atrasadas) * 3.6}deg`);
-            }
 
             const atividadeHoje = (Number(p.kpis.total_custos_lancados || 0) + Number(p.kpis.total_medicoes || 0)) > 0;
             const obrasHojeEstimadas = atividadeHoje
@@ -1577,7 +1689,7 @@
 
             if (hasFinanceiro) {
                 const dataUltimoLancamento = parseDate((p.custos && p.custos[0] && p.custos[0].data_lancamento) ? p.custos[0].data_lancamento : "");
-                setText("kpiUltimoLancamentoFinanceiro", dataUltimoLancamento ? formatAbsoluteDateTime(dataUltimoLancamento) : "Sem horário");
+                setText("kpiUltimoLancamentoFinanceiro", dataUltimoLancamento ? formatAbsoluteDateTime(dataUltimoLancamento) : "Nenhum registro hoje");
                 setText("kpiUltimoLancamentoFinanceiroSub", `${p.kpis.total_custos_lancados} lançamento(s) no período`);
             }
 
@@ -1587,16 +1699,25 @@
                     || (p.medicoes && p.medicoes[0] && p.medicoes[0].data_medicao)
                     || ""
                 );
-                setText("kpiUltimaAtualizacaoGeral", dataAtualizacao ? formatAbsoluteDateTime(dataAtualizacao) : "Sem horário");
+                setText("kpiUltimaAtualizacaoGeral", dataAtualizacao ? formatAbsoluteDateTime(dataAtualizacao) : "Nenhum registro hoje");
                 setText("kpiUltimaAtualizacaoGeralSub", dataAtualizacao ? formatRelative(dataAtualizacao) : "Sem atualização recente");
             }
 
             const fotoVisivel = cardFoto ? !cardFoto.hidden : false;
             const hasLiveInfo = atividadeHoje || hasFinanceiro || hasAtualizacao || fotoVisivel;
             if (cardEmpty) cardEmpty.hidden = hasLiveInfo;
+            atualizarFinanceChart(totalReceitaValor, totalCustoValor, margemValor);
         }
 
         function atualizarAlertas(p) {
+            const alertLevels = document.getElementById("dashboardAlertLevels");
+            const alertEmpty = document.getElementById("dashboardAlertEmpty");
+            const semAlertas = !p.alertas || p.alertas.length === 0;
+
+            if (alertLevels) alertLevels.hidden = semAlertas;
+            if (alertEmpty) alertEmpty.hidden = !semAlertas;
+            if (semAlertas) return;
+
             const critico = (p.alertas || []).find(a => a.tipo === "danger");
             const atencao = (p.alertas || []).find(a => a.tipo === "warn");
             const custoLancado = Number(p.kpis.total_custos_lancados || 0) > 0;
@@ -1606,12 +1727,16 @@
                 setText("alertaCriticoTexto", critico.mensagem || "Risco operacional identificado.");
                 setText("alertaCriticoObra", `Obra relacionada: ${critico.codigo || "N/A"}`);
                 setText("alertaCriticoAcao", critico.acao || "Revisar agora");
+                const metaCritico = document.getElementById("alertaCriticoObra");
+                if (metaCritico) metaCritico.hidden = false;
                 const link = document.getElementById("alertaCriticoLink");
                 if (link) link.href = critico.obra_codigo ? `/obra/${encodeURIComponent(critico.obra_codigo)}/detalhes` : "/alertas";
             } else {
-                setText("alertaCriticoTexto", "Sem risco crítico confirmado neste filtro. Continue monitorando saldo, prazo e desvio de custo.");
-                setText("alertaCriticoObra", "Obra relacionada: Todas as obras ativas");
+                setText("alertaCriticoTexto", "Sem risco crítico no momento.");
+                setText("alertaCriticoObra", "");
                 setText("alertaCriticoAcao", "Revisar agora");
+                const metaCritico = document.getElementById("alertaCriticoObra");
+                if (metaCritico) metaCritico.hidden = true;
                 const link = document.getElementById("alertaCriticoLink");
                 if (link) link.href = "/alertas";
             }
@@ -1620,12 +1745,16 @@
                 setText("alertaAtencaoTexto", atencao.mensagem || "Atenção operacional identificada.");
                 setText("alertaAtencaoObra", `Obra relacionada: ${atencao.codigo || "N/A"}`);
                 setText("alertaAtencaoAcao", atencao.acao || "Acompanhar obra");
+                const metaAtencao = document.getElementById("alertaAtencaoObra");
+                if (metaAtencao) metaAtencao.hidden = false;
                 const link = document.getElementById("alertaAtencaoLink");
                 if (link) link.href = atencao.obra_codigo ? `/obra/${encodeURIComponent(atencao.obra_codigo)}/detalhes` : "/alertas";
             } else {
-                setText("alertaAtencaoTexto", "Sem alerta de atenção imediato. Mantenha medições e atualizações com cadência.");
-                setText("alertaAtencaoObra", "Obra relacionada: Todas as obras monitoradas");
+                setText("alertaAtencaoTexto", "Sem alerta de atenção no momento.");
+                setText("alertaAtencaoObra", "");
                 setText("alertaAtencaoAcao", "Acompanhar obra");
+                const metaAtencao = document.getElementById("alertaAtencaoObra");
+                if (metaAtencao) metaAtencao.hidden = true;
                 const link = document.getElementById("alertaAtencaoLink");
                 if (link) link.href = "/alertas";
             }
@@ -1633,9 +1762,8 @@
             if (!custoLancado && !medicaoLancada) {
                 setText("alertaInfoTexto", "Portal pode estar desatualizado para parte das obras: sem custos nem medições recentes no filtro atual.");
             } else {
-                setText("alertaInfoTexto", "Fluxo operacional ativo. Reforce fotos e publicações no portal para manter transparência com o cliente.");
+                setText("alertaInfoTexto", "Sem fotos enviadas essa semana.");
             }
-            setText("alertaInfoObra", "Obra relacionada: visão consolidada do período");
             setText("alertaInfoAcao", "Ver logs");
         }
 
@@ -1644,28 +1772,48 @@
             if (!list) return;
 
             const eventos = [];
+            (p.custos || []).slice(0, 2).forEach(function (c) {
+                eventos.push({
+                    badge: "Custo",
+                    titulo: "Custo lançado",
+                    tempo: "Custo lançado",
+                    meta: `Origem: ${c.fornecedor || "Lançamento manual"} · Obra: ${c.obra_codigo || "N/A"}`,
+                    copy: c.descricao || "Lançamento financeiro registrado."
+                });
+            });
+
+            (p.medicoes || []).slice(0, 2).forEach(function (m) {
+                eventos.push({
+                    badge: "Medição",
+                    titulo: "Fase atualizada",
+                    tempo: "Fase atualizada",
+                    meta: `Responsável: Engenharia · Obra: ${m.obra_codigo || "N/A"}`,
+                    copy: m.medicao_nome || m.etapa || "Medição registrada."
+                });
+            });
+
             (p.alertas || []).slice(0, 3).forEach(function (a) {
                 eventos.push({
                     badge: "Alerta",
                     titulo: "Alerta operacional detectado",
-                    tempo: "Evento recente",
+                    tempo: "Alerta gerado",
                     meta: `Responsável: Sistema · Obra: ${a.codigo || "N/A"}`,
                     copy: a.mensagem || "Alerta operacional registrado."
                 });
             });
 
-            (p.margem_por_obra || []).slice(0, 4).forEach(function (obra) {
+            (p.margem_por_obra || []).slice(0, 2).forEach(function (obra) {
                 eventos.push({
                     badge: "Obra",
                     titulo: "Atualização de fase da obra",
-                    tempo: "Atualização em andamento",
+                    tempo: "Fase atualizada",
                     meta: `Responsável: Gestão da obra · Obra: ${obra.nome}`,
                     copy: `Fase atual: ${obra.fase_obra || obra.status || "-"} · Próxima etapa: ${estimarProximaEtapa(Number(obra.execucao || 0), obra.status)}`
                 });
             });
 
             if (!eventos.length) {
-                list.innerHTML = `<div class="dashboard-empty-inline">Sem movimentações recentes para exibir na timeline.</div>`;
+                list.innerHTML = `<div class="dashboard-empty-inline">Sem movimentações recentes.</div>`;
                 return;
             }
 
@@ -1707,7 +1855,7 @@
                     ? `<a href="/obra/${encodeURIComponent(codigoObra)}/detalhes" class="dashboard-step-link" data-spa>${nomeObra}</a>`
                     : `<span class="dashboard-step-link dashboard-step-link--disabled">${nomeObra}</span>`;
                 const prazoRaw = parseDate(obra.data_fim_prevista || "");
-                const prazoLabel = prazoRaw ? formatAbsoluteDateTime(prazoRaw) : "Definir no cronograma";
+                const prazoLabel = prazoRaw ? formatAbsoluteDateTime(prazoRaw) : "Sem prazo definido";
                 return `
                 <article class="dashboard-step-card">
                     <div class="dashboard-step-top">
@@ -1716,10 +1864,17 @@
                     </div>
                     <p><strong>Fase atual:</strong> ${esc(normalizarFase(obra.fase_obra || obra.status || "-"))}</p>
                     <p><strong>Próxima etapa:</strong> ${esc(estimarProximaEtapa(execucao, obra.status))}</p>
-                    <p><strong>Prazo:</strong> ${esc(prazoLabel)}</p>
+                    <p class="dashboard-step-prazo">${esc(prazoLabel)}</p>
                 </article>`;
             }).join("");
         }
+
+        const portalStatusByCodigo = {};
+        document.querySelectorAll(".dashboard-portal-cell[data-obra-codigo]").forEach(function (cell) {
+            const codigo = cell.getAttribute("data-obra-codigo");
+            if (!codigo) return;
+            portalStatusByCodigo[codigo] = cell.getAttribute("data-portal-ativo") === "1";
+        });
 
         function atualizarAtividadesRecentes(p) {
             const primeiraObra = (p.margem_por_obra || [])[0];
@@ -1766,7 +1921,7 @@
                         <strong>${esc(toTitleCase(o.nome))}</strong>
                         <small>${esc(o.codigo)}</small>
                     </a>
-                    <span>${o.tipo_obra === "venda" ? "Para venda" : "Por contrato"}<small>${esc(o.tipologia || "-")}</small></span>
+                    <span>${o.tipo_obra === "venda" ? "Para venda" : "Por contrato"}${o.tipologia ? `<small>${esc(o.tipologia)}</small>` : ""}</span>
                     <span>${esc(normalizarFase(o.fase_obra || o.status || "-"))}</span>
                     <span>
                         ${Number(o.execucao || 0) > 0 ? `<div class="dashboard-v2-mini-progress"><i style="width: ${Number(o.execucao || 0)}%;"></i></div>` : ""}
@@ -1776,15 +1931,46 @@
                     <span>${esc(o.custo_realizado_formatado || fmt(o.custo_realizado))}</span>
                     <strong class="${parseFinanceNumber(o.margem_valor ?? o.margem_valor_formatado ?? 0) >= 0 ? "valor-positivo" : "valor-negativo"}">${esc(o.margem_valor_formatada || o.margem_valor_formatado)}</strong>
                     <span class="badge ${esc(o.status)}">${esc(o.status || "-")}</span>
-                    <a href="/obra/${encodeURIComponent(o.codigo)}" class="dashboard-portal-icon-btn" aria-label="Abrir portal da obra ${esc(o.nome)}" title="Abrir portal">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <path d="M14 4h6v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M10 14L20 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M20 14v6H4V4h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </a>
+                    <div class="dashboard-portal-cell">
+                        <span class="dashboard-portal-state ${portalStatusByCodigo[o.codigo] ? "is-active" : "is-empty"}">${portalStatusByCodigo[o.codigo] ? "Ativo" : "Sem portal"}</span>
+                        ${portalStatusByCodigo[o.codigo] ? `<a href="/obra/${encodeURIComponent(o.codigo)}" class="dashboard-portal-open" aria-label="Abrir portal da obra ${esc(o.nome)}">Abrir</a>` : `<span class="dashboard-portal-open is-disabled">—</span>`}
+                    </div>
                 </div>`;
             }).join("");
+        }
+
+        function atualizarFinanceChart(totalReceita, totalCusto, margem) {
+            const chart = document.getElementById("financeChartBlock");
+            const empty = document.getElementById("financeChartEmpty");
+            const semBase = totalReceita <= 0;
+            if (chart) chart.hidden = semBase;
+            if (empty) empty.hidden = !semBase;
+            if (semBase) return;
+
+            const saldoAbs = Math.abs(margem || 0);
+            const base = Math.max(totalReceita, totalCusto, saldoAbs, 1);
+            const receitaPct = Math.max(0, Math.min(100, (totalReceita / base) * 100));
+            const custoPct = Math.max(0, Math.min(100, (totalCusto / base) * 100));
+            const saldoPct = Math.max(0, Math.min(100, (saldoAbs / base) * 100));
+
+            const barReceita = document.getElementById("financeBarReceita");
+            const barCusto = document.getElementById("financeBarCusto");
+            const barSaldo = document.getElementById("financeBarSaldo");
+            const valorReceita = document.getElementById("financeValorReceita");
+            const valorCusto = document.getElementById("financeValorCusto");
+            const valorSaldo = document.getElementById("financeValorSaldo");
+            const saldoRotulo = document.getElementById("financeSaldoRotulo");
+
+            if (barReceita) barReceita.style.width = `${receitaPct.toFixed(1)}%`;
+            if (barCusto) barCusto.style.width = `${custoPct.toFixed(1)}%`;
+            if (barSaldo) {
+                barSaldo.style.width = `${saldoPct.toFixed(1)}%`;
+                barSaldo.classList.toggle("is-negativo", margem < 0);
+            }
+            if (valorReceita) valorReceita.textContent = fmt(totalReceita);
+            if (valorCusto) valorCusto.textContent = fmt(totalCusto);
+            if (valorSaldo) valorSaldo.textContent = fmt(margem);
+            if (saldoRotulo) saldoRotulo.textContent = margem < 0 ? "Saldo negativo" : "Saldo";
         }
 
         function atualizarEstadoVazioDashboard(p) {

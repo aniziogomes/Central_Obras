@@ -3,53 +3,95 @@
 {% block title %}Alertas - Central de Obras{% endblock %}
 
 {% block content %}
-<div class="hdr alertas-page-header">
-    <div>
-        <h1>Alertas</h1>
-        <p>Notificações automáticas para agir antes que os problemas cresçam</p>
-    </div>
-</div>
+{% set total_alertas = alertas|length if alertas else 0 %}
+{% set total_criticos = alertas|selectattr('tipo', 'equalto', 'danger')|list|length if alertas else 0 %}
+{% set total_atencao = alertas|selectattr('tipo', 'equalto', 'warn')|list|length if alertas else 0 %}
+{% set total_info = alertas|selectattr('tipo', 'equalto', 'info')|list|length if alertas else 0 %}
 
-{% if alertas and alertas|length > 0 %}
-<div class="alertas-list" id="alertasLista">
-    {% for alerta in alertas %}
-    <div class="alert-card alert-card--{{ alerta.tipo }}" data-alert-type="{{ alerta.tipo }}">
-        <div class="alert-severity">{{ alerta.severidade or ("CRÍTICO" if alerta.tipo == "danger" else "ATENÇÃO") }}</div>
-
-        <div class="alert-main">
-            <div class="alert-title">{{ alerta.codigo }} — {{ alerta.nome }}</div>
-            <div class="alert-text">{{ alerta.mensagem }}</div>
-            {% if alerta.contexto %}
-            <div class="alert-context">{{ alerta.contexto }}</div>
-            {% endif %}
-        </div>
-
-        <div class="alert-action">
-            {% if alerta.destino == "obra" and alerta.obra_codigo %}
-            <a href="{{ url_for('obras_bp.obra_detalhes', codigo=alerta.obra_codigo) }}" class="btn btn-small btn-ghost" data-spa>
-                {{ alerta.acao or "Ver obra" }} →
-            </a>
-            {% else %}
-            <a href="{{ url_for('equipe_bp.equipe') }}" class="btn btn-small btn-ghost" data-spa>
-                {{ alerta.acao or "Ver equipe" }} →
-            </a>
-            {% endif %}
+<section class="alertas-page">
+    <div class="hdr alertas-page-header">
+        <div>
+            <h1>Central de alertas</h1>
+            <p>Monitoramento operacional contínuo para agir antes que o risco cresça.</p>
+            <div class="alertas-header-status" aria-live="polite">
+                <span class="alertas-monitor-dot" aria-hidden="true"></span>
+                <div>
+                    <strong>Sistema monitorando</strong>
+                    <small>{{ total_alertas }} alerta{% if total_alertas != 1 %}s{% endif %} ativo{% if total_alertas != 1 %}s{% endif %}</small>
+                </div>
+            </div>
         </div>
     </div>
-    {% endfor %}
-</div>
 
-<div class="alertas-empty-filter" id="alertasFiltroVazio" hidden>
-    Nenhum alerta neste filtro.
-</div>
-{% else %}
-<div class="card alertas-empty-state">
-    <div class="card-hdr">
-        <div class="card-title">Situação atual</div>
+    {% if alertas and alertas|length > 0 %}
+    <div class="alertas-summary-strip" role="group" aria-label="Filtros rápidos de severidade">
+        <button type="button" class="alertas-filter-card alertas-filter-card--all active" data-alert-filter="all" aria-pressed="true">
+            <span>Todos</span>
+            <strong>{{ total_alertas }}</strong>
+            <small>Visão consolidada</small>
+        </button>
+        <button type="button" class="alertas-filter-card alertas-filter-card--danger" data-alert-filter="danger" aria-pressed="false">
+            <span>Crítico</span>
+            <strong>{{ total_criticos }}</strong>
+            <small>Resposta imediata</small>
+        </button>
+        <button type="button" class="alertas-filter-card alertas-filter-card--warn" data-alert-filter="warn" aria-pressed="false">
+            <span>Atenção</span>
+            <strong>{{ total_atencao }}</strong>
+            <small>Acompanhar de perto</small>
+        </button>
+        <button type="button" class="alertas-filter-card alertas-filter-card--info" data-alert-filter="info" aria-pressed="false">
+            <span>Informativo</span>
+            <strong>{{ total_info }}</strong>
+            <small>Contexto operacional</small>
+        </button>
     </div>
-    <p class="muted">Nenhum alerta ativo. Tudo em ordem.</p>
-</div>
-{% endif %}
+
+    <div class="alertas-list" id="alertasLista">
+        {% for alerta in alertas %}
+        {% set alerta_tipo = alerta.tipo or "info" %}
+        {% set alerta_href = url_for('obras_bp.obra_detalhes', codigo=alerta.obra_codigo) if alerta.destino == "obra" and alerta.obra_codigo else url_for('equipe_bp.equipe') %}
+        {% set alerta_severidade = alerta.severidade or ("CRÍTICO" if alerta_tipo == "danger" else ("ATENÇÃO" if alerta_tipo == "warn" else "INFORMATIVO")) %}
+        {% set alerta_acao = alerta.acao or ("Ver obra" if alerta.destino == "obra" and alerta.obra_codigo else "Ver equipe") %}
+        <article class="alert-card alert-card--{{ alerta_tipo }}" data-alert-type="{{ alerta_tipo }}">
+            <div class="alert-main">
+                <div class="alert-topline">
+                    <span class="alert-severity">{{ alerta_severidade }}</span>
+                    {% if alerta.codigo %}
+                    <span class="alert-code">{{ alerta.codigo }}</span>
+                    {% endif %}
+                </div>
+                <h3 class="alert-title">
+                    <a href="{{ alerta_href }}" class="alert-title-link" data-spa>{{ alerta.nome }}</a>
+                </h3>
+                <p class="alert-text">{{ alerta.mensagem }}</p>
+                {% if alerta.contexto %}
+                <p class="alert-context">{{ alerta.contexto }}</p>
+                {% endif %}
+            </div>
+
+            <div class="alert-action">
+                <a href="{{ alerta_href }}" class="btn btn-small btn-ghost" data-spa>
+                    {{ alerta_acao }} →
+                </a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+
+    <div class="alertas-empty-filter" id="alertasFiltroVazio" hidden>
+        Nenhum alerta neste filtro.
+    </div>
+    {% else %}
+    <div class="card alertas-empty-state">
+        <div class="alertas-empty-icon" aria-hidden="true">✓</div>
+        <div>
+            <div class="card-title">Nenhum alerta ativo</div>
+            <p class="muted">Tudo em ordem no momento. O sistema segue monitorando automaticamente.</p>
+        </div>
+    </div>
+    {% endif %}
+</section>
 
 <script>
     (function () {
@@ -59,22 +101,32 @@
 
         if (!buttons.length || !cards.length) return;
 
+        function aplicarFiltro(filter, activeButton) {
+            let visible = 0;
+
+            buttons.forEach(item => {
+                const isActive = item === activeButton;
+                item.classList.toggle("active", isActive);
+                item.setAttribute("aria-pressed", isActive ? "true" : "false");
+            });
+
+            cards.forEach(card => {
+                const show = filter === "all" || card.dataset.alertType === filter;
+                card.hidden = !show;
+                if (show) visible += 1;
+            });
+
+            if (empty) empty.hidden = visible > 0;
+        }
+
         buttons.forEach(button => {
             button.addEventListener("click", () => {
-                const filter = button.dataset.alertFilter;
-                let visible = 0;
-
-                buttons.forEach(item => item.classList.toggle("active", item === button));
-
-                cards.forEach(card => {
-                    const show = filter === "all" || card.dataset.alertType === filter;
-                    card.hidden = !show;
-                    if (show) visible += 1;
-                });
-
-                if (empty) empty.hidden = visible > 0;
+                aplicarFiltro(button.dataset.alertFilter, button);
             });
         });
+
+        const initialButton = document.querySelector("[data-alert-filter='all']") || buttons[0];
+        if (initialButton) aplicarFiltro(initialButton.dataset.alertFilter, initialButton);
     })();
 </script>
 {% endblock %}
