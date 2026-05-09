@@ -14064,3 +14064,1202 @@ body.onboarding-page {
     grid-template-columns: 1fr;
   }
 }
+
+/* Obras: central operacional premium (refino visual sem alterar fluxo) */
+.obras-summary-strip {
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.obras-summary-card {
+  min-height: 78px;
+  padding: 10px 11px;
+  border-radius: 12px;
+}
+
+.obras-summary-icon {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 10px;
+}
+
+.obras-summary-content span {
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.obras-summary-content strong {
+  font-size: 23px;
+  line-height: 1;
+}
+
+.obras-toolbar--saas {
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 12px;
+}
+
+.obras-toolbar--saas .obras-search-input {
+  height: 34px;
+  font-size: 12px;
+}
+
+.obras-toolbar--saas .obra-chip {
+  min-height: 28px;
+  padding: 0 9px;
+  border-radius: 8px;
+  font-size: 10.5px;
+}
+
+#obrasCards.obras-cards {
+  gap: 6px;
+}
+
+#obrasCards .obra-card {
+  border-radius: 11px;
+  border-color: rgba(255, 255, 255, 0.085);
+  box-shadow: none;
+}
+
+#obrasCards .obra-card::before {
+  width: 3px;
+  opacity: 0.96;
+}
+
+#obrasCards .obra-card[data-status="atrasada"] {
+  border-color: rgba(255, 119, 131, 0.3);
+  background: linear-gradient(180deg, rgba(255, 77, 92, 0.08), rgba(255, 255, 255, 0.01));
+}
+
+#obrasCards .obra-card[data-status="andamento"] {
+  border-color: rgba(243, 180, 73, 0.28);
+  background: linear-gradient(180deg, rgba(243, 180, 73, 0.06), rgba(255, 255, 255, 0.01));
+}
+
+#obrasCards .obra-card[data-status="concluida"],
+#obrasCards .obra-card[data-status="vendida"] {
+  border-color: rgba(56, 201, 120, 0.29);
+  background: linear-gradient(180deg, rgba(56, 201, 120, 0.06), rgba(255, 255, 255, 0.01));
+}
+
+#obrasCards .obra-card-main {
+  grid-template-columns: minmax(258px, 1fr) minmax(340px, 0.95fr) auto;
+  gap: 12px;
+  padding: 10px 11px 10px 13px;
+}
+
+#obrasCards .obra-card-title-row {
+  margin-bottom: 1px;
+}
+
+#obrasCards .obra-card-nome {
+  font-size: 14px;
+  line-height: 1.14;
+}
+
+#obrasCards .obra-card .badge {
+  min-height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+#obrasCards .obra-card-subtitle {
+  margin-top: 1px;
+  gap: 5px;
+  font-size: 10.5px;
+  line-height: 1.2;
+}
+
+#obrasCards .obra-card-meta-list {
+  margin-top: 5px;
+  gap: 10px;
+}
+
+#obrasCards .obra-card-meta-list span {
+  font-size: 9.5px;
+}
+
+#obrasCards .obra-card-meta-list strong {
+  font-size: 11px;
+}
+
+#obrasCards .obra-card-progress-compact--inline {
+  margin-top: 5px;
+}
+
+#obrasCards .obra-progress-inline {
+  grid-template-columns: 68px minmax(96px, 140px) auto;
+  column-gap: 4px;
+  justify-content: flex-start;
+}
+
+#obrasCards .obra-progress-inline-label {
+  font-size: 9px;
+  letter-spacing: 0.03em;
+}
+
+#obrasCards .obra-progress-track,
+#obrasCards .obra-progress-wide {
+  height: 5px;
+  max-width: 140px;
+}
+
+#obrasCards .obra-progress-inline-value {
+  font-size: 10px;
+  font-weight: 800;
+  min-width: 0;
+  text-align: left;
+}
+
+#obrasCards .obra-card-kpis {
+  grid-template-columns: repeat(3, minmax(104px, 1fr));
+  gap: 0;
+  align-self: stretch;
+}
+
+#obrasCards .obra-kv,
+#obrasCards .obra-kv--progress {
+  padding: 1px 10px 0;
+}
+
+#obrasCards .obra-kv + .obra-kv {
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#obrasCards .obra-kv-label {
+  margin-bottom: 2px;
+  font-size: 8.2px;
+  letter-spacing: 0.03em;
+}
+
+#obrasCards .obra-kv-value {
+  font-size: 11.8px;
+  font-weight: 820;
+  line-height: 1.08;
+}
+
+#obrasCards .obra-card-actions {
+  gap: 5px;
+  margin-left: 10px;
+  padding-left: 10px;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  align-self: center;
+}
+
+#obrasCards .obra-card-actions .btn {
+  min-height: 27px;
+  padding: 0 8px;
+  border-radius: 7px;
+  font-size: 10px;
+}
+
+#obrasCards .obra-card-actions .btn-primary {
+  min-width: 76px;
+}
+
+#obrasCards .obra-card-actions .edit-icon,
+#obrasCards .obra-card-actions .custo-delete-icon {
+  width: 25px;
+  height: 25px;
+  border-radius: 7px;
+}
+
+@media (max-width: 1280px) {
+  #obrasCards .obra-card-main {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 9px;
+    padding: 10px 10px 10px 12px;
+  }
+
+  #obrasCards .obra-card-kpis {
+    grid-column: 1 / -1;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    padding-top: 7px;
+  }
+
+  #obrasCards .obra-card-actions {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+@media (max-width: 980px) {
+  .obras-summary-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #obrasCards .obra-card-main {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 9px 9px 9px 11px;
+  }
+
+  #obrasCards .obra-card-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-top: 6px;
+  }
+
+  #obrasCards .obra-kv + .obra-kv {
+    border-left: 0;
+  }
+
+  #obrasCards .obra-card-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  #obrasCards .obra-card-actions .btn,
+  #obrasCards .obra-card-actions form {
+    flex: 1 1 130px;
+  }
+}
+
+@media (max-width: 760px) {
+  .obras-summary-strip {
+    grid-template-columns: 1fr;
+  }
+
+  #obrasCards .obra-card-kpis {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Custos: central financeira operacional premium */
+#custosKpiGrid.custos-kpi-grid {
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+#custosKpiGrid .custos-kpi-card {
+  min-height: 104px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border-color: rgba(255, 255, 255, 0.085);
+  box-shadow: none;
+}
+
+#custosKpiGrid .custos-kpi-card::before {
+  height: 2px;
+  opacity: 0.96;
+}
+
+#custosKpiGrid .metric-summary-icon {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 11px;
+}
+
+#custosKpiGrid .metric-summary-content {
+  min-width: 0;
+}
+
+#custosKpiGrid .custos-kpi-title {
+  margin-bottom: 6px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}
+
+#custosKpiGrid .custos-kpi-value {
+  margin-bottom: 5px;
+  font-size: 23px;
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+}
+
+#custosKpiGrid .custos-kpi-sub {
+  font-size: 10.5px;
+  line-height: 1.25;
+}
+
+.custos-toolbar {
+  margin-bottom: 12px;
+}
+
+.custos-search-wrap {
+  margin-bottom: 8px;
+}
+
+.custos-search-input {
+  height: 36px;
+  border-radius: 11px;
+  font-size: 12px;
+}
+
+.custos-search-icon {
+  left: 12px;
+  font-size: 14px;
+}
+
+.custos-status-chips {
+  gap: 6px;
+}
+
+.custo-chip {
+  min-height: 27px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 10.5px;
+}
+
+#custosCardsWrap.custos-obras-list {
+  gap: 7px;
+}
+
+#custosCardsWrap .custo-obra-card {
+  border-radius: 11px;
+  border-color: rgba(255, 255, 255, 0.085);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+#custosCardsWrap .custo-obra-main {
+  grid-template-columns: minmax(250px, 1fr) auto auto;
+  gap: 10px;
+  padding: 10px 11px 10px 12px;
+}
+
+#custosCardsWrap .custo-obra-title-row {
+  margin-bottom: 2px;
+  gap: 7px;
+}
+
+#custosCardsWrap .custo-obra-nome {
+  font-size: 13.5px;
+  line-height: 1.15;
+}
+
+#custosCardsWrap .custo-obra-codigo,
+#custosCardsWrap .custo-obra-count {
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-size: 9px;
+}
+
+#custosCardsWrap .custo-obra-subtitle {
+  font-size: 10.5px;
+  line-height: 1.25;
+}
+
+#custosCardsWrap .custo-obra-kpis {
+  gap: 8px;
+}
+
+#custosCardsWrap .custo-kv {
+  min-width: 132px;
+  padding: 8px 9px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+#custosCardsWrap .custo-kv-label {
+  font-size: 8px;
+  letter-spacing: 0.05em;
+}
+
+#custosCardsWrap .custo-kv-value {
+  font-size: 12px;
+  line-height: 1.08;
+}
+
+#custosCardsWrap .custo-kv:first-child .custo-kv-value {
+  font-size: 15px;
+  font-weight: 840;
+}
+
+#custosCardsWrap .custo-obra-actions {
+  gap: 6px;
+}
+
+#custosCardsWrap .custo-expand-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+}
+
+#custosCardsWrap .custo-obra-details.open {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+#custosCardsWrap .custo-table-wrap {
+  padding: 10px 11px 12px;
+}
+
+#custosCardsWrap .custo-inner-table thead th {
+  font-size: 9px;
+  padding: 0 8px 6px 0;
+}
+
+#custosCardsWrap .custo-inner-table tbody td {
+  font-size: 11px;
+  padding: 8px 8px 8px 0;
+}
+
+#custosCardsWrap .custo-inner-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+#custosCardsWrap .custo-inner-table tbody tr:hover {
+  background: rgba(95, 155, 255, 0.05);
+}
+
+#custosCardsWrap .custo-row-actions {
+  gap: 5px;
+}
+
+#custosCardsWrap .edit-icon,
+#custosCardsWrap .custo-delete-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+}
+
+@media (max-width: 1280px) {
+  #custosCardsWrap .custo-obra-main {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 9px;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 980px) {
+  #custosKpiGrid.custos-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #custosCardsWrap .custo-obra-main {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  #custosCardsWrap .custo-obra-kpis {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  #custosCardsWrap .custo-kv {
+    flex: 1 1 170px;
+    min-width: 0;
+  }
+
+  #custosCardsWrap .custo-obra-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 760px) {
+  #custosKpiGrid.custos-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #custosCardsWrap .custo-obra-kpis {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  #custosCardsWrap .custo-kv {
+    width: 100%;
+  }
+}
+
+.custos-filter-shell--hidden {
+  display: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Custos: refinamento visual avançado (fluidez + integração) */
+#custosKpiGrid .custos-kpi-card {
+  border-color: rgba(255, 255, 255, 0.06);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.01)),
+    var(--bg-card);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+}
+
+#custosKpiGrid .custos-kpi-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(120, 170, 255, 0.18);
+  box-shadow: 0 8px 22px rgba(6, 14, 24, 0.22);
+}
+
+#custosKpiGrid .custos-kpi-card.ativo {
+  box-shadow:
+    0 0 0 1px rgba(99, 156, 255, 0.16),
+    0 10px 24px rgba(22, 84, 176, 0.10);
+}
+
+#custosCardsWrap .custo-obra-card {
+  border-color: rgba(255, 255, 255, 0.07);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.006)),
+    var(--bg-card);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+}
+
+#custosCardsWrap .custo-obra-card:hover {
+  border-color: rgba(120, 170, 255, 0.16);
+  box-shadow: 0 8px 22px rgba(7, 14, 25, 0.2);
+}
+
+#custosCardsWrap .custo-obra-main {
+  gap: 9px;
+  padding: 9px 10px 9px 11px;
+}
+
+#custosCardsWrap .custo-obra-kpis {
+  gap: 0;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.014);
+}
+
+#custosCardsWrap .custo-kv {
+  min-width: 126px;
+  border: 0;
+  background: transparent;
+  padding: 0 10px 0 0;
+}
+
+#custosCardsWrap .custo-kv + .custo-kv {
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 0 0 0 10px;
+}
+
+#custosCardsWrap .custo-kv:first-child .custo-kv-value {
+  color: #f3f7ff;
+  text-shadow: 0 0 0 transparent;
+}
+
+#custosCardsWrap .custo-kv:last-child .custo-kv-value {
+  color: var(--text-secondary);
+  font-weight: 760;
+}
+
+#custosCardsWrap .custo-expand-btn {
+  border-color: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.018);
+  color: var(--text-secondary);
+}
+
+#custosCardsWrap .custo-expand-btn:hover {
+  border-color: rgba(120, 170, 255, 0.28);
+  background: rgba(36, 104, 204, 0.11);
+  color: #9bc4ff;
+}
+
+#custosCardsWrap .custo-obra-details {
+  transition: max-height 0.34s ease, opacity 0.2s ease, border-color 0.2s ease;
+}
+
+#custosCardsWrap .custo-obra-details.open {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0.004)),
+    rgba(255, 255, 255, 0.004);
+}
+
+#custosCardsWrap .custo-table-wrap {
+  padding: 9px 10px 11px;
+}
+
+#custosCardsWrap .custo-inner-table {
+  min-width: 740px;
+}
+
+#custosCardsWrap .custo-inner-table thead th {
+  padding: 0 8px 5px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: #9ca6b7;
+  letter-spacing: 0.05em;
+}
+
+#custosCardsWrap .custo-inner-table tbody td {
+  padding: 7px 8px 7px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+}
+
+#custosCardsWrap .custo-inner-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.01);
+}
+
+#custosCardsWrap .custo-inner-table tbody tr:hover {
+  background: rgba(95, 155, 255, 0.045);
+}
+
+#custosCardsWrap .custo-inner-table tbody td:nth-child(6) {
+  color: #e6edff;
+  font-weight: 760;
+  font-variant-numeric: tabular-nums;
+}
+
+#custosCardsWrap .custo-row-actions {
+  gap: 4px;
+}
+
+#custosCardsWrap .edit-icon,
+#custosCardsWrap .custo-delete-icon {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.01);
+}
+
+#custosCardsWrap .edit-icon:hover {
+  border-color: rgba(99, 156, 255, 0.34);
+}
+
+#custosCardsWrap .custo-delete-icon:hover {
+  border-color: rgba(232, 66, 78, 0.34);
+}
+
+@media (max-width: 980px) {
+  #custosCardsWrap .custo-obra-kpis {
+    padding: 6px 7px;
+  }
+
+  #custosCardsWrap .custo-kv {
+    padding: 0;
+  }
+
+  #custosCardsWrap .custo-kv + .custo-kv {
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    padding-top: 6px;
+  }
+}
+
+/* Modal de criacao de obra: UX compacta, premium e operacional */
+#modalObra.modal-overlay {
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+}
+
+.obra-create-modal-box {
+  width: min(570px, calc(100vw - 34px));
+  max-width: 570px;
+  max-height: calc(100vh - 14px);
+  padding: 14px 15px 12px;
+  border-radius: 14px;
+  border-color: rgba(255, 255, 255, 0.09);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+    var(--bg2);
+}
+
+.obra-create-header {
+  margin-bottom: 10px;
+  padding-bottom: 9px;
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.obra-create-header h3 {
+  font-size: 15px;
+  font-weight: 760;
+}
+
+.obra-create-form {
+  display: grid;
+  gap: 7px;
+}
+
+.obra-create-layout {
+  display: grid;
+  gap: 10px;
+  align-items: start;
+}
+
+.obra-create-section {
+  display: grid;
+  gap: 6px;
+  padding: 6px 7px 7px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.012));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.017);
+}
+
+.obra-create-section-head {
+  margin: 0;
+  padding-top: 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  font-weight: 680;
+  color: #b3bdd0;
+  text-transform: none;
+}
+
+.obra-create-section-head::before {
+  content: none;
+}
+
+.obra-create-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px 10px;
+  align-items: start;
+}
+
+.obra-create-section--cronograma .obra-create-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.obra-create-form .form-group {
+  gap: 3px;
+}
+
+.obra-create-form .form-group label {
+  font-size: 9px;
+  letter-spacing: 0.045em;
+  font-weight: 600;
+  color: #9ca6b8;
+}
+
+.obra-create-form .form-group input,
+.obra-create-form .form-group select {
+  min-height: 30px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  color: #e9eef9;
+  font-size: 12px;
+}
+
+.obra-create-form .form-group select option {
+  color: #1e2736;
+  background: #f2f5fb;
+}
+
+#modalObra input[name="area_m2"],
+[id^="modalEditarObra"] input[name="area_m2"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+#modalObra input[name="area_m2"]::-webkit-outer-spin-button,
+#modalObra input[name="area_m2"]::-webkit-inner-spin-button,
+[id^="modalEditarObra"] input[name="area_m2"]::-webkit-outer-spin-button,
+[id^="modalEditarObra"] input[name="area_m2"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.obra-create-form .form-group input::placeholder {
+  color: #8e97a8;
+}
+
+.obra-create-form .form-group input:focus,
+.obra-create-form .form-group select:focus {
+  border-color: rgba(120, 170, 255, 0.38);
+  box-shadow: 0 0 0 2px rgba(22, 84, 176, 0.12);
+}
+
+.obra-create-form .form-field-help {
+  margin-top: 1px;
+  font-size: 9.5px;
+  line-height: 1.24;
+}
+
+.obra-create-field--secondary label {
+  color: #8d97a9;
+}
+
+.obra-create-field--financial .form-field-help {
+  color: #98a6c1;
+}
+
+.obra-create-tipo-group {
+  gap: 5px;
+}
+
+.obra-create-modal-box .tipo-obra-card {
+  min-height: 50px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  border-color: rgba(255, 255, 255, 0.072);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.017);
+}
+
+.obra-create-modal-box .tipo-obra-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--bl-bd);
+  background: linear-gradient(180deg, rgba(22, 84, 176, 0.06), rgba(22, 84, 176, 0.02));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 6px 14px rgba(0, 0, 0, 0.10);
+}
+
+.obra-create-modal-box .tipo-obra-bullet {
+  width: 13px;
+  height: 13px;
+  border-width: 1.5px;
+}
+
+.obra-create-modal-box .tipo-obra-bullet::after {
+  inset: 2.8px;
+}
+
+.obra-create-modal-box .tipo-obra-title {
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.obra-create-modal-box .tipo-obra-sub {
+  font-size: 10px;
+}
+
+.obra-create-modal-box .tipo-obra-option input[type="radio"]:checked + .tipo-obra-card {
+  background: linear-gradient(180deg, rgba(22, 84, 176, 0.13), rgba(22, 84, 176, 0.055));
+  box-shadow: 0 0 0 1px rgba(22, 84, 176, 0.09), 0 0 0 2px rgba(22, 84, 176, 0.045);
+}
+
+.obra-create-info {
+  margin: 2px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #8691a4;
+  font-size: 10px;
+  line-height: 1.33;
+}
+
+.obra-create-footer {
+  position: sticky;
+  bottom: -10px;
+  margin-top: 1px;
+  padding-top: 5px;
+  border-top-color: transparent;
+  gap: 7px;
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.obra-create-footer .btn {
+  min-height: 29px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+
+@media (max-width: 980px) {
+  .obra-create-modal-box {
+    width: min(480px, calc(100vw - 24px));
+    max-width: 480px;
+  }
+
+  .obra-create-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .obra-create-section--cronograma .obra-create-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 780px) {
+  #modalObra.modal-overlay {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .obra-create-modal-box {
+    width: calc(100vw - 20px);
+    padding: 13px 12px 11px;
+    border-radius: 12px;
+  }
+
+  .obra-create-layout {
+    gap: 9px;
+  }
+
+  .obra-create-section {
+    gap: 6px;
+  }
+
+  .obra-create-footer .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* Padrao visual do modal de obra para custos, fornecedores, equipe e medicoes (novo + edicao) */
+#modalCusto.modal-overlay,
+#modalFornecedor.modal-overlay,
+#modalEquipe.modal-overlay,
+#modalMedicao.modal-overlay,
+[id^="modalEditarCusto"].modal-overlay,
+[id^="modalEditarFornecedor"].modal-overlay,
+[id^="modalEditarEquipe"].modal-overlay,
+[id^="modalEditarMedicao"].modal-overlay,
+[id^="modalEditarObra"].modal-overlay {
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+}
+
+#modalCusto .modal-box,
+#modalFornecedor .modal-box,
+#modalEquipe .modal-box,
+#modalMedicao .modal-box,
+[id^="modalEditarCusto"] .modal-box,
+[id^="modalEditarFornecedor"] .modal-box,
+[id^="modalEditarEquipe"] .modal-box,
+[id^="modalEditarMedicao"] .modal-box,
+[id^="modalEditarObra"] .modal-box {
+  width: min(570px, calc(100vw - 34px));
+  max-width: 570px;
+  max-height: calc(100vh - 14px);
+  padding: 14px 15px 12px;
+  border-radius: 14px;
+  border-color: rgba(255, 255, 255, 0.09);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+    var(--bg2);
+}
+
+#modalCusto .modal-header,
+#modalFornecedor .modal-header,
+#modalEquipe .modal-header,
+#modalMedicao .modal-header,
+[id^="modalEditarCusto"] .modal-header,
+[id^="modalEditarFornecedor"] .modal-header,
+[id^="modalEditarEquipe"] .modal-header,
+[id^="modalEditarMedicao"] .modal-header,
+[id^="modalEditarObra"] .modal-header {
+  margin-bottom: 10px;
+  padding-bottom: 9px;
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+#modalCusto .modal-header h3,
+#modalFornecedor .modal-header h3,
+#modalEquipe .modal-header h3,
+#modalMedicao .modal-header h3,
+[id^="modalEditarCusto"] .modal-header h3,
+[id^="modalEditarFornecedor"] .modal-header h3,
+[id^="modalEditarEquipe"] .modal-header h3,
+[id^="modalEditarMedicao"] .modal-header h3,
+[id^="modalEditarObra"] .modal-header h3 {
+  font-size: 15px;
+  font-weight: 760;
+}
+
+#modalCusto form .form-grid,
+#modalFornecedor form .form-grid,
+#modalEquipe form .form-grid,
+#modalMedicao form .form-grid,
+[id^="modalEditarCusto"] form .form-grid,
+[id^="modalEditarFornecedor"] form .form-grid,
+[id^="modalEditarEquipe"] form .form-grid,
+[id^="modalEditarMedicao"] form .form-grid,
+[id^="modalEditarObra"] form .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 10px;
+  align-items: start;
+}
+
+#modalCusto form .form-group,
+#modalFornecedor form .form-group,
+#modalEquipe form .form-group,
+#modalMedicao form .form-group,
+[id^="modalEditarCusto"] form .form-group,
+[id^="modalEditarFornecedor"] form .form-group,
+[id^="modalEditarEquipe"] form .form-group,
+[id^="modalEditarMedicao"] form .form-group,
+[id^="modalEditarObra"] form .form-group {
+  gap: 3px;
+}
+
+#modalCusto form .form-group label,
+#modalFornecedor form .form-group label,
+#modalEquipe form .form-group label,
+#modalMedicao form .form-group label,
+[id^="modalEditarCusto"] form .form-group label,
+[id^="modalEditarFornecedor"] form .form-group label,
+[id^="modalEditarEquipe"] form .form-group label,
+[id^="modalEditarMedicao"] form .form-group label,
+[id^="modalEditarObra"] form .form-group label {
+  font-size: 9px;
+  letter-spacing: 0.045em;
+  font-weight: 600;
+  color: #9ca6b8;
+}
+
+#modalCusto form .form-group input,
+#modalCusto form .form-group select,
+#modalCusto form .form-group textarea,
+#modalFornecedor form .form-group input,
+#modalFornecedor form .form-group select,
+#modalFornecedor form .form-group textarea,
+#modalEquipe form .form-group input,
+#modalEquipe form .form-group select,
+#modalEquipe form .form-group textarea,
+#modalMedicao form .form-group input,
+#modalMedicao form .form-group select,
+#modalMedicao form .form-group textarea,
+[id^="modalEditarCusto"] form .form-group input,
+[id^="modalEditarCusto"] form .form-group select,
+[id^="modalEditarCusto"] form .form-group textarea,
+[id^="modalEditarFornecedor"] form .form-group input,
+[id^="modalEditarFornecedor"] form .form-group select,
+[id^="modalEditarFornecedor"] form .form-group textarea,
+[id^="modalEditarEquipe"] form .form-group input,
+[id^="modalEditarEquipe"] form .form-group select,
+[id^="modalEditarEquipe"] form .form-group textarea,
+[id^="modalEditarMedicao"] form .form-group input,
+[id^="modalEditarMedicao"] form .form-group select,
+[id^="modalEditarMedicao"] form .form-group textarea,
+[id^="modalEditarObra"] form .form-group input,
+[id^="modalEditarObra"] form .form-group select,
+[id^="modalEditarObra"] form .form-group textarea {
+  min-height: 30px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  color: #e9eef9;
+  font-size: 12px;
+}
+
+#modalCusto form .form-group select option,
+#modalFornecedor form .form-group select option,
+#modalEquipe form .form-group select option,
+#modalMedicao form .form-group select option,
+[id^="modalEditarCusto"] form .form-group select option,
+[id^="modalEditarFornecedor"] form .form-group select option,
+[id^="modalEditarEquipe"] form .form-group select option,
+[id^="modalEditarMedicao"] form .form-group select option,
+[id^="modalEditarObra"] form .form-group select option {
+  color: #1e2736;
+  background: #f2f5fb;
+}
+
+#modalCusto form .form-group input:focus,
+#modalCusto form .form-group select:focus,
+#modalCusto form .form-group textarea:focus,
+#modalFornecedor form .form-group input:focus,
+#modalFornecedor form .form-group select:focus,
+#modalFornecedor form .form-group textarea:focus,
+#modalEquipe form .form-group input:focus,
+#modalEquipe form .form-group select:focus,
+#modalEquipe form .form-group textarea:focus,
+#modalMedicao form .form-group input:focus,
+#modalMedicao form .form-group select:focus,
+#modalMedicao form .form-group textarea:focus,
+[id^="modalEditarCusto"] form .form-group input:focus,
+[id^="modalEditarCusto"] form .form-group select:focus,
+[id^="modalEditarCusto"] form .form-group textarea:focus,
+[id^="modalEditarFornecedor"] form .form-group input:focus,
+[id^="modalEditarFornecedor"] form .form-group select:focus,
+[id^="modalEditarFornecedor"] form .form-group textarea:focus,
+[id^="modalEditarEquipe"] form .form-group input:focus,
+[id^="modalEditarEquipe"] form .form-group select:focus,
+[id^="modalEditarEquipe"] form .form-group textarea:focus,
+[id^="modalEditarMedicao"] form .form-group input:focus,
+[id^="modalEditarMedicao"] form .form-group select:focus,
+[id^="modalEditarMedicao"] form .form-group textarea:focus,
+[id^="modalEditarObra"] form .form-group input:focus,
+[id^="modalEditarObra"] form .form-group select:focus,
+[id^="modalEditarObra"] form .form-group textarea:focus {
+  border-color: rgba(120, 170, 255, 0.38);
+  box-shadow: 0 0 0 2px rgba(22, 84, 176, 0.12);
+}
+
+#modalCusto .modal-footer,
+#modalFornecedor .modal-footer,
+#modalEquipe .modal-footer,
+#modalMedicao .modal-footer,
+[id^="modalEditarCusto"] .modal-footer,
+[id^="modalEditarFornecedor"] .modal-footer,
+[id^="modalEditarEquipe"] .modal-footer,
+[id^="modalEditarMedicao"] .modal-footer,
+[id^="modalEditarObra"] .modal-footer {
+  position: sticky;
+  bottom: -10px;
+  margin-top: 1px;
+  padding-top: 5px;
+  border-top-color: transparent;
+  gap: 7px;
+  background: transparent;
+}
+
+#modalCusto .modal-footer .btn,
+#modalFornecedor .modal-footer .btn,
+#modalEquipe .modal-footer .btn,
+#modalMedicao .modal-footer .btn,
+[id^="modalEditarCusto"] .modal-footer .btn,
+[id^="modalEditarFornecedor"] .modal-footer .btn,
+[id^="modalEditarEquipe"] .modal-footer .btn,
+[id^="modalEditarMedicao"] .modal-footer .btn,
+[id^="modalEditarObra"] .modal-footer .btn {
+  min-height: 29px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+
+@media (max-width: 980px) {
+  #modalCusto .modal-box,
+  #modalFornecedor .modal-box,
+  #modalEquipe .modal-box,
+  #modalMedicao .modal-box,
+  [id^="modalEditarCusto"] .modal-box,
+  [id^="modalEditarFornecedor"] .modal-box,
+  [id^="modalEditarEquipe"] .modal-box,
+  [id^="modalEditarMedicao"] .modal-box,
+  [id^="modalEditarObra"] .modal-box {
+    width: min(480px, calc(100vw - 24px));
+    max-width: 480px;
+  }
+
+  #modalCusto form .form-grid,
+  #modalFornecedor form .form-grid,
+  #modalEquipe form .form-grid,
+  #modalMedicao form .form-grid,
+  [id^="modalEditarCusto"] form .form-grid,
+  [id^="modalEditarFornecedor"] form .form-grid,
+  [id^="modalEditarEquipe"] form .form-grid,
+  [id^="modalEditarMedicao"] form .form-grid,
+  [id^="modalEditarObra"] form .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 780px) {
+  #modalCusto.modal-overlay,
+  #modalFornecedor.modal-overlay,
+  #modalEquipe.modal-overlay,
+  #modalMedicao.modal-overlay,
+  [id^="modalEditarCusto"].modal-overlay,
+  [id^="modalEditarFornecedor"].modal-overlay,
+  [id^="modalEditarEquipe"].modal-overlay,
+  [id^="modalEditarMedicao"].modal-overlay,
+  [id^="modalEditarObra"].modal-overlay {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  #modalCusto .modal-box,
+  #modalFornecedor .modal-box,
+  #modalEquipe .modal-box,
+  #modalMedicao .modal-box,
+  [id^="modalEditarCusto"] .modal-box,
+  [id^="modalEditarFornecedor"] .modal-box,
+  [id^="modalEditarEquipe"] .modal-box,
+  [id^="modalEditarMedicao"] .modal-box,
+  [id^="modalEditarObra"] .modal-box {
+    width: calc(100vw - 20px);
+    padding: 13px 12px 11px;
+    border-radius: 12px;
+  }
+}

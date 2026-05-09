@@ -284,7 +284,7 @@ obra.observacao_responsavel else '' %}
                                 <div class="tipo-obra-bullet"></div>
                                 <div class="tipo-obra-text">
                                     <span class="tipo-obra-title">Por contrato</span>
-                                    <span class="tipo-obra-sub">Reforma, execucao ou servico</span>
+                                    <span class="tipo-obra-sub">Reforma, Execução ou Serviço</span>
                                 </div>
                             </div>
                         </label>
@@ -294,7 +294,7 @@ obra.observacao_responsavel else '' %}
                                 <div class="tipo-obra-bullet"></div>
                                 <div class="tipo-obra-text">
                                     <span class="tipo-obra-title">Para venda</span>
-                                    <span class="tipo-obra-sub">Construcao com venda prevista</span>
+                                    <span class="tipo-obra-sub">Construção com venda prevista</span>
                                 </div>
                             </div>
                         </label>
@@ -353,106 +353,122 @@ obra.observacao_responsavel else '' %}
 </div>{% endfor %}
 
 <div id="modalObra" class="modal-overlay">
-    <div class="modal-box">
-        <div class="modal-header">
+    <div class="modal-box obra-create-modal-box">
+        <div class="modal-header obra-create-header">
             <h3>Nova Obra</h3>
             <button type="button" class="modal-close" onclick="fecharModalObra()">&times;</button>
         </div>
-        <form method="POST" action="{{ url_for('obras_bp.nova_obra') }}">
-            <div class="form-grid modal-form-grid">
-                <div class="form-group">
-                    <label>ID da Obra *</label>
-                    <input type="text" name="codigo" value="{{ proximo_codigo }}" placeholder="OBR-001" required>
-                </div>
-                <div class="form-group">
-                    <label>Nome da Obra *</label>
-                    <input type="text" name="nome" placeholder="Residencia Silva" required>
-                </div>
-                {% if empresas %}
-                <div class="form-group full">
-                    <label>Empresa / cliente</label>
-                    <select name="empresa_id">
-                        {% for empresa in empresas %}
-                        <option value="{{ empresa.id }}">{{ empresa.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                {% endif %}
-                <div class="form-group full tipo-obra-field">
-                    <label>Tipo da Obra *</label>
-                    <div class="tipo-obra-group">
-                        <label class="tipo-obra-option">
-                            <input type="radio" name="tipo_obra" id="tipoObraNovaContrato" value="contrato" checked required onchange="atualizarAjudaTipoObraNova()">
-                            <div class="tipo-obra-card">
-                                <div class="tipo-obra-bullet"></div>
-                                <div class="tipo-obra-text">
-                                    <span class="tipo-obra-title">Por contrato</span>
-                                    <span class="tipo-obra-sub">Reforma, execucao ou servico</span>
-                                </div>
+        <form method="POST" action="{{ url_for('obras_bp.nova_obra') }}" class="obra-create-form">
+            <div class="obra-create-layout">
+                <section class="obra-create-section">
+                    <h4 class="obra-create-section-head">Identificação</h4>
+                    <div class="obra-create-grid">
+                        <div class="form-group">
+                            <label>ID da Obra *</label>
+                            <input type="text" name="codigo" value="{{ proximo_codigo }}" placeholder="OBR-001" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Nome da Obra *</label>
+                            <input type="text" name="nome" placeholder="Residencia Silva" required>
+                        </div>
+                        {% if empresas %}
+                        <div class="form-group full obra-create-field--secondary">
+                            <label>Empresa / cliente</label>
+                            <select name="empresa_id">
+                                {% for empresa in empresas %}
+                                <option value="{{ empresa.id }}">{{ empresa.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                        <div class="form-group full tipo-obra-field">
+                            <label>Tipo da Obra *</label>
+                            <div class="tipo-obra-group obra-create-tipo-group">
+                                <label class="tipo-obra-option">
+                                    <input type="radio" name="tipo_obra" id="tipoObraNovaContrato" value="contrato" checked required onchange="atualizarAjudaTipoObraNova()">
+                                    <div class="tipo-obra-card">
+                                        <div class="tipo-obra-bullet"></div>
+                                        <div class="tipo-obra-text">
+                                            <span class="tipo-obra-title">Por contrato</span>
+                                            <span class="tipo-obra-sub">Reforma, Execução ou Serviço</span>
+                                        </div>
+                                    </div>
+                                </label>
+                                <label class="tipo-obra-option">
+                                    <input type="radio" name="tipo_obra" id="tipoObraNovaVenda" value="venda" onchange="atualizarAjudaTipoObraNova()">
+                                    <div class="tipo-obra-card">
+                                        <div class="tipo-obra-bullet"></div>
+                                        <div class="tipo-obra-text">
+                                            <span class="tipo-obra-title">Para venda</span>
+                                            <span class="tipo-obra-sub">Construção com venda prevista</span>
+                                        </div>
+                                    </div>
+                                </label>
                             </div>
-                        </label>
-                        <label class="tipo-obra-option">
-                            <input type="radio" name="tipo_obra" id="tipoObraNovaVenda" value="venda" onchange="atualizarAjudaTipoObraNova()">
-                            <div class="tipo-obra-card">
-                                <div class="tipo-obra-bullet"></div>
-                                <div class="tipo-obra-text">
-                                    <span class="tipo-obra-title">Para venda</span>
-                                    <span class="tipo-obra-sub">Construcao com venda prevista</span>
-                                </div>
-                            </div>
-                        </label>
+                        </div>
+                        <div class="form-group">
+                            <label>Tipologia *</label>
+                            <select name="tipologia" required>
+                                <option value="">Selecione...</option>
+                                <option value="Casa Terrea">Casa Terrea</option>
+                                <option value="Sobrado">Sobrado</option>
+                                <option value="Geminado">Geminado</option>
+                                <option value="Condominio">Condominio</option>
+                                <option value="Comercial">Comercial</option>
+                                <option value="Reforma">Reforma</option>
+                            </select>
+                        </div>
+                        <div class="form-group obra-create-field--secondary">
+                            <label>Área (m²)</label>
+                            <input type="number" step="0.01" name="area_m2" placeholder="120">
+                        </div>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label>Tipologia *</label>
-                    <select name="tipologia" required>
-                        <option value="">Selecione...</option>
-                        <option value="Casa Terrea">Casa Terrea</option>
-                        <option value="Sobrado">Sobrado</option>
-                        <option value="Geminado">Geminado</option>
-                        <option value="Condominio">Condominio</option>
-                        <option value="Comercial">Comercial</option>
-                        <option value="Reforma">Reforma</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Area (m2)</label>
-                    <input type="number" step="0.01" name="area_m2" placeholder="120">
-                </div>
-                <div class="form-group">
-                    <label>Data Inicio</label>
-                    <input type="date" name="data_inicio">
-                </div>
-                <div class="form-group">
-                    <label>Data Fim Prevista</label>
-                    <input type="date" name="data_fim_prevista">
-                </div>
-                <div class="form-group">
-                    <label>Orcamento previsto (R$)</label>
-                    <input type="number" step="0.01" name="orcamento" placeholder="280000">
-                    <small class="form-field-help">Custo-base esperado para executar a obra.</small>
-                </div>
-                <div class="form-group">
-                    <label>Valor do contrato (R$)</label>
-                    <input type="number" step="0.01" name="receita_total" placeholder="320000">
-                    <small class="form-field-help">Receita prevista ou valor fechado com o cliente.</small>
-                </div>
-                <div class="form-group">
-                    <label>Status *</label>
-                    <select name="status" required>
-                        <option value="">Selecione...</option>
-                        <option value="planejamento">planejamento</option>
-                        <option value="andamento">andamento</option>
-                        <option value="atrasada">atrasada</option>
-                        <option value="concluida">concluida</option>
-                        <option value="vendida">vendida</option>
-                    </select>
-                </div>
+                </section>
+
+                <section class="obra-create-section obra-create-section--cronograma">
+                    <h4 class="obra-create-section-head">Cronograma</h4>
+                    <div class="obra-create-grid">
+                        <div class="form-group obra-create-field--secondary">
+                            <label>Data Início</label>
+                            <input type="date" name="data_inicio">
+                        </div>
+                        <div class="form-group obra-create-field--secondary">
+                            <label>Data Fim Prevista</label>
+                            <input type="date" name="data_fim_prevista">
+                        </div>
+                        <div class="form-group obra-create-field--status">
+                            <label>Status *</label>
+                            <select name="status" required>
+                                <option value="">Selecione...</option>
+                                <option value="planejamento">planejamento</option>
+                                <option value="andamento">andamento</option>
+                                <option value="atrasada">atrasada</option>
+                                <option value="concluida">concluida</option>
+                                <option value="vendida">vendida</option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="obra-create-section">
+                    <h4 class="obra-create-section-head">Financeiro</h4>
+                    <div class="obra-create-grid">
+                        <div class="form-group obra-create-field--financial">
+                            <label>Orçamento previsto (R$)</label>
+                            <input type="number" step="0.01" name="orcamento" placeholder="280000">
+                        </div>
+                        <div class="form-group obra-create-field--financial">
+                            <label>Valor do contrato (R$)</label>
+                            <input type="number" step="0.01" name="receita_total" placeholder="320000">
+                        </div>
+                    </div>
+                </section>
             </div>
-            <div class="modal-info-card" id="ajudaTipoObraNova">
-                A obra sera criada com 0% de conclusao. Fase, fotos, observacoes e atualizacoes do cliente ficam na ficha da obra.
+
+            <div class="obra-create-info" id="ajudaTipoObraNova">
+                Obra criada com 0% de conclusão.
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer obra-create-footer">
                 <button type="button" class="btn" onclick="fecharModalObra()">Cancelar</button>
                 <button type="submit" class="btn btn-primary">Salvar Obra</button>
             </div>
@@ -680,9 +696,7 @@ obra.observacao_responsavel else '' %}
             const sel = document.querySelector('#modalObra input[name="tipo_obra"]:checked');
             const info = document.getElementById("ajudaTipoObraNova");
             if (!sel || !info) return;
-            info.textContent = sel.value === "venda"
-                ? "A obra sera criada com 0% de conclusao. Use valor do contrato como receita prevista de venda."
-                : "A obra sera criada com 0% de conclusao. Use valor do contrato como receita fechada com o cliente.";
+            info.textContent = "Obra criada com 0% de conclusão.";
         }
 
         window.abrirModalObra = abrirModalObra;
