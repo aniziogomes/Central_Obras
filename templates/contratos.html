@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}Contratos - Canteiro{% endblock %}
+
+{% block content %}
+
+<div class="contratos-page">
+    <div class="hdr">
+        <div>
+            <h1>Contratos</h1>
+            <p>Geração e acompanhamento de contratos vinculados às obras.</p>
+        </div>
+        <div class="hdr-right contratos-header-actions">
+            {% if eh_gestor() %}
+            <button type="button" class="btn btn-ghost" onclick="abrirModalClienteContrato()">Novo Cliente</button>
+            <a href="{{ url_for('contratos_bp.novo_contrato') }}" class="btn btn-primary" data-spa>Novo Contrato</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if contratos_alerta_assinatura %}
+    <section class="card contratos-alert-card">
+        <strong>{{ contratos_alerta_assinatura|length }} contrato(s) sem confirmação de assinatura</strong>
+        <p>Há contratos em andamento sem data de assinatura há {{ dias_alerta_assinatura }} dias ou mais.</p>
+    </section>
+    {% endif %}
+
+    <section class="card contratos-filter-card">
+        <form method="GET" action="{{ url_for('contratos_bp.contratos') }}" class="contratos-filter-grid">
+            <div class="form-group full">
+                <label>Pesquisa</label>
+                <input type="text" name="q" value="{{ filtros.q }}" placeholder="Buscar por número, título, obra ou cliente">
+            </div>
+            <div class="form-group">
+                <label>Obra</label>
+                <select name="obra_id">
+                    <option value="">Todas</option>
+                    {% for obra in obras %}
+                    <option value="{{ obra.id }}" {% if filtros.obra_id|string == obra.id|string %}selected{% endif %}>
+                        {{ obra.codigo }} - {{ obra.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Cliente</label>
+                <select name="cliente_id">
+                    <option value="">Todos</option>
+                    {% for cliente in clientes %}
+                    <option value="{{ cliente.id }}" {% if filtros.cliente_id|string == cliente.id|string %}selected{% endif %}>
+                        {{ cliente.nome_completo }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Tipo</label>
+                <select name="tipo">
+                    <option value="">Todos</option>
+                    {% for valor, label in tipos_contrato.items() %}
+                    <option value="{{ valor }}" {% if filtros.tipo == valor %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select name="status">
+                    <option value="">Todos</option>
+                    {% for valor, label in status_contrato.items() %}
+                    <option value="{{ valor }}" {% if filtros.status == valor %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Data inicial</label>
+                <input type="date" name="data_inicio" value="{{ filtros.data_inicio }}">
+            </div>
+            <div class="form-group">
+                <label>Data final</label>
+                <input type="date" name="data_fim" value="{{ filtros.data_fim }}">
+            </div>
+            <div class="contratos-filter-actions">
+                <a href="{{ url_for('contratos_bp.contratos') }}" class="btn btn-ghost" data-spa>Limpar</a>
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card contratos-list-card">
+        <div class="contratos-table-wrap">
+            <table class="contratos-table">
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Título</th>
+                        <th>Obra</th>
+                        <th>Cliente</th>
+                        <th>Tipo</th>
+                        <th>Status</th>
+                        <th>Valor</th>
+                        <th>Criação</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contrato in contratos %}
+                    <tr class="{% if contrato.dias_sem_assinatura is not none and contrato.dias_sem_assinatura >= dias_alerta_assinatura %}contrato-row-alerta{% endif %}">
+                        <td class="td-mono">{{ contrato.numero_contrato or "-" }}</td>
+                        <td class="td-name">
+                            <a href="{{ url_for('contratos_bp.ver_contrato', contrato_id=contrato.id) }}" data-spa>
+                                {{ contrato.titulo }}
+                            </a>
+                            <small>v{{ contrato.versao or 1 }}</small>
+                            {% if contrato.dias_sem_assinatura is not none and contrato.dias_sem_assinatura >= dias_alerta_assinatura %}
+                            <small class="contrato-assinatura-alerta">Sem assinatura há {{ contrato.dias_sem_assinatura }} dia(s)</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ contrato.obra_codigo ~ " - " ~ contrato.obra_nome if contrato.obra_nome else "Sem obra" }}</td>
+                        <td>{{ contrato.cliente_nome or "Sem cliente" }}</td>
+                        <td>{{ tipos_contrato.get(contrato.tipo_contrato, contrato.tipo_contrato) }}</td>
+                        <td>
+                            <span class="contrato-status contrato-status--{{ contrato.status }}">
+                                {{ status_contrato.get(contrato.status, contrato.status) }}
+                            </span>
+                        </td>
+                        <td>{{ formatar_moeda(contrato.valor_total or 0) }}</td>
+                        <td>{{ formatar_data(contrato.created_at, "-") }}</td>
+                        <td>
+                            <div class="contratos-row-actions">
+                                <a class="btn btn-small btn-ghost" href="{{ url_for('contratos_bp.ver_contrato', contrato_id=contrato.id) }}" data-spa>Ver</a>
+                                {% if eh_gestor() %}
+                                <a class="btn btn-small btn-secondary" href="{{ url_for('contratos_bp.editar_contrato', contrato_id=contrato.id) }}" data-spa>Editar</a>
+                                <form method="POST" action="{{ url_for('contratos_bp.gerar_pdf', contrato_id=contrato.id) }}">
+                                    <button type="submit" class="btn btn-small btn-secondary">Gerar PDF</button>
+                                </form>
+                                {% endif %}
+                                {% if contrato.pdf_path %}
+                                <a class="btn btn-small btn-ghost" href="{{ url_for('contratos_bp.baixar_pdf', contrato_id=contrato.id) }}">Baixar</a>
+                                <a class="btn btn-small btn-ghost btn-whatsapp" href="{{ contrato.whatsapp_pdf_url }}" target="_blank" rel="noopener">WhatsApp</a>
+                                {% endif %}
+                                {% if eh_gestor() %}
+                                <a class="btn btn-small btn-ghost" href="{{ url_for('contratos_bp.criar_aditivo', contrato_id=contrato.id) }}" data-spa>Aditivo</a>
+                                <form method="POST" action="{{ url_for('contratos_bp.excluir_contrato', contrato_id=contrato.id) }}"
+                                    onsubmit="return confirm('Deseja realmente excluir este contrato?');">
+                                    <button type="submit" class="btn btn-small btn-danger">Excluir</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="contratos-empty">
+                            Nenhum contrato cadastrado ainda.
+                            {% if eh_gestor() %}
+                            <a href="{{ url_for('contratos_bp.novo_contrato') }}" data-spa>Criar primeiro contrato</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+{% if eh_gestor() %}
+<div id="modalClienteContrato" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Novo Cliente</h3>
+            <button type="button" class="modal-close" onclick="fecharModalClienteContrato()">×</button>
+        </div>
+        <form method="POST" action="{{ url_for('contratos_bp.novo_cliente') }}">
+            <input type="hidden" name="redirect_to" value="{{ url_for('contratos_bp.contratos') }}">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Nome completo / Razão social *</label>
+                    <input type="text" name="nome_completo" required>
+                </div>
+                <div class="form-group">
+                    <label>CPF/CNPJ</label>
+                    <input type="text" name="cpf_cnpj">
+                </div>
+                <div class="form-group">
+                    <label>RG/IE</label>
+                    <input type="text" name="rg_ie">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email">
+                </div>
+                <div class="form-group">
+                    <label>Telefone</label>
+                    <input type="text" name="telefone">
+                </div>
+                <div class="form-group full">
+                    <label>Endereço</label>
+                    <input type="text" name="endereco">
+                </div>
+                <div class="form-group">
+                    <label>Cidade</label>
+                    <input type="text" name="cidade">
+                </div>
+                <div class="form-group">
+                    <label>Estado</label>
+                    <input type="text" name="estado" maxlength="2">
+                </div>
+                <div class="form-group">
+                    <label>CEP</label>
+                    <input type="text" name="cep">
+                </div>
+                <div class="form-group">
+                    <label>Representante legal</label>
+                    <input type="text" name="representante_legal">
+                </div>
+                <div class="form-group full">
+                    <label>Observações</label>
+                    <textarea name="observacoes"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="fecharModalClienteContrato()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Cliente</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<script>
+    function abrirModalClienteContrato() {
+        const modal = document.getElementById("modalClienteContrato");
+        if (modal) modal.style.display = "flex";
+    }
+
+    function fecharModalClienteContrato() {
+        const modal = document.getElementById("modalClienteContrato");
+        if (modal) modal.style.display = "none";
+    }
+
+    window.addEventListener("click", function (event) {
+        const modal = document.getElementById("modalClienteContrato");
+        if (modal && event.target === modal) {
+            fecharModalClienteContrato();
+        }
+    });
+</script>
+{% endblock %}

@@ -103,7 +103,7 @@ def editar_fornecedor(fornecedor_id):
 
     fornecedor_atual = obter_registro_acessivel("fornecedores", fornecedor_id, campos="id")
     if not fornecedor_atual:
-        flash("Fornecedor no encontrado.", "erro")
+        flash("Fornecedor não encontrado.", "erro")
         return redirect(url_for("fornecedores_bp.fornecedores"))
 
     try:
@@ -170,7 +170,7 @@ def excluir_fornecedor(fornecedor_id):
 
     fornecedor = obter_registro_acessivel("fornecedores", fornecedor_id)
     if not fornecedor:
-        flash("Fornecedor no encontrado.", "erro")
+        flash("Fornecedor não encontrado.", "erro")
         return redirect(url_for("fornecedores_bp.fornecedores"))
     nome_fornecedor = fornecedor["nome"] if fornecedor else f"ID {fornecedor_id}"
 

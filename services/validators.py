@@ -85,13 +85,13 @@ def parse_int_positivo(valor, campo="ID"):
     return numero
 
 
-def parse_int_nao_negativo(valor, campo="Numero"):
+def parse_int_nao_negativo(valor, campo="Número"):
     try:
         numero = int(str(valor or "").strip())
     except (TypeError, ValueError):
         raise ValueError(f"{campo} invalido.")
     if numero < 0:
-        raise ValueError(f"{campo} no pode ser negativo.")
+        raise ValueError(f"{campo} não pode ser negativo.")
     return numero
 
 

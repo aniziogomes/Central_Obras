@@ -22,7 +22,7 @@ STATUS_OBRA = [
     ("planejamento", "Planejamento"),
     ("andamento", "Em andamento"),
     ("atrasada", "Atrasada"),
-    ("concluida", "Concluida"),
+    ("concluida", "Concluída"),
 ]
 
 TIPOS_OBRA = [
@@ -180,7 +180,7 @@ def criar_primeiro_custo():
         return redirect(url_for("onboarding_bp.onboarding", step=1))
 
     try:
-        descricao = limpar_texto(request.form.get("descricao", ""), max_len=180, obrigatorio=True, campo="Descricao")
+        descricao = limpar_texto(request.form.get("descricao", ""), max_len=180, obrigatorio=True, campo="Descrição")
         categoria = limpar_texto(request.form.get("categoria", ""), max_len=60, obrigatorio=True, campo="Categoria")
         validar_categoria_custo(categoria)
         valor_total = parse_valor_monetario(request.form.get("valor", ""))
@@ -235,5 +235,5 @@ def concluir_onboarding():
     session.pop("onboarding_ativo", None)
     session.pop("onboarding_obra_id", None)
     session.pop("onboarding_step", None)
-    flash("Onboarding concluido. Seu canteiro inicial esta pronto.", "sucesso")
+    flash("Onboarding concluído. Seu canteiro inicial está pronto.", "sucesso")
     return redirect(url_for("dashboard_bp.dashboard"))

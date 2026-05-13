@@ -248,7 +248,7 @@ def novo_custo():
 
     obra_id = request.form.get("obra_id", "").strip()
     try:
-        descricao = limpar_texto(request.form.get("descricao", ""), max_len=180, obrigatorio=True, campo="Descricao")
+        descricao = limpar_texto(request.form.get("descricao", ""), max_len=180, obrigatorio=True, campo="Descrição")
         categoria = limpar_texto(request.form.get("categoria", ""), max_len=60, obrigatorio=True, campo="Categoria")
         fornecedor = limpar_texto(request.form.get("fornecedor", ""), max_len=140)
         data_lancamento = limpar_texto(request.form.get("data_lancamento", ""), max_len=10)
@@ -278,9 +278,9 @@ def novo_custo():
         if valor_negativo(valor_total_float):
             raise ValueError("Valor do custo não pode ser negativo.")
         if valor_negativo(quantidade_float):
-            raise ValueError("Quantidade no pode ser negativa.")
+            raise ValueError("Quantidade não pode ser negativa.")
         if valor_negativo(valor_unitario_float):
-            raise ValueError("Valor unitario no pode ser negativo.")
+            raise ValueError("Valor unitário não pode ser negativo.")
         if valor_total_float <= 0:
             raise ValueError("Informe o valor total ou quantidade e valor unitario.")
     except ValueError as e:
@@ -333,11 +333,11 @@ def editar_custo(custo_id):
 
     custo_atual = obter_registro_acessivel("custos", custo_id, campos="id")
     if not custo_atual:
-        flash("Custo no encontrado.", "erro")
+        flash("Custo não encontrado.", "erro")
         return redirect(url_for("custos_bp.custos"))
 
     try:
-        descricao = limpar_texto(request.form.get("descricao", ""), max_len=180, obrigatorio=True, campo="Descricao")
+        descricao = limpar_texto(request.form.get("descricao", ""), max_len=180, obrigatorio=True, campo="Descrição")
         categoria = limpar_texto(request.form.get("categoria", ""), max_len=60, obrigatorio=True, campo="Categoria")
         fornecedor = limpar_texto(request.form.get("fornecedor", ""), max_len=140)
         data_lancamento = limpar_texto(request.form.get("data_lancamento", ""), max_len=10)
@@ -359,9 +359,9 @@ def editar_custo(custo_id):
         if valor_negativo(valor_total_float):
             raise ValueError("Valor do custo não pode ser negativo.")
         if valor_negativo(quantidade_float):
-            raise ValueError("Quantidade no pode ser negativa.")
+            raise ValueError("Quantidade não pode ser negativa.")
         if valor_negativo(valor_unitario_float):
-            raise ValueError("Valor unitario no pode ser negativo.")
+            raise ValueError("Valor unitário não pode ser negativo.")
         if valor_total_float <= 0:
             raise ValueError("Informe o valor total ou quantidade e valor unitario.")
     except ValueError as e:
@@ -413,7 +413,7 @@ def excluir_custo(custo_id):
 
     custo = obter_registro_acessivel("custos", custo_id)
     if not custo:
-        flash("Custo no encontrado.", "erro")
+        flash("Custo não encontrado.", "erro")
         return redirect(url_for("custos_bp.custos"))
     descricao_custo = custo["descricao"] if custo else f"ID {custo_id}"
 

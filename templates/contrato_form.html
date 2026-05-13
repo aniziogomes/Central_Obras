@@ -1,0 +1,498 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Editar Contrato' if is_edit else 'Novo Contrato' }} - Canteiro{% endblock %}
+
+{% block content %}
+{% set action_url = url_for('contratos_bp.editar_contrato', contrato_id=contrato.id) if is_edit else url_for('contratos_bp.novo_contrato') %}
+
+<div class="contratos-page contrato-form-page">
+    <div class="hdr">
+        <div>
+            <h1>{{ 'Editar Contrato' if is_edit else 'Novo Contrato' }}</h1>
+            <p>Preencha os dados comerciais e jurídicos sem alterar a operação da obra.</p>
+        </div>
+        <div class="hdr-right">
+            <a href="{{ url_for('contratos_bp.contratos') }}" class="btn btn-ghost" data-spa>Voltar</a>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ action_url }}" class="contrato-form">
+        <section class="card contrato-form-section">
+            <div class="contrato-section-head">
+                <span>1</span>
+                <div>
+                    <h2>Identificação</h2>
+                    <p>Tipo, número, título e status do documento.</p>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Tipo do contrato *</label>
+                    <select name="tipo_contrato" id="tipoContrato" required>
+                        {% for valor, label in tipos_contrato.items() %}
+                        <option value="{{ valor }}" {% if contrato.tipo_contrato == valor %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Status *</label>
+                    <select name="status" required>
+                        {% for valor, label in status_contrato.items() %}
+                        <option value="{{ valor }}" {% if contrato.status == valor %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Número do contrato</label>
+                    <input type="text" name="numero_contrato" value="{{ contrato.numero_contrato or '' }}" placeholder="Gerado automaticamente se ficar vazio">
+                </div>
+                <div class="form-group">
+                    <label>Versão</label>
+                    <input type="number" name="versao_visual" value="{{ contrato.versao or 1 }}" disabled>
+                </div>
+                <div class="form-group full">
+                    <label>Título *</label>
+                    <input type="text" name="titulo" id="tituloContrato" value="{{ contrato.titulo or '' }}" required>
+                </div>
+                <div class="form-group full contrato-origem-field">
+                    <label>Contrato original do aditivo</label>
+                    <select name="contrato_origem_id" id="contratoOrigem">
+                        <option value="">Selecione o contrato original</option>
+                        {% for origem in contratos_origem %}
+                        <option value="{{ origem.id }}" {% if contrato.contrato_origem_id|string == origem.id|string %}selected{% endif %}>
+                            {{ origem.numero_contrato or ('Contrato #' ~ origem.id) }} - {{ origem.titulo }}{% if origem.cliente_nome %} · {{ origem.cliente_nome }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group full contrato-aditivo-field">
+                    <label>Motivo do aditivo *</label>
+                    <textarea name="motivo_aditivo" id="motivoAditivo" rows="3"
+                        placeholder="Informe o que está sendo alterado: prazo, valor, escopo, cláusula ou condição comercial.">{{ contrato.motivo_aditivo or '' }}</textarea>
+                </div>
+            </div>
+        </section>
+
+        <section class="card contrato-form-section">
+            <div class="contrato-section-head">
+                <span>2</span>
+                <div>
+                    <h2>Obra vinculada</h2>
+                    <p>Use uma obra existente para preencher dados operacionais automaticamente.</p>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Obra</label>
+                    <select name="obra_id" id="obraContrato">
+                        <option value="">Sem obra vinculada</option>
+                        {% for obra in obras %}
+                        <option value="{{ obra.id }}"
+                            data-codigo="{{ obra.codigo or '' }}"
+                            data-nome="{{ obra.nome or '' }}"
+                            data-endereco="{{ obra.endereco or '' }}"
+                            data-tipologia="{{ obra.tipologia or '' }}"
+                            data-tipo="{{ formatar_tipo_obra(obra.tipo_obra) }}"
+                            data-area="{{ obra.area_m2 or '' }}"
+                            data-inicio="{{ obra.data_inicio or '' }}"
+                            data-fim="{{ obra.data_fim_prevista or '' }}"
+                            data-receita="{{ obra.receita_total or 0 }}"
+                            {% if contrato.obra_id|string == obra.id|string %}selected{% endif %}>
+                            {{ obra.codigo }} - {{ obra.nome }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="contrato-obra-preview full" id="obraPreview">
+                    <strong>Dados da obra</strong>
+                    <p>Selecione uma obra para usar endereço, tipologia, área, datas e valor do contrato como base.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="card contrato-form-section">
+            <div class="contrato-section-head">
+                <span>3</span>
+                <div>
+                    <h2>Cliente</h2>
+                    <p>Selecione um cliente existente ou cadastre um novo neste contrato.</p>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Cliente existente</label>
+                    <select name="cliente_id" id="clienteContrato">
+                        <option value="">Cadastrar novo ou deixar sem cliente</option>
+                        {% for cliente in clientes %}
+                        <option value="{{ cliente.id }}" {% if contrato.cliente_id|string == cliente.id|string %}selected{% endif %}>
+                            {{ cliente.nome_completo }}{% if cliente.cpf_cnpj %} · {{ cliente.cpf_cnpj }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group full">
+                    <label>Novo cliente - nome / razão social</label>
+                    <input type="text" name="novo_cliente_nome_completo" placeholder="Preencha apenas se não selecionar cliente existente">
+                </div>
+                <div class="form-group">
+                    <label>CPF/CNPJ</label>
+                    <input type="text" name="novo_cliente_cpf_cnpj">
+                </div>
+                <div class="form-group">
+                    <label>RG/IE</label>
+                    <input type="text" name="novo_cliente_rg_ie">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="novo_cliente_email">
+                </div>
+                <div class="form-group">
+                    <label>Telefone</label>
+                    <input type="text" name="novo_cliente_telefone">
+                </div>
+                <div class="form-group full">
+                    <label>Endereço</label>
+                    <input type="text" name="novo_cliente_endereco">
+                </div>
+                <div class="form-group">
+                    <label>Cidade</label>
+                    <input type="text" name="novo_cliente_cidade">
+                </div>
+                <div class="form-group">
+                    <label>Estado</label>
+                    <input type="text" name="novo_cliente_estado" maxlength="2">
+                </div>
+                <div class="form-group">
+                    <label>CEP</label>
+                    <input type="text" name="novo_cliente_cep">
+                </div>
+                <div class="form-group">
+                    <label>Representante legal</label>
+                    <input type="text" name="novo_cliente_representante_legal">
+                </div>
+                <div class="form-group full">
+                    <label>Observações do cliente</label>
+                    <textarea name="novo_cliente_observacoes"></textarea>
+                </div>
+            </div>
+        </section>
+
+        <section class="card contrato-form-section">
+            <div class="contrato-section-head">
+                <span>4</span>
+                <div>
+                    <h2>Dados financeiros</h2>
+                    <p>Valores comerciais do contrato, separados dos custos internos da obra.</p>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Valor total</label>
+                    <input type="number" step="0.01" name="valor_total" id="valorTotalContrato" value="{{ contrato.valor_total or 0 }}">
+                </div>
+                <div class="form-group">
+                    <label>Entrada</label>
+                    <input type="number" step="0.01" name="entrada" value="{{ contrato.entrada or 0 }}">
+                </div>
+                <div class="form-group">
+                    <label>Quantidade de parcelas</label>
+                    <input type="number" name="quantidade_parcelas" value="{{ contrato.quantidade_parcelas or 0 }}">
+                </div>
+                <div class="form-group">
+                    <label>Valor da parcela</label>
+                    <input type="number" step="0.01" name="valor_parcela" value="{{ contrato.valor_parcela or 0 }}">
+                </div>
+                <div class="form-group">
+                    <label>Vencimento da primeira parcela</label>
+                    <input type="date" name="vencimento_primeira_parcela" value="{{ contrato.vencimento_primeira_parcela or '' }}">
+                </div>
+                <div class="form-group">
+                    <label>Índice de reajuste</label>
+                    <input type="text" name="indice_reajuste" value="{{ contrato.indice_reajuste or '' }}" placeholder="Ex: INCC, IPCA">
+                </div>
+                <div class="form-group">
+                    <label>Multa por atraso (%)</label>
+                    <input type="number" step="0.01" name="multa_atraso" value="{{ contrato.multa_atraso or 0 }}">
+                </div>
+                <div class="form-group">
+                    <label>Juros de mora (% ao mês)</label>
+                    <input type="number" step="0.01" name="juros_mora" value="{{ contrato.juros_mora or 0 }}">
+                </div>
+                <div class="form-group full">
+                    <label>Forma de pagamento</label>
+                    <textarea name="forma_pagamento" placeholder="Ex: entrada no ato da assinatura e saldo em parcelas mensais.">{{ contrato.forma_pagamento or '' }}</textarea>
+                </div>
+            </div>
+        </section>
+
+        <section class="card contrato-form-section">
+            <div class="contrato-section-head">
+                <span>5</span>
+                <div>
+                    <h2>Prazo e cronograma</h2>
+                    <p>Datas e prazo de execução acordados com o cliente.</p>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Prazo de execução (dias)</label>
+                    <input type="number" name="prazo_execucao" value="{{ contrato.prazo_execucao or 0 }}">
+                </div>
+                <div class="form-group">
+                    <label>Data de início</label>
+                    <input type="date" name="data_inicio" id="dataInicioContrato" value="{{ contrato.data_inicio or '' }}">
+                </div>
+                <div class="form-group">
+                    <label>Data fim prevista</label>
+                    <input type="date" name="data_fim_prevista" id="dataFimContrato" value="{{ contrato.data_fim_prevista or '' }}">
+                </div>
+                <div class="form-group">
+                    <label>Data de assinatura</label>
+                    <input type="date" name="data_assinatura" value="{{ contrato.data_assinatura or '' }}">
+                </div>
+            </div>
+        </section>
+
+        <section class="card contrato-form-section">
+            <div class="contrato-section-head">
+                <span>6</span>
+                <div>
+                    <h2>Escopo</h2>
+                    <p>Objeto, limites e entregas do contrato.</p>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Escopo do serviço</label>
+                    <textarea name="escopo_servico" rows="5">{{ contrato.escopo_servico or '' }}</textarea>
+                </div>
+                <div class="form-group full">
+                    <label>Itens inclusos</label>
+                    <textarea name="itens_inclusos" rows="4">{{ contrato.itens_inclusos or '' }}</textarea>
+                </div>
+                <div class="form-group full">
+                    <label>Itens não inclusos</label>
+                    <textarea name="itens_nao_inclusos" rows="4">{{ contrato.itens_nao_inclusos or '' }}</textarea>
+                </div>
+            </div>
+        </section>
+
+        <section class="card contrato-form-section">
+            <div class="contrato-section-head">
+                <span>7</span>
+                <div>
+                    <h2>Responsabilidades</h2>
+                    <p>Obrigações da contratada e da contratante.</p>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Responsabilidades da contratada</label>
+                    <textarea name="responsabilidades_contratada" rows="5">{{ contrato.responsabilidades_contratada or '' }}</textarea>
+                </div>
+                <div class="form-group full">
+                    <label>Responsabilidades da contratante</label>
+                    <textarea name="responsabilidades_contratante" rows="5">{{ contrato.responsabilidades_contratante or '' }}</textarea>
+                </div>
+            </div>
+        </section>
+
+        <section class="card contrato-form-section">
+            <div class="contrato-section-head">
+                <span>8</span>
+                <div>
+                    <h2>Garantias e cláusulas</h2>
+                    <p>Condições complementares e observações jurídicas.</p>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Garantias</label>
+                    <textarea name="garantias" rows="4">{{ contrato.garantias or '' }}</textarea>
+                </div>
+                <div class="form-group full">
+                    <label>Biblioteca de cláusulas</label>
+                    <div class="contrato-clausula-picker">
+                        <select id="clausulaBibliotecaSelect">
+                            <option value="">Selecione uma cláusula salva</option>
+                            {% for clausula in clausulas_salvas %}
+                            <option
+                                value="{{ clausula.id }}"
+                                data-texto="{{ clausula.texto|e }}"
+                                data-titulo="{{ clausula.titulo|e }}">
+                                {{ clausula.titulo }}{% if clausula.tipo_contrato %} · {{ tipos_contrato.get(clausula.tipo_contrato, clausula.tipo_contrato) }}{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" class="btn btn-secondary" id="btnInserirClausulaBiblioteca">Inserir no texto</button>
+                    </div>
+                    <small class="form-field-help">A cláusula escolhida será anexada no campo de cláusulas adicionais.</small>
+                </div>
+                <div class="form-group full">
+                    <label>Cláusulas adicionais</label>
+                    <textarea name="clausulas_adicionais" id="clausulasAdicionaisContrato" rows="5">{{ contrato.clausulas_adicionais or '' }}</textarea>
+                </div>
+                {% if eh_gestor() %}
+                <div class="form-group full contrato-clausula-salvar">
+                    <label>Salvar cláusula na biblioteca</label>
+                    <div class="contrato-clausula-save-grid">
+                        <input type="text" name="clausula_titulo" placeholder="Título da cláusula para biblioteca">
+                        <select name="clausula_tipo_contrato">
+                            <option value="">Tipo opcional</option>
+                            {% for valor, label in tipos_contrato.items() %}
+                            <option value="{{ valor }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <textarea name="clausula_texto" rows="3" placeholder="Texto da cláusula para reutilizar em outros contratos"></textarea>
+                    <input type="hidden" name="redirect_to" value="{{ request.path }}">
+                    <div class="contrato-clausula-actions">
+                        <button type="submit" class="btn btn-secondary"
+                            formaction="{{ url_for('contratos_bp.nova_clausula') }}"
+                            formmethod="post"
+                            formnovalidate>
+                            Salvar cláusula na biblioteca
+                        </button>
+                    </div>
+                </div>
+                {% if clausulas_salvas %}
+                <div class="form-group full">
+                    <label>Cláusulas salvas</label>
+                    <div class="contrato-clausula-list">
+                        {% for clausula in clausulas_salvas %}
+                        <article>
+                            <div>
+                                <strong>{{ clausula.titulo }}</strong>
+                                <small>{{ clausula.texto[:170] }}{% if clausula.texto and clausula.texto|length > 170 %}...{% endif %}</small>
+                            </div>
+                            <button type="submit"
+                                class="btn btn-small btn-danger"
+                                name="clausula_id"
+                                value="{{ clausula.id }}"
+                                formaction="{{ url_for('contratos_bp.excluir_clausula') }}"
+                                formmethod="post"
+                                formnovalidate
+                                onclick="return confirm('Excluir esta cláusula da biblioteca?');">
+                                Excluir
+                            </button>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                {% endif %}
+                <div class="form-group full">
+                    <label>Observações internas</label>
+                    <textarea name="observacoes" rows="4">{{ contrato.observacoes or '' }}</textarea>
+                </div>
+            </div>
+        </section>
+
+        <div class="contrato-form-footer">
+            <a href="{{ url_for('contratos_bp.contratos') }}" class="btn btn-ghost" data-spa>Cancelar</a>
+            <button type="submit" class="btn btn-primary">{{ 'Salvar alterações' if is_edit else 'Salvar contrato' }}</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    (function () {
+        const tipo = document.getElementById("tipoContrato");
+        const origem = document.querySelector(".contrato-origem-field");
+        const motivoAditivoBox = document.querySelector(".contrato-aditivo-field");
+        const motivoAditivo = document.getElementById("motivoAditivo");
+        const obraSelect = document.getElementById("obraContrato");
+        const preview = document.getElementById("obraPreview");
+        const titulo = document.getElementById("tituloContrato");
+        const valor = document.getElementById("valorTotalContrato");
+        const dataInicio = document.getElementById("dataInicioContrato");
+        const dataFim = document.getElementById("dataFimContrato");
+        const clausulaSelect = document.getElementById("clausulaBibliotecaSelect");
+        const clausulasAdicionais = document.getElementById("clausulasAdicionaisContrato");
+        const botaoInserirClausula = document.getElementById("btnInserirClausulaBiblioteca");
+
+        const titulos = {
+            reforma: "Contrato de Reforma",
+            construcao: "Contrato de Construção",
+            venda: "Contrato de Venda de Imóvel",
+            prestacao_servico: "Contrato de Prestação de Serviço",
+            aditivo: "Aditivo Contratual"
+        };
+
+        function toggleOrigem() {
+            if (!tipo) return;
+            const isAditivo = tipo.value === "aditivo";
+            if (origem) origem.hidden = !isAditivo;
+            if (motivoAditivoBox) motivoAditivoBox.hidden = !isAditivo;
+            if (motivoAditivo) motivoAditivo.required = isAditivo;
+        }
+
+        function campoVazio(input) {
+            if (!input) return false;
+            return !String(input.value || "").trim() || Number(input.value || 0) === 0;
+        }
+
+        function atualizarObra() {
+            if (!obraSelect || !preview) return;
+            const opt = obraSelect.options[obraSelect.selectedIndex];
+            if (!opt || !opt.value) {
+                preview.innerHTML = "<strong>Dados da obra</strong><p>Selecione uma obra para usar endereço, tipologia, área, datas e valor do contrato como base.</p>";
+                return;
+            }
+
+            const nome = opt.dataset.nome || "";
+            const codigo = opt.dataset.codigo || "";
+            const tipoObra = opt.dataset.tipo || "";
+            const tipologia = opt.dataset.tipologia || "";
+            const endereco = opt.dataset.endereco || "";
+            const area = opt.dataset.area || "";
+            const receita = Number(opt.dataset.receita || 0);
+
+            preview.innerHTML = `
+                <strong>${codigo} - ${nome}</strong>
+                <p>${endereco || "Sem endereço cadastrado"} · ${tipologia || "Sem tipologia"} · ${tipoObra || "Tipo não informado"}${area ? " · " + area + " m²" : ""}</p>
+            `;
+
+            if (titulo && !titulo.value.trim()) {
+                titulo.value = `${titulos[tipo ? tipo.value : "reforma"] || "Contrato"} - ${nome}`;
+            }
+            if (valor && campoVazio(valor) && receita > 0) {
+                valor.value = receita.toFixed(2);
+            }
+            if (dataInicio && !dataInicio.value && opt.dataset.inicio) {
+                dataInicio.value = opt.dataset.inicio;
+            }
+            if (dataFim && !dataFim.value && opt.dataset.fim) {
+                dataFim.value = opt.dataset.fim;
+            }
+        }
+
+        if (tipo) {
+            tipo.addEventListener("change", function () {
+                toggleOrigem();
+                if (titulo && !titulo.value.trim()) {
+                    titulo.value = titulos[tipo.value] || "Contrato";
+                }
+            });
+        }
+        if (obraSelect) obraSelect.addEventListener("change", atualizarObra);
+        if (botaoInserirClausula) {
+            botaoInserirClausula.addEventListener("click", function () {
+                if (!clausulaSelect || !clausulasAdicionais) return;
+                const opt = clausulaSelect.options[clausulaSelect.selectedIndex];
+                if (!opt || !opt.value) return;
+                const texto = (opt.dataset.texto || "").trim();
+                const tituloClausula = (opt.dataset.titulo || "").trim();
+                if (!texto) return;
+                const bloco = `[${tituloClausula || "Cláusula"}]\n${texto}`;
+                const atual = (clausulasAdicionais.value || "").trim();
+                clausulasAdicionais.value = atual ? `${atual}\n\n${bloco}` : bloco;
+                clausulasAdicionais.focus();
+            });
+        }
+
+        toggleOrigem();
+        atualizarObra();
+    })();
+</script>
+{% endblock %}

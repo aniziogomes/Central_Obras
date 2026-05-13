@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}{{ contrato.titulo }} - Contratos{% endblock %}
+
+{% block content %}
+<div class="contratos-page contrato-detail-page">
+    <div class="hdr">
+        <div>
+            <h1>{{ contrato.titulo }}</h1>
+            <p>{{ contrato.numero_contrato or 'Sem número' }} · v{{ contrato.versao or 1 }} · {{ tipos_contrato.get(contrato.tipo_contrato, contrato.tipo_contrato) }}</p>
+        </div>
+        <div class="hdr-right contratos-header-actions">
+            <a href="{{ url_for('contratos_bp.contratos') }}" class="btn btn-ghost" data-spa>Voltar</a>
+            {% if eh_gestor() %}
+            <a href="{{ url_for('contratos_bp.editar_contrato', contrato_id=contrato.id) }}" class="btn btn-secondary" data-spa>Editar</a>
+            <form method="POST" action="{{ url_for('contratos_bp.gerar_pdf', contrato_id=contrato.id) }}">
+                <button type="submit" class="btn btn-primary">Gerar PDF</button>
+            </form>
+            {% endif %}
+            {% if contrato.pdf_path %}
+            <a href="{{ url_for('contratos_bp.baixar_pdf', contrato_id=contrato.id) }}" class="btn btn-ghost">Baixar PDF</a>
+            <a href="{{ contrato.whatsapp_pdf_url }}" class="btn btn-ghost btn-whatsapp" target="_blank" rel="noopener">Enviar WhatsApp</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if contrato.dias_sem_assinatura is not none and contrato.dias_sem_assinatura >= dias_alerta_assinatura %}
+    <section class="card contratos-alert-card">
+        <strong>Contrato sem confirmação de assinatura</strong>
+        <p>Este contrato está sem data de assinatura há {{ contrato.dias_sem_assinatura }} dia(s).</p>
+    </section>
+    {% endif %}
+
+    <div class="quick-strip contratos-quick-strip">
+        <div class="quick-item">
+            <div class="metric-summary-content">
+                <div class="quick-label">Status</div>
+                <div class="quick-value contratos-status-value">{{ status_contrato.get(contrato.status, contrato.status) }}</div>
+                <small>Situação atual</small>
+            </div>
+        </div>
+        <div class="quick-item">
+            <div class="metric-summary-content">
+                <div class="quick-label">Valor total</div>
+                <div class="quick-value contratos-money">{{ formatar_moeda(contrato.valor_total or 0) }}</div>
+                <small>Valor comercial</small>
+            </div>
+        </div>
+        <div class="quick-item">
+            <div class="metric-summary-content">
+                <div class="quick-label">Cliente</div>
+                <div class="quick-value contratos-name">{{ contrato.cliente_nome or 'Sem cliente' }}</div>
+                <small>{{ contrato.cliente_documento or 'Documento não informado' }}</small>
+            </div>
+        </div>
+        <div class="quick-item">
+            <div class="metric-summary-content">
+                <div class="quick-label">PDF</div>
+                <div class="quick-value">{{ 'Gerado' if contrato.pdf_path else 'Pendente' }}</div>
+                <small>{{ formatar_data(contrato.data_geracao, '-') if contrato.data_geracao else 'Sem geração' }}</small>
+            </div>
+        </div>
+    </div>
+
+    <section class="contrato-detail-grid">
+        <article class="card contrato-detail-card">
+            <h2>Identificação</h2>
+            <dl>
+                <div><dt>Número</dt><dd>{{ contrato.numero_contrato or '-' }}</dd></div>
+                <div><dt>Tipo</dt><dd>{{ tipos_contrato.get(contrato.tipo_contrato, contrato.tipo_contrato) }}</dd></div>
+                <div><dt>Status</dt><dd>{{ status_contrato.get(contrato.status, contrato.status) }}</dd></div>
+                <div><dt>Versão</dt><dd>{{ contrato.versao or 1 }}</dd></div>
+                <div><dt>Assinatura</dt><dd>{{ formatar_data(contrato.data_assinatura, '-') }}</dd></div>
+            </dl>
+        </article>
+
+        <article class="card contrato-detail-card">
+            <h2>Obra vinculada</h2>
+            <dl>
+                <div><dt>Obra</dt><dd>{{ contrato.obra_codigo ~ ' - ' ~ contrato.obra_nome if contrato.obra_nome else 'Sem obra vinculada' }}</dd></div>
+                <div><dt>Endereço</dt><dd>{{ contrato.obra_endereco or '-' }}</dd></div>
+                <div><dt>Tipologia</dt><dd>{{ contrato.obra_tipologia or '-' }}</dd></div>
+                <div><dt>Área</dt><dd>{{ contrato.obra_area_m2 or '-' }}</dd></div>
+            </dl>
+        </article>
+
+        <article class="card contrato-detail-card">
+            <h2>Financeiro</h2>
+            <dl>
+                <div><dt>Valor total</dt><dd>{{ formatar_moeda(contrato.valor_total or 0) }}</dd></div>
+                <div><dt>Entrada</dt><dd>{{ formatar_moeda(contrato.entrada or 0) }}</dd></div>
+                <div><dt>Parcelas</dt><dd>{{ contrato.quantidade_parcelas or 0 }} × {{ formatar_moeda(contrato.valor_parcela or 0) }}</dd></div>
+                <div><dt>Primeiro vencimento</dt><dd>{{ formatar_data(contrato.vencimento_primeira_parcela, '-') }}</dd></div>
+                <div><dt>Reajuste</dt><dd>{{ contrato.indice_reajuste or '-' }}</dd></div>
+                <div><dt>Multa / juros</dt><dd>{{ contrato.multa_atraso or 0 }}% · {{ contrato.juros_mora or 0 }}%</dd></div>
+            </dl>
+        </article>
+
+        <article class="card contrato-detail-card">
+            <h2>Prazos</h2>
+            <dl>
+                <div><dt>Prazo</dt><dd>{{ contrato.prazo_execucao or 0 }} dia(s)</dd></div>
+                <div><dt>Início</dt><dd>{{ formatar_data(contrato.data_inicio, '-') }}</dd></div>
+                <div><dt>Fim previsto</dt><dd>{{ formatar_data(contrato.data_fim_prevista, '-') }}</dd></div>
+                <div><dt>Criação</dt><dd>{{ formatar_data(contrato.created_at, '-') }}</dd></div>
+            </dl>
+        </article>
+    </section>
+
+    <section class="card contrato-text-card">
+        <h2>Escopo e cláusulas</h2>
+        {% if contrato.tipo_contrato == 'aditivo' %}
+        <div class="contrato-text-block">
+            <h3>Motivo do aditivo</h3>
+            <p>{{ contrato.motivo_aditivo or 'Não informado.' }}</p>
+        </div>
+        {% endif %}
+        <div class="contrato-text-block">
+            <h3>Escopo contratado</h3>
+            <p>{{ contrato.escopo_servico or 'Não informado.' }}</p>
+        </div>
+        <div class="contrato-text-block">
+            <h3>Itens inclusos</h3>
+            <p>{{ contrato.itens_inclusos or 'Não informado.' }}</p>
+        </div>
+        <div class="contrato-text-block">
+            <h3>Itens não inclusos</h3>
+            <p>{{ contrato.itens_nao_inclusos or 'Não informado.' }}</p>
+        </div>
+        <div class="contrato-text-block">
+            <h3>Responsabilidades da contratada</h3>
+            <p>{{ contrato.responsabilidades_contratada or 'Não informado.' }}</p>
+        </div>
+        <div class="contrato-text-block">
+            <h3>Responsabilidades da contratante</h3>
+            <p>{{ contrato.responsabilidades_contratante or 'Não informado.' }}</p>
+        </div>
+        <div class="contrato-text-block">
+            <h3>Garantias</h3>
+            <p>{{ contrato.garantias or 'Não informado.' }}</p>
+        </div>
+        <div class="contrato-text-block">
+            <h3>Cláusulas adicionais</h3>
+            <p>{{ contrato.clausulas_adicionais or 'Não informado.' }}</p>
+        </div>
+    </section>
+
+    <section class="card contrato-history-card">
+        <div class="contrato-history-head">
+            <div>
+                <h2>Histórico de versões e aditivos</h2>
+                <p>Aditivos ficam vinculados sem sobrescrever o contrato original.</p>
+            </div>
+            {% if eh_gestor() %}
+            <a href="{{ url_for('contratos_bp.criar_aditivo', contrato_id=contrato.id) }}" class="btn btn-secondary" data-spa>Criar aditivo</a>
+            {% endif %}
+        </div>
+
+        {% if origem %}
+        <div class="contrato-origin-box">
+            Este contrato é aditivo de
+            <a href="{{ url_for('contratos_bp.ver_contrato', contrato_id=origem.id) }}" data-spa>
+                {{ origem.numero_contrato or ('Contrato #' ~ origem.id) }} - {{ origem.titulo }}
+            </a>.
+        </div>
+        {% endif %}
+
+        <div class="contrato-history-list">
+            {% for aditivo in aditivos %}
+            <article>
+                <div>
+                    <strong>{{ aditivo.numero_contrato or ('Aditivo #' ~ aditivo.id) }}</strong>
+                    <span>{{ aditivo.titulo }}</span>
+                    {% if aditivo.motivo_aditivo %}
+                    <small>{{ aditivo.motivo_aditivo }}</small>
+                    {% endif %}
+                </div>
+                <a href="{{ url_for('contratos_bp.ver_contrato', contrato_id=aditivo.id) }}" class="btn btn-small btn-ghost" data-spa>Ver</a>
+            </article>
+            {% else %}
+            <div class="contratos-empty">Nenhum aditivo vinculado a este contrato.</div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

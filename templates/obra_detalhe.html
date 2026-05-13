@@ -3,17 +3,16 @@
 {% block title %}Portal {{ obra.codigo }} - Central de Obras{% endblock %}
 
 {% block content %}
-{% set fase_atual = obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else 'Nao definida' %}
+{% set fase_atual = obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else 'Não definida' %}
 {% set observacao_canteiro = obra.observacao_responsavel if obra.observacao_responsavel is defined and obra.observacao_responsavel else '' %}
 {% set foto_capa = obra.foto_capa if obra.foto_capa is defined and obra.foto_capa else '' %}
 {% set galeria = fotos_obra if fotos_obra is defined else [] %}
 {% set portal_url = request.host_url ~ 'portal/' ~ obra.token_publico if obra.token_publico else '' %}
-{% set fases_obra = ['Planejamento', 'Fundacao', 'Estrutura', 'Alvenaria', 'Telhado', 'Instalacoes', 'Revestimento', 'Acabamento', 'Vistoria', 'Concluida'] %}
+{% set fases_obra = fases_obra_opcoes if fases_obra_opcoes is defined and fases_obra_opcoes else ['Planejamento', 'Fundação', 'Estrutura', 'Alvenaria', 'Telhado', 'Instalações', 'Revestimento', 'Acabamento', 'Vistoria', 'Concluída'] %}
 {% set partes_nome_obra = (obra.nome or 'Obra').split() %}
 {% set iniciais_obra = ((partes_nome_obra[0][0] if partes_nome_obra else 'O') ~ (partes_nome_obra[1][0] if partes_nome_obra|length > 1 else ''))|upper %}
 {% set foto_preview = foto_capa if foto_capa else (galeria[0].caminho if galeria else '') %}
 {% set ultima_publicacao = atualizacoes_cliente[0].data_hora if atualizacoes_cliente else '' %}
-{% set total_fotos = galeria|length %}
 {% set portal_ativo = obra.token_publico is defined and obra.token_publico %}
 {% set proxima_etapa_real = obra.proxima_etapa_portal if obra.proxima_etapa_portal is defined and obra.proxima_etapa_portal else '' %}
 {% set etapa = namespace(proxima='Planejamento') %}
@@ -26,7 +25,7 @@
         {% endif %}
     {% endif %}
 {% endfor %}
-{% if fase_atual == 'Nao definida' %}
+{% if fase_atual == 'Não definida' %}
     {% set etapa.proxima = 'Definir fase atual' %}
 {% endif %}
 {% if proxima_etapa_real %}
@@ -76,8 +75,8 @@
             <article class="portal-publisher-panel">
                 <div class="portal-publisher-panel__header">
                     <div>
-                        <h2>Editar e publicar</h2>
-                        <p>Atualize o que o cliente vai ver no portal.</p>
+                        <h2>Atualização publicada</h2>
+                        <p>As informações do portal são atualizadas no detalhe da obra.</p>
                     </div>
                     {% if not portal_ativo and eh_gestor() %}
                     <form method="POST" action="{{ url_for('portal_bp.gerar_link', obra_id=obra.id) }}">
@@ -86,160 +85,48 @@
                     {% endif %}
                 </div>
 
-                {% if eh_gestor() %}
-                <form method="POST" action="{{ url_for('obras_bp.atualizar_canteiro_obra', obra_id=obra.id) }}" class="portal-publisher-form">
-                    <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhe', codigo=obra.codigo) }}">
-
-                    <div class="portal-publisher-form__grid">
-                        <div class="form-group">
-                            <label>Fase atual</label>
-                            <select name="fase_obra" required>
-                                {% for fase in fases_obra %}
-                                <option value="{{ fase }}" {% if fase_atual == fase %}selected{% endif %}>{{ fase }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Conclusao (%)</label>
-                            <input type="number" name="progresso_percentual" min="0" max="100" step="0.01" value="{{ obra.progresso_percentual or 0 }}" required>
-                        </div>
-                        <div class="form-group full">
-                            <label>Proxima etapa</label>
-                            <input type="text" name="proxima_etapa_portal" value="{{ etapa.proxima }}" placeholder="Ex: inicio da instalacao eletrica">
-                        </div>
-                        <div class="form-group full">
-                            <label>Mensagem do responsavel</label>
-                            <textarea name="observacao_responsavel" rows="6" placeholder="Explique o momento da obra, o que foi concluido e o que vem na sequencia.">{{ observacao_canteiro }}</textarea>
-                        </div>
-                    </div>
-
-                    <div class="portal-publisher-form__footer">
-                        <div class="portal-publisher-inline-note">
-                            {% if ultima_publicacao %}
-                            Ultima atualizacao: {{ formatar_data(ultima_publicacao, "-", True) }}
-                            {% else %}
-                            A primeira publicacao sera registrada ao salvar esta atualizacao.
-                            {% endif %}
-                        </div>
-                        <button type="submit" class="btn btn-primary">Salvar e atualizar portal</button>
-                    </div>
-                </form>
-                {% else %}
                 <div class="portal-publisher-readonly">
                     <div class="portal-publisher-readonly__grid">
                         <div><span>Fase atual</span><strong>{{ fase_atual }}</strong></div>
-                        <div><span>Conclusao</span><strong>{{ (obra.progresso_percentual or 0)|round(1) }}%</strong></div>
+                        <div><span>Conclusão</span><strong>{{ (obra.progresso_percentual or 0)|round(1) }}%</strong></div>
                         <div><span>Proxima etapa</span><strong>{{ etapa.proxima }}</strong></div>
-                        <div><span>Ultima atualizacao</span><strong>{% if ultima_publicacao %}{{ formatar_data(ultima_publicacao, "-", True) }}{% else %}-{% endif %}</strong></div>
+                        <div><span>Última atualização</span><strong>{% if ultima_publicacao %}{{ formatar_data(ultima_publicacao, "-", True) }}{% else %}-{% endif %}</strong></div>
                     </div>
                     <p class="{% if not observacao_canteiro %}obra-kpi-muted{% endif %}">
                         {{ observacao_canteiro or "Sem mensagem publicada para o cliente." }}
                     </p>
                 </div>
-                {% endif %}
             </article>
-
-            <article class="portal-publisher-panel">
-                <div class="portal-publisher-panel__header">
-                    <div>
-                        <h2>Fotos do portal</h2>
-                        <p>Capa e imagens recentes do cliente.</p>
-                    </div>
-                    {% if eh_gestor() %}
-                    <button type="button" class="btn btn-ghost" id="btnToggleFotoObra">Adicionar foto</button>
-                    {% endif %}
-                </div>
-
-                {% if eh_gestor() %}
-                <form method="POST" action="{{ url_for('obras_bp.nova_foto_obra', obra_id=obra.id) }}" enctype="multipart/form-data" class="portal-publisher-upload {% if not galeria %}open{% else %}portal-publisher-upload--collapsed{% endif %}" id="formFotoObra">
-                    <input type="hidden" name="fase" value="{{ fase_atual if fase_atual != 'Nao definida' else '' }}">
-                    <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhe', codigo=obra.codigo) }}">
-                    <div class="portal-publisher-upload__grid">
-                        <div class="form-group">
-                            <label>Foto</label>
-                            <input type="file" name="foto_arquivo" accept="image/*" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Titulo</label>
-                            <input type="text" name="titulo" placeholder="Ex: concretagem concluida">
-                        </div>
-                        <div class="form-group">
-                            <label>Data</label>
-                            <input type="date" name="data_registro">
-                        </div>
-                    </div>
-                    <div class="portal-publisher-upload__actions">
-                        <button type="submit" class="btn btn-primary">Salvar foto</button>
-                    </div>
-                </form>
-                {% endif %}
-
-                {% if galeria %}
-                <div class="portal-publisher-gallery">
-                    {% for foto in galeria %}
-                    <article class="portal-publisher-gallery__item">
-                        <img src="{{ foto.caminho }}" alt="{{ foto.titulo or 'Foto da obra' }}">
-                        <div class="portal-publisher-gallery__meta">
-                            <div>
-                                <strong>{{ foto.titulo or foto.fase or fase_atual }}</strong>
-                                <span>{{ formatar_data(foto.data_registro, "Sem data") }}</span>
-                            </div>
-                            {% if eh_gestor() %}
-                            <div class="portal-publisher-gallery__actions">
-                                <form method="POST" action="{{ url_for('obras_bp.usar_foto_como_capa', obra_id=obra.id, foto_id=foto.id) }}">
-                                    <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhe', codigo=obra.codigo) }}">
-                                    <button type="submit" class="btn btn-small btn-ghost">Usar como capa</button>
-                                </form>
-                                <form method="POST" action="{{ url_for('obras_bp.excluir_foto_obra', obra_id=obra.id, foto_id=foto.id) }}" onsubmit="return confirm('Excluir esta foto?');">
-                                    <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhe', codigo=obra.codigo) }}">
-                                    <button type="submit" class="btn btn-small btn-ghost btn-danger-soft">Excluir</button>
-                                </form>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </article>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="portal-publisher-empty">
-                    <strong>Nenhuma foto publicada ainda</strong>
-                    <p>Adicione a primeira imagem para deixar o portal mais claro e mais confiavel para o cliente.</p>
-                </div>
-                {% endif %}
-            </article>
-
             <details class="portal-publisher-history" {% if atualizacoes_cliente %}open{% endif %}>
                 <summary>
                     <div>
-                        <strong>Historico de atualizacoes</strong>
+                        <strong>Histórico de atualizações</strong>
                         <span>{% if atualizacoes_cliente %}{{ atualizacoes_cliente|length }} registro{% if atualizacoes_cliente|length != 1 %}s{% endif %}{% else %}Sem registros ainda{% endif %}</span>
                     </div>
                 </summary>
 
                 <div class="portal-publisher-history__body">
                     {% if atualizacoes_cliente %}
+                    <div class="portal-publisher-history-note">
+                        Histórico somente leitura das publicações enviadas ao cliente.
+                    </div>
                     <div class="portal-publisher-timeline">
                         {% for atualizacao in atualizacoes_cliente %}
-                        {% set mensagem_atualizacao = atualizacao.descricao|replace("Atualizao para o cliente:", "")|replace("Atualização para o cliente:", "")|trim %}
+                        {% set mensagem_atualizacao = atualizacao.descricao|replace("Atualização para o cliente:", "")|replace("Atualização para o cliente:", "")|trim %}
                         <article class="portal-publisher-timeline__item">
                             <div class="portal-publisher-timeline__head">
                                 <strong>{{ formatar_data(atualizacao.data_hora, "-", True) }}</strong>
                                 <small>{{ atualizacao.autor or "Equipe" }}</small>
                             </div>
-                            {% if eh_gestor() %}
-                            <form method="POST" action="{{ url_for('obras_bp.editar_atualizacao_canteiro', obra_id=obra.id, log_id=atualizacao.id) }}" class="portal-publisher-timeline__form">
-                                <textarea name="mensagem_cliente" rows="3" required>{{ mensagem_atualizacao }}</textarea>
-                                <button type="submit" class="btn btn-small btn-ghost">Salvar texto</button>
-                            </form>
-                            {% else %}
-                            <p>{{ mensagem_atualizacao }}</p>
-                            {% endif %}
+                            <div class="portal-publisher-timeline__message">
+                                {{ mensagem_atualizacao or "Atualização publicada sem descrição detalhada." }}
+                            </div>
                         </article>
                         {% endfor %}
                     </div>
                     {% else %}
                     <div class="portal-publisher-empty portal-publisher-empty--history">
-                        <p>Assim que voc? salvar a primeira atualizacao, o histrico do portal aparece aqui.</p>
+                        <p>Assim que você salvar a primeira atualização, o histórico do portal aparece aqui.</p>
                     </div>
                     {% endif %}
                 </div>
@@ -251,7 +138,7 @@
                 <div class="portal-publisher-preview__header">
                     <div>
                         <h3>Preview do cliente</h3>
-                        <p>Visao atual do portal.</p>
+                        <p>Visão atual do portal.</p>
                     </div>
                     <span class="portal-publisher-chip {% if portal_ativo %}is-live{% else %}is-muted{% endif %}">
                         {% if portal_ativo %}Ao vivo{% else %}Rascunho{% endif %}
@@ -268,7 +155,7 @@
                         <div class="portal-publisher-preview__overlay"></div>
                         <div class="portal-publisher-preview__hero-content">
                             <h4>{{ obra.nome }}</h4>
-                            <span>{{ obra.endereco or 'Endereco da obra' }}</span>
+                            <span>{{ obra.endereco or 'Endereço da obra' }}</span>
                         </div>
                     </div>
 
@@ -374,8 +261,7 @@
     }
 
     .portal-publisher-header__actions,
-    .portal-publisher-summary,
-    .portal-publisher-gallery__actions {
+    .portal-publisher-summary {
         display: flex;
         align-items: center;
         gap: 8px;
@@ -451,14 +337,12 @@
     }
 
     .portal-publisher-form,
-    .portal-publisher-upload,
     .portal-publisher-readonly {
         display: grid;
         gap: 14px;
     }
 
-    .portal-publisher-form__grid,
-    .portal-publisher-upload__grid {
+    .portal-publisher-form__grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 12px;
@@ -492,76 +376,24 @@
 
     .portal-publisher-readonly__grid strong,
     .portal-publisher-preview__info strong,
-    .portal-publisher-gallery__meta strong,
     .portal-publisher-timeline__head strong {
         color: var(--text);
     }
+
+
+
+
+
+
+
 
-    .portal-publisher-upload {
-        margin-bottom: 14px;
-        padding: 14px;
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.02);
-    }
-
-    .portal-publisher-upload--collapsed {
-        display: none;
-    }
-
-    .portal-publisher-gallery {
-        display: grid;
-        gap: 10px;
-    }
-
-    .portal-publisher-gallery__item {
-        display: grid;
-        grid-template-columns: 96px minmax(0, 1fr);
-        gap: 12px;
-        padding: 10px 0;
-        border-top: 1px solid rgba(255, 255, 255, 0.06);
-    }
-
-    .portal-publisher-gallery__item:first-child {
-        border-top: 0;
-        padding-top: 0;
-    }
-
-    .portal-publisher-gallery__item img {
-        width: 96px;
-        height: 78px;
-        border-radius: 8px;
-        object-fit: cover;
-        background: var(--bg3);
-    }
-
-    .portal-publisher-gallery__meta {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-    }
-
-    .portal-publisher-gallery__meta span,
     .portal-publisher-timeline__head small,
     .portal-publisher-history summary span {
         color: var(--text2);
         font-size: 12px;
     }
-
-    .portal-publisher-empty {
-        padding: 20px;
-        border: 1px dashed rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        color: var(--text2);
-        text-align: center;
-    }
-
-    .portal-publisher-empty strong {
-        display: block;
-        margin-bottom: 6px;
-        color: var(--text);
-    }
+
+
 
     .portal-publisher-history {
         overflow: hidden;
@@ -589,9 +421,20 @@
         border-top: 1px solid rgba(255, 255, 255, 0.06);
     }
 
+    .portal-publisher-history-note {
+        margin-top: 12px;
+        padding: 10px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        color: var(--text2);
+        font-size: 12px;
+        background: rgba(255, 255, 255, 0.02);
+    }
+
     .portal-publisher-timeline {
         display: grid;
         gap: 12px;
+        margin-top: 12px;
     }
 
     .portal-publisher-timeline__item {
@@ -606,13 +449,14 @@
         padding-top: 0;
     }
 
-    .portal-publisher-timeline__form {
-        display: grid;
-        gap: 8px;
-    }
-
-    .portal-publisher-timeline__form .btn {
-        justify-self: end;
+    .portal-publisher-timeline__message {
+        margin: 0;
+        padding: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        color: var(--text);
+        line-height: 1.55;
+        background: rgba(255, 255, 255, 0.03);
     }
 
     .portal-publisher-side {
@@ -761,8 +605,7 @@
         .portal-publisher-preview__header,
         .portal-publisher-preview__progress-top,
         .portal-publisher-timeline__head,
-        .portal-publisher-link-row,
-        .portal-publisher-gallery__meta {
+        .portal-publisher-link-row {
             flex-direction: column;
             align-items: stretch;
         }
@@ -771,9 +614,6 @@
         .portal-publisher-header__actions .btn,
         .portal-publisher-link-row .btn,
         .portal-publisher-panel__header .btn,
-        .portal-publisher-gallery__actions,
-        .portal-publisher-gallery__actions .btn,
-        .portal-publisher-gallery__actions form,
         .portal-publisher-form__footer .btn {
             width: 100%;
         }
@@ -783,21 +623,13 @@
         }
 
         .portal-publisher-form__grid,
-        .portal-publisher-upload__grid,
         .portal-publisher-readonly__grid,
         .portal-publisher-preview__info,
         .portal-publisher-preview__gallery {
             grid-template-columns: 1fr;
         }
-
-        .portal-publisher-gallery__item {
-            grid-template-columns: 1fr;
-        }
-
-        .portal-publisher-gallery__item img {
-            width: 100%;
-            height: 150px;
-        }
+
+
     }
 </style>
 
@@ -808,15 +640,7 @@
             setTimeout(function () { el.style.width = width + "%"; }, 60);
         });
 
-        const btnToggleFoto = document.getElementById("btnToggleFotoObra");
-        const formFoto = document.getElementById("formFotoObra");
-        if (btnToggleFoto && formFoto) {
-            btnToggleFoto.addEventListener("click", function () {
-                const aberto = formFoto.classList.toggle("open");
-                formFoto.classList.toggle("portal-publisher-upload--collapsed", !aberto);
-                btnToggleFoto.textContent = aberto ? "Fechar envio" : "Adicionar foto";
-            });
-        }
+
     })();
 
     function copiarLinkPortal(event) {
@@ -843,3 +667,4 @@
     }
 </script>
 {% endblock %}
+

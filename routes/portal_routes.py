@@ -13,15 +13,15 @@ portal_bp = Blueprint("portal_bp", __name__)
 TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{32,128}$")
 PORTAL_FASES = [
     "Planejamento",
-    "Fundacao",
+    "Fundação",
     "Estrutura",
     "Alvenaria",
     "Telhado",
-    "Instalacoes",
+    "Instalações",
     "Revestimento",
     "Acabamento",
     "Vistoria",
-    "Concluida",
+    "Concluída",
 ]
 
 
@@ -76,10 +76,10 @@ def _ultima_atualizacao(obra, atualizacoes, fotos_obra):
 
 def _montar_timeline_portal(obra, fase_atual, proxima_etapa, ultima_atualizacao):
     status = (obra["status"] or "").lower()
-    etapa_entrega = "Concluida" if status in {"concluida", "vendida"} else "Entrega prevista"
+    etapa_entrega = "Concluída" if status in {"concluida", "vendida"} else "Entrega prevista"
     return [
         {
-            "titulo": "Inicio da obra",
+            "titulo": "Início da obra",
             "status": "done" if obra["data_inicio"] else "upcoming",
             "data": obra["data_inicio"],
             "descricao": "Marco inicial do cronograma.",
@@ -94,13 +94,13 @@ def _montar_timeline_portal(obra, fase_atual, proxima_etapa, ultima_atualizacao)
             "titulo": proxima_etapa,
             "status": "upcoming" if status not in {"concluida", "vendida"} else "done",
             "data": obra["data_fim_prevista"],
-            "descricao": "Proximo passo previsto pela equipe responsavel.",
+            "descricao": "Próximo passo previsto pela equipe responsável.",
         },
         {
             "titulo": etapa_entrega,
             "status": "done" if status in {"concluida", "vendida"} else "upcoming",
             "data": obra["data_fim_prevista"],
-            "descricao": "Previsao consolidada de encerramento da obra.",
+            "descricao": "Previsão consolidada de encerramento da obra.",
         },
     ]
 
@@ -114,7 +114,7 @@ def portal_obra(token):
 
     obra = query_one("""
         SELECT
-            id, codigo, nome, endereco, tipologia, area_m2, data_inicio, criado_em,
+            id, empresa_id, codigo, nome, endereco, tipologia, area_m2, data_inicio, criado_em,
             data_fim_prevista, progresso_percentual, status, fase_obra,
             observacao_responsavel, foto_capa, proxima_etapa_portal, token_publico, portal_expira_em,
             portal_revogado_em
@@ -133,8 +133,8 @@ def portal_obra(token):
         except ValueError:
             abort(404)
 
-    # LGPD: o portal publico recebe apenas atualizacoes e fotos publicadas ao cliente.
-    # Custos, fornecedores, equipe, documentos e valores internos no sao consultados aqui.
+    # LGPD: o portal público recebe apenas atualizações e fotos publicadas ao cliente.
+    # Custos, fornecedores, equipe, documentos e valores internos não são consultados aqui.
     atualizacoes = query_all("""
         SELECT l.descricao, l.data_hora, u.nome AS autor
         FROM logs l
@@ -152,16 +152,18 @@ def portal_obra(token):
         FROM fotos_obra
         WHERE obra_id = ?
           AND empresa_id = ?
+          AND COALESCE(publicar_portal, 0) = 1
         ORDER BY id DESC
         LIMIT 12
     """, (obra["id"], obra["empresa_id"]))
 
-    foto_principal = obra["foto_capa"] if "foto_capa" in obra.keys() and obra["foto_capa"] else ""
+    fotos_publicadas_paths = {foto["caminho"] for foto in fotos_obra if foto["caminho"]}
+    foto_principal = obra["foto_capa"] if "foto_capa" in obra.keys() and obra["foto_capa"] in fotos_publicadas_paths else ""
     if not foto_principal and fotos_obra:
         foto_principal = fotos_obra[0]["caminho"]
 
     galeria_portal = [foto for foto in fotos_obra if foto["caminho"] != foto_principal]
-    fase_portal = obra["fase_obra"] if obra["fase_obra"] else "Atualizao em breve"
+    fase_portal = obra["fase_obra"] if obra["fase_obra"] else "Atualização em breve"
     proxima_etapa = obra["proxima_etapa_portal"] if obra["proxima_etapa_portal"] else _proxima_etapa(fase_portal, obra["status"])
     ultima_atualizacao = _ultima_atualizacao(obra, atualizacoes, fotos_obra)
     timeline_portal = _montar_timeline_portal(obra, fase_portal, proxima_etapa, ultima_atualizacao)

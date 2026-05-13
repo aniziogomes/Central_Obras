@@ -165,9 +165,83 @@ CREATE TABLE IF NOT EXISTS fotos_obra (
     caminho TEXT NOT NULL,
     titulo TEXT,
     fase TEXT,
+    publicar_portal INTEGER NOT NULL DEFAULT 0,
     data_registro TEXT,
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (obra_id) REFERENCES obras(id)
+);
+
+CREATE TABLE IF NOT EXISTS clientes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    empresa_id INTEGER NOT NULL,
+    nome_completo TEXT NOT NULL,
+    cpf_cnpj TEXT,
+    rg_ie TEXT,
+    email TEXT,
+    telefone TEXT,
+    endereco TEXT,
+    cidade TEXT,
+    estado TEXT,
+    cep TEXT,
+    representante_legal TEXT,
+    observacoes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+);
+
+CREATE TABLE IF NOT EXISTS contratos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    empresa_id INTEGER NOT NULL,
+    obra_id INTEGER,
+    cliente_id INTEGER,
+    tipo_contrato TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'rascunho',
+    titulo TEXT NOT NULL,
+    numero_contrato TEXT,
+    valor_total REAL DEFAULT 0,
+    forma_pagamento TEXT,
+    entrada REAL DEFAULT 0,
+    quantidade_parcelas INTEGER DEFAULT 0,
+    valor_parcela REAL DEFAULT 0,
+    vencimento_primeira_parcela TEXT,
+    indice_reajuste TEXT,
+    multa_atraso REAL DEFAULT 0,
+    juros_mora REAL DEFAULT 0,
+    prazo_execucao INTEGER DEFAULT 0,
+    data_inicio TEXT,
+    data_fim_prevista TEXT,
+    escopo_servico TEXT,
+    itens_inclusos TEXT,
+    itens_nao_inclusos TEXT,
+    responsabilidades_contratada TEXT,
+    responsabilidades_contratante TEXT,
+    garantias TEXT,
+    clausulas_adicionais TEXT,
+    observacoes TEXT,
+    motivo_aditivo TEXT,
+    versao INTEGER DEFAULT 1,
+    contrato_origem_id INTEGER,
+    pdf_path TEXT,
+    data_geracao TEXT,
+    data_assinatura TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id),
+    FOREIGN KEY (obra_id) REFERENCES obras(id),
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id),
+    FOREIGN KEY (contrato_origem_id) REFERENCES contratos(id)
+);
+
+CREATE TABLE IF NOT EXISTS clausulas_contrato (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    empresa_id INTEGER NOT NULL,
+    titulo TEXT NOT NULL,
+    tipo_contrato TEXT,
+    texto TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
 );
 
 CREATE TABLE IF NOT EXISTS logs (

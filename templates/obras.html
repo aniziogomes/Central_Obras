@@ -120,7 +120,7 @@
 {% set observacao_canteiro = obra.observacao_responsavel if obra.observacao_responsavel is defined and
 obra.observacao_responsavel else '' %}
 {% set portal_ativo = obra.token_publico if obra.token_publico is defined and obra.token_publico else '' %}
-{% set fase_atual = obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else 'Nao definida' %}
+{% set fase_atual = obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else 'Não definida' %}
 <div class="obra-card" data-status="{{ obra.status or '' }}"
         data-search="{{ (obra.codigo or '')|lower }} {{ (obra.nome or '')|lower }} {{ (obra.tipologia or '')|lower }} {{ (obra.endereco or '')|lower }} {{ (obra.tipo_obra or '')|lower }} {{ (observacao_canteiro or '')|lower }}">
 
@@ -305,15 +305,15 @@ obra.observacao_responsavel else '' %}
                     <input type="text" name="tipologia" value="{{ obra.tipologia or '' }}" required>
                 </div>
                 <div class="form-group">
-                    <label>Area (m2)</label>
+                    <label>Área (m²)</label>
                     <input type="number" step="0.01" name="area_m2" value="{{ obra.area_m2 or 0 }}">
                 </div>
                 <div class="form-group full">
-                    <label>Endereco</label>
+                    <label>Endereço</label>
                     <input type="text" name="endereco" value="{{ obra.endereco or '' }}" placeholder="Rua das Flores, 123">
                 </div>
                 <div class="form-group">
-                    <label>Data Inicio</label>
+                    <label>Data Início</label>
                     <input type="date" name="data_inicio" value="{{ obra.data_inicio or '' }}">
                 </div>
                 <div class="form-group">
@@ -321,7 +321,7 @@ obra.observacao_responsavel else '' %}
                     <input type="date" name="data_fim_prevista" value="{{ obra.data_fim_prevista or '' }}">
                 </div>
                 <div class="form-group">
-                    <label>Orcamento previsto (R$)</label>
+                    <label>Orçamento previsto (R$)</label>
                     <input type="number" step="0.01" name="orcamento" value="{{ obra.orcamento or 0 }}">
                     <small class="form-field-help">Custo-base esperado para executar a obra.</small>
                 </div>
@@ -342,11 +342,11 @@ obra.observacao_responsavel else '' %}
                 </div>
             </div>
             <div class="modal-info-card">
-                Fase, conclusao, observacoes e fotos ficam na pagina Detalhes da Obra.
+                Fase, conclusão, observações e fotos ficam na página Detalhes da Obra.
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn" onclick="fecharModalEditarObra('{{ obra.id }}')">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Salvar alteracoes</button>
+                <button type="submit" class="btn btn-primary">Salvar alterações</button>
             </div>
         </form>
     </div>
@@ -597,7 +597,7 @@ obra.observacao_responsavel else '' %}
                 const saldoValue = parseFinanceNumber(o.saldo_disponivel ?? o.saldo_disponivel_formatado ?? 0);
                 const saldoClass = saldoValue >= 0 ? "valor-positivo" : "valor-negativo";
                 const statusLabel = o.status_formatado || o.status || "-";
-                const faseLabel = o.fase_obra_formatada || o.fase_obra || "Nao definida";
+                const faseLabel = o.fase_obra_formatada || o.fase_obra || "Não definida";
                 const nomeLabel = o.nome_formatado || o.nome || "Obra";
                 const areaLabel = Number(o.area_m2 || 0) > 0 ? `<span class="obra-card-dot">&middot;</span><span>${esc(String(o.area_m2))} m&sup2;</span>` : "";
                 const acoes = `

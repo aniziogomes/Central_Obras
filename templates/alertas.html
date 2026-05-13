@@ -50,9 +50,15 @@
     <div class="alertas-list" id="alertasLista">
         {% for alerta in alertas %}
         {% set alerta_tipo = alerta.tipo or "info" %}
-        {% set alerta_href = url_for('obras_bp.obra_detalhes', codigo=alerta.obra_codigo) if alerta.destino == "obra" and alerta.obra_codigo else url_for('equipe_bp.equipe') %}
+        {% if alerta.destino == "obra" and alerta.obra_codigo %}
+        {% set alerta_href = url_for('obras_bp.obra_detalhes', codigo=alerta.obra_codigo) %}
+        {% elif alerta.destino == "contratos" %}
+        {% set alerta_href = url_for('contratos_bp.contratos') %}
+        {% else %}
+        {% set alerta_href = url_for('equipe_bp.equipe') %}
+        {% endif %}
         {% set alerta_severidade = alerta.severidade or ("CRÍTICO" if alerta_tipo == "danger" else ("ATENÇÃO" if alerta_tipo == "warn" else "INFORMATIVO")) %}
-        {% set alerta_acao = alerta.acao or ("Ver obra" if alerta.destino == "obra" and alerta.obra_codigo else "Ver equipe") %}
+        {% set alerta_acao = alerta.acao or ("Ver obra" if alerta.destino == "obra" and alerta.obra_codigo else ("Ver contratos" if alerta.destino == "contratos" else "Ver equipe")) %}
         <article class="alert-card alert-card--{{ alerta_tipo }}" data-alert-type="{{ alerta_tipo }}">
             <div class="alert-main">
                 <div class="alert-topline">

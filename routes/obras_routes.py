@@ -43,6 +43,18 @@ FASE_OBRA_LABELS = {
     "vistoria": "Vistoria",
     "concluida": "Concluída",
 }
+FASES_OBRA_PADRAO = [
+    "Planejamento",
+    "Fundação",
+    "Estrutura",
+    "Alvenaria",
+    "Telhado",
+    "Instalações",
+    "Revestimento",
+    "Acabamento",
+    "Vistoria",
+    "Concluída",
+]
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -201,6 +213,108 @@ def serializar_obras(lista_obras):
             "token_publico": (o["token_publico"] if "token_publico" in keys and o["token_publico"] else ""),
         })
     return result
+
+
+def _data_contrato_documento(contrato):
+    return contrato["data_geracao"] or contrato["created_at"] or contrato["updated_at"]
+
+
+def _resumo_aditivo(aditivo, contrato_anterior):
+    valor_anterior = contrato_anterior["valor_total"] or 0
+    valor_atual = aditivo["valor_total"] or 0
+    delta_valor = valor_atual - valor_anterior
+    if delta_valor > 0:
+        partes = [f"+{formatar_moeda(delta_valor)} de valor"]
+    elif delta_valor < 0:
+        partes = [f"-{formatar_moeda(abs(delta_valor))} de valor"]
+    else:
+        partes = ["sem alteração de valor"]
+
+    prazo_anterior = contrato_anterior["prazo_execucao"] or 0
+    prazo_atual = aditivo["prazo_execucao"] or 0
+    delta_prazo = prazo_atual - prazo_anterior
+    if delta_prazo > 0:
+        partes.append(f"prazo estendido {delta_prazo} dias")
+    elif delta_prazo < 0:
+        partes.append(f"prazo reduzido {abs(delta_prazo)} dias")
+
+    if aditivo["motivo_aditivo"]:
+        partes.append(f"motivo: {aditivo['motivo_aditivo']}")
+
+    return " · ".join(partes)
+
+
+def _contratos_da_obra(obra):
+    contrato_principal = query_one(
+        """
+        SELECT c.*, cl.nome_completo AS cliente_nome
+        FROM contratos c
+        LEFT JOIN clientes cl ON cl.id = c.cliente_id
+        WHERE c.obra_id = ?
+          AND c.empresa_id = ?
+          AND c.tipo_contrato != 'aditivo'
+          AND c.status != 'cancelado'
+        ORDER BY
+          CASE c.status
+            WHEN 'assinado' THEN 1
+            WHEN 'aguardando_assinatura' THEN 2
+            WHEN 'aditivado' THEN 3
+            WHEN 'rascunho' THEN 4
+            ELSE 5
+          END,
+          c.created_at DESC,
+          c.id DESC
+        LIMIT 1
+        """,
+        (obra["id"], obra["empresa_id"]),
+    )
+
+    if not contrato_principal:
+        return None, [], [], None
+
+    aditivos = query_all(
+        """
+        SELECT c.*, cl.nome_completo AS cliente_nome
+        FROM contratos c
+        LEFT JOIN clientes cl ON cl.id = c.cliente_id
+        WHERE c.contrato_origem_id = ?
+          AND c.empresa_id = ?
+        ORDER BY COALESCE(c.versao, 1) ASC, c.created_at ASC, c.id ASC
+        """,
+        (contrato_principal["id"], obra["empresa_id"]),
+    )
+
+    timeline = [
+        {
+            "contrato": contrato_principal,
+            "rotulo": "Contrato original",
+            "versao": contrato_principal["versao"] or 1,
+            "resumo": formatar_moeda(contrato_principal["valor_total"] or 0),
+            "data": _data_contrato_documento(contrato_principal),
+            "pdf_path": contrato_principal["pdf_path"],
+        }
+    ]
+
+    anterior = contrato_principal
+    for indice, aditivo in enumerate(aditivos, start=1):
+        timeline.append(
+            {
+                "contrato": aditivo,
+                "rotulo": f"Aditivo {indice}",
+                "versao": aditivo["versao"] or ((contrato_principal["versao"] or 1) + indice),
+                "resumo": _resumo_aditivo(aditivo, anterior),
+                "data": _data_contrato_documento(aditivo),
+                "pdf_path": aditivo["pdf_path"],
+            }
+        )
+        anterior = aditivo
+
+    valor_original = contrato_principal["valor_total"] or 0
+    valor_atualizado = timeline[-1]["contrato"]["valor_total"] or valor_original
+    if not aditivos or valor_atualizado == valor_original:
+        valor_atualizado = None
+
+    return contrato_principal, aditivos, timeline, valor_atualizado
 
 
 # ─── Listagem ─────────────────────────────────────────────────────────────────
@@ -386,6 +500,7 @@ def obra_detalhe(codigo):
         custo_total=custo_total,
         margem=margem,
         lucro_previsto=lucro_previsto,
+        fases_obra_opcoes=FASES_OBRA_PADRAO,
         fotos_obra=fotos_obra,
         atualizacoes_cliente=atualizacoes_cliente,
     )
@@ -398,7 +513,7 @@ def obra_detalhes(codigo):
 
     obra = obter_obra_acessivel(codigo=codigo, campos="o.*, e.nome AS empresa_nome")
     if not obra:
-        flash("Obra no encontrada.", "erro")
+        flash("Obra não encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
     custos = query_all("SELECT * FROM custos WHERE obra_id = ? AND empresa_id = ? ORDER BY id DESC", (obra["id"], obra["empresa_id"]))
@@ -429,12 +544,69 @@ def obra_detalhes(codigo):
         categoria = custo["categoria"] or "Sem categoria"
         custos_por_categoria[categoria] = custos_por_categoria.get(categoria, 0) + (custo["valor_total"] or 0)
 
+    contrato_ativo, aditivos_contrato, historico_contratos, valor_contrato_atualizado = _contratos_da_obra(obra)
+    fase_logs = query_all(
+        """
+        SELECT l.id, l.data_hora, l.descricao, u.nome AS autor
+        FROM logs l
+        LEFT JOIN usuarios u ON l.usuario_id = u.id
+        WHERE l.entidade = 'obra'
+          AND l.entidade_id = ?
+          AND l.empresa_id = ?
+          AND l.acao = 'fase_obra_atualizada'
+        ORDER BY COALESCE(l.data_hora, '') ASC, l.id ASC
+        """,
+        (obra["id"], obra["empresa_id"]),
+    )
+
+    fase_timeline = []
+    for item in fase_logs:
+        descricao = (item["descricao"] or "").strip()
+        fase = descricao.split(":", 1)[1].strip() if ":" in descricao else descricao
+        fase_timeline.append(
+            {
+                "fase": fase or "Fase atualizada",
+                "data_hora": item["data_hora"],
+                "autor": item["autor"] or "Sistema",
+            }
+        )
+
+    if not fase_timeline:
+        logs_legado = query_all(
+            """
+            SELECT l.id, l.data_hora, l.descricao, u.nome AS autor
+            FROM logs l
+            LEFT JOIN usuarios u ON l.usuario_id = u.id
+            WHERE l.entidade = 'obra'
+              AND l.entidade_id = ?
+              AND l.empresa_id = ?
+              AND l.acao = 'atualizacao_canteiro'
+            ORDER BY COALESCE(l.data_hora, '') ASC, l.id ASC
+            """,
+            (obra["id"], obra["empresa_id"]),
+        )
+        for item in logs_legado:
+            descricao = (item["descricao"] or "").strip()
+            marcador = "Fase atual:"
+            if marcador not in descricao:
+                continue
+            fase = descricao.split(marcador, 1)[1].split(".", 1)[0].strip()
+            if not fase:
+                continue
+            fase_timeline.append(
+                {
+                    "fase": fase,
+                    "data_hora": item["data_hora"],
+                    "autor": item["autor"] or "Sistema",
+                }
+            )
+
     medicoes_ordenadas = sorted(
         medicoes,
         key=lambda m: (m["data_medicao"] or "", m["id"] or 0)
     )
     medicao_labels = [
-        m["medicao_nome"] or m["etapa"] or m["data_medicao"] or f"Medio {i + 1}"
+        m["medicao_nome"] or m["etapa"] or m["data_medicao"] or f"Medição {i + 1}"
         for i, m in enumerate(medicoes_ordenadas)
     ]
     medicao_percentuais = [m["percentual_acumulado"] or m["percentual"] or 0 for m in medicoes_ordenadas]
@@ -455,6 +627,12 @@ def obra_detalhes(codigo):
         custo_total=custo_total,
         margem=margem,
         lucro_previsto=lucro_previsto,
+        fases_obra_opcoes=FASES_OBRA_PADRAO,
+        contrato_ativo=contrato_ativo,
+        aditivos_contrato=aditivos_contrato,
+        historico_contratos=historico_contratos,
+        valor_contrato_atualizado=valor_contrato_atualizado,
+        fase_timeline=fase_timeline,
         chart_custo_cat_labels=list(custos_por_categoria.keys()),
         chart_custo_cat_valores=list(custos_por_categoria.values()),
         chart_medicao_labels=medicao_labels,
@@ -467,7 +645,7 @@ def obra_detalhes(codigo):
 def nova_foto_obra(obra_id):
     redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), "")
     if not usuario_logado() or not eh_gestor():
-        flash("Voc? no tem permisso para adicionar fotos.", "erro")
+        flash("Você não tem permissão para adicionar fotos.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
     obra = obter_obra_acessivel(
@@ -475,7 +653,7 @@ def nova_foto_obra(obra_id):
         campos="o.id, o.codigo, o.nome, o.empresa_id, o.proxima_etapa_portal",
     )
     if not obra:
-        flash("Obra no encontrada.", "erro")
+        flash("Obra não encontrada.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
     arquivo = request.files.get("foto_arquivo")
@@ -488,6 +666,7 @@ def nova_foto_obra(obra_id):
         flash(str(e), "erro")
         return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
     usar_como_capa = request.form.get("usar_como_capa") == "1"
+    publicar_portal = 1 if "1" in request.form.getlist("publicar_portal") else 0
 
     if arquivo and arquivo.filename:
         if not extensao_permitida(arquivo.filename):
@@ -502,13 +681,13 @@ def nova_foto_obra(obra_id):
         caminho = f"/static/uploads/obras/{nome_arquivo}"
 
     if not caminho:
-        flash("Selecione uma foto do seu dispositivo para adicionar a galeria.", "erro")
+        flash("Selecione uma foto do seu dispositivo para adicionar à galeria.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
     foto_id = execute(
         """
-        INSERT INTO fotos_obra (empresa_id, obra_id, caminho, titulo, fase, data_registro)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO fotos_obra (empresa_id, obra_id, caminho, titulo, fase, publicar_portal, data_registro)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
         (
             obra["empresa_id"],
@@ -516,6 +695,7 @@ def nova_foto_obra(obra_id):
             caminho,
             titulo or None,
             fase or None,
+            publicar_portal,
             data_registro or None,
         )
     )
@@ -524,7 +704,7 @@ def nova_foto_obra(obra_id):
         acao="foto_galeria",
         entidade="obra",
         entidade_id=obra_id,
-        descricao=f"Foto adicionada a galeria da obra: {obra['nome']}"
+        descricao=f"Foto adicionada à galeria da obra: {obra['nome']}"
     )
 
     if usar_como_capa:
@@ -533,7 +713,7 @@ def nova_foto_obra(obra_id):
             (caminho, obra_id, obra["empresa_id"])
         )
 
-    flash("Foto adicionada a galeria com sucesso.", "sucesso")
+    flash("Foto adicionada à galeria com sucesso.", "sucesso")
     return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
 
@@ -541,12 +721,15 @@ def nova_foto_obra(obra_id):
 def usar_foto_como_capa(obra_id, foto_id):
     redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), "")
     if not usuario_logado() or not eh_gestor():
-        flash("Voc? no tem permisso para alterar a capa.", "erro")
+        flash("Você não tem permissão para alterar a capa.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
-    obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.nome, o.empresa_id")
+    obra = obter_obra_acessivel(
+        obra_id=obra_id,
+        campos="o.id, o.codigo, o.nome, o.empresa_id, o.proxima_etapa_portal",
+    )
     if not obra:
-        flash("Obra no encontrada.", "erro")
+        flash("Obra não encontrada.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
     foto = query_one(
@@ -554,7 +737,7 @@ def usar_foto_como_capa(obra_id, foto_id):
         (foto_id, obra_id, obra["empresa_id"])
     )
     if not foto:
-        flash("Foto no encontrada na galeria.", "erro")
+        flash("Foto não encontrada na galeria.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
     execute("UPDATE obras SET foto_capa = ? WHERE id = ? AND empresa_id = ?", (foto["caminho"], obra_id, obra["empresa_id"]))
@@ -565,22 +748,62 @@ def usar_foto_como_capa(obra_id, foto_id):
         descricao=f"Foto da galeria definida como capa da obra: {obra['nome']}"
     )
 
-    flash("Foto definida como capa da Visao do Canteiro.", "sucesso")
+    flash("Foto definida como capa da Visão do Canteiro.", "sucesso")
     return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
 
 # ─── Editar ──────────────────────────────────────────────────────────────────
 
+@obras_bp.route("/obras/<int:obra_id>/fotos/<int:foto_id>/publicacao", methods=["POST"])
+def atualizar_publicacao_foto_obra(obra_id, foto_id):
+    redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), "")
+    if not usuario_logado() or not eh_gestor():
+        flash("Você não tem permissão para alterar a publicação de fotos.", "erro")
+        return redirect(redirect_to or url_for("obras_bp.obras"))
+
+    obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.nome, o.empresa_id, o.proxima_etapa_portal")
+    if not obra:
+        flash("Obra não encontrada.", "erro")
+        return redirect(redirect_to or url_for("obras_bp.obras"))
+
+    foto = query_one(
+        "SELECT id FROM fotos_obra WHERE id = ? AND obra_id = ? AND empresa_id = ?",
+        (foto_id, obra_id, obra["empresa_id"])
+    )
+    if not foto:
+        flash("Foto não encontrada na galeria.", "erro")
+        return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+
+    publicar_portal = 1 if "1" in request.form.getlist("publicar_portal") else 0
+    execute(
+        "UPDATE fotos_obra SET publicar_portal = ? WHERE id = ? AND obra_id = ? AND empresa_id = ?",
+        (publicar_portal, foto_id, obra_id, obra["empresa_id"])
+    )
+
+    registrar_log(
+        acao="foto_publicacao_portal",
+        entidade="obra",
+        entidade_id=obra_id,
+        descricao=f"Publicação da foto no portal {'ativada' if publicar_portal else 'desativada'}: {obra['nome']}"
+    )
+
+    flash(
+        "Foto publicada no portal do cliente." if publicar_portal else "Foto mantida apenas para uso interno.",
+        "sucesso",
+    )
+    return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
+
+
 @obras_bp.route("/obras/<int:obra_id>/fotos/<int:foto_id>/excluir", methods=["POST"])
 def excluir_foto_obra(obra_id, foto_id):
     redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), "")
     if not usuario_logado() or not eh_gestor():
-        flash("Voc? no tem permisso para excluir fotos.", "erro")
+        flash("Você não tem permissão para excluir fotos.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
     obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.nome, o.foto_capa, o.empresa_id")
     if not obra:
-        flash("Obra no encontrada.", "erro")
+        flash("Obra não encontrada.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
     foto = query_one(
@@ -588,7 +811,7 @@ def excluir_foto_obra(obra_id, foto_id):
         (foto_id, obra_id, obra["empresa_id"])
     )
     if not foto:
-        flash("Foto no encontrada na galeria.", "erro")
+        flash("Foto não encontrada na galeria.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
     execute("DELETE FROM fotos_obra WHERE id = ? AND obra_id = ? AND empresa_id = ?", (foto_id, obra_id, obra["empresa_id"]))
@@ -612,7 +835,7 @@ def excluir_foto_obra(obra_id, foto_id):
         descricao=f"Foto removida da galeria da obra: {obra['nome']}"
     )
 
-    flash("Foto excluida da galeria.", "sucesso")
+    flash("Foto excluída da galeria.", "sucesso")
     return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
 
@@ -620,12 +843,15 @@ def excluir_foto_obra(obra_id, foto_id):
 def atualizar_canteiro_obra(obra_id):
     redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), "")
     if not usuario_logado() or not eh_gestor():
-        flash("Voc? no tem permisso para atualizar o canteiro.", "erro")
+        flash("Você não tem permissão para atualizar o canteiro.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
-    obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.nome, o.empresa_id")
+    obra = obter_obra_acessivel(
+        obra_id=obra_id,
+        campos="o.id, o.codigo, o.nome, o.empresa_id, o.fase_obra, o.proxima_etapa_portal",
+    )
     if not obra:
-        flash("Obra no encontrada.", "erro")
+        flash("Obra não encontrada.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
     try:
@@ -639,29 +865,52 @@ def atualizar_canteiro_obra(obra_id):
         flash(str(e), "erro")
         return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
     progresso_percentual = request.form.get("progresso_percentual", "").strip()
+    atualizar_status_concluida = (request.form.get("atualizar_status_concluida", "0") or "").strip() == "1"
 
     try:
         progresso_valor = parse_valor_monetario(progresso_percentual)
-        validar_intervalo_percentual(progresso_valor, "Conclusao (%)")
+        validar_intervalo_percentual(progresso_valor, "Conclusão (%)")
     except ValueError as e:
         flash(str(e), "erro")
         return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
-    execute(
-        """
-        UPDATE obras
-        SET fase_obra = ?, progresso_percentual = ?, observacao_responsavel = ?, proxima_etapa_portal = ?
-        WHERE id = ? AND empresa_id = ?
-        """,
-        (
-            fase_obra or None,
-            progresso_valor,
-            observacao or None,
-            proxima_etapa_portal or None,
-            obra_id,
-            obra["empresa_id"],
+    fase_slug = _slug_texto(fase_obra)
+    fase_anterior_slug = _slug_texto(obra["fase_obra"] if "fase_obra" in obra.keys() else "")
+    deve_atualizar_status = fase_slug == "concluida" and atualizar_status_concluida
+
+    if deve_atualizar_status:
+        execute(
+            """
+            UPDATE obras
+            SET fase_obra = ?, progresso_percentual = ?, observacao_responsavel = ?, proxima_etapa_portal = ?, status = ?
+            WHERE id = ? AND empresa_id = ?
+            """,
+            (
+                fase_obra or None,
+                progresso_valor,
+                observacao or None,
+                proxima_etapa_portal or None,
+                "concluida",
+                obra_id,
+                obra["empresa_id"],
+            )
         )
-    )
+    else:
+        execute(
+            """
+            UPDATE obras
+            SET fase_obra = ?, progresso_percentual = ?, observacao_responsavel = ?, proxima_etapa_portal = ?
+            WHERE id = ? AND empresa_id = ?
+            """,
+            (
+                fase_obra or None,
+                progresso_valor,
+                observacao or None,
+                proxima_etapa_portal or None,
+                obra_id,
+                obra["empresa_id"],
+            )
+        )
 
     mensagem_cliente = observacao or f"Fase atual: {fase_obra or 'Atualização em breve'}."
     registrar_log(
@@ -670,20 +919,27 @@ def atualizar_canteiro_obra(obra_id):
         entidade_id=obra_id,
         descricao=f"Atualização para o cliente: {mensagem_cliente}"
     )
+    if fase_obra and fase_slug != fase_anterior_slug:
+        registrar_log(
+            acao="fase_obra_atualizada",
+            entidade="obra",
+            entidade_id=obra_id,
+            descricao=f"Fase da obra atualizada para: {fase_obra}",
+        )
 
-    flash("Avanco do canteiro salvo com sucesso.", "sucesso")
+    flash("Avanço do canteiro salvo com sucesso.", "sucesso")
     return redirect(redirect_to or url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
 
 @obras_bp.route("/obras/<int:obra_id>/canteiro/atualizacao/<int:log_id>", methods=["POST"])
 def editar_atualizacao_canteiro(obra_id, log_id):
     if not usuario_logado() or not eh_gestor():
-        flash("Voc? no tem permisso para editar atualizacoes do portal.", "erro")
+        flash("Você não tem permissão para editar atualizações do portal.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
     obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.codigo, o.empresa_id")
     if not obra:
-        flash("Obra no encontrada.", "erro")
+        flash("Obra não encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
     try:
@@ -691,7 +947,7 @@ def editar_atualizacao_canteiro(obra_id, log_id):
             request.form.get("mensagem_cliente", ""),
             max_len=1000,
             obrigatorio=True,
-            campo="Atualizao do cliente",
+            campo="Atualização do cliente",
         )
     except ValueError as e:
         flash(str(e), "erro")
@@ -708,7 +964,7 @@ def editar_atualizacao_canteiro(obra_id, log_id):
           AND descricao LIKE 'Atualização para o cliente:%'
     """, (log_id, obra_id, obra["empresa_id"]))
     if not atualizacao:
-        flash("Atualizao no encontrada.", "erro")
+        flash("Atualização não encontrada.", "erro")
         return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
     execute(
@@ -716,7 +972,7 @@ def editar_atualizacao_canteiro(obra_id, log_id):
         (f"Atualização para o cliente: {mensagem_cliente}", log_id, obra["empresa_id"])
     )
 
-    flash("Atualizao do portal editada com sucesso.", "sucesso")
+    flash("Atualização do portal editada com sucesso.", "sucesso")
     return redirect(url_for("obras_bp.obra_detalhe", codigo=obra["codigo"]))
 
 
@@ -724,12 +980,12 @@ def editar_atualizacao_canteiro(obra_id, log_id):
 def editar_obra(obra_id):
     redirect_to = caminho_redirecionamento_seguro(request.form.get("redirect_to"), "")
     if not usuario_logado() or not eh_gestor():
-        flash("Voc? no tem permisso para editar obras.", "erro")
+        flash("Você não tem permissão para editar obras.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
     obra = obter_obra_acessivel(obra_id=obra_id, campos="o.*")
     if not obra:
-        flash("Obra no encontrada.", "erro")
+        flash("Obra não encontrada.", "erro")
         return redirect(redirect_to or url_for("obras_bp.obras"))
 
     veio_do_detalhe = obra and (
@@ -768,11 +1024,11 @@ def editar_obra(obra_id):
         receita_valor = parse_valor_monetario(receita_total)
 
         if valor_negativo(area_valor):
-            raise ValueError("Area no pode ser negativa.")
+            raise ValueError("Área não pode ser negativa.")
         if valor_negativo(orcamento_valor):
-            raise ValueError("Custo previsto no pode ser negativo.")
+            raise ValueError("Custo previsto não pode ser negativo.")
         if valor_negativo(receita_valor):
-            raise ValueError("Receita prevista no pode ser negativa.")
+            raise ValueError("Receita prevista não pode ser negativa.")
     except ValueError as e:
         flash(str(e), "erro")
         if redirect_to:
@@ -848,7 +1104,7 @@ def excluir_obra(obra_id):
 
     obra = obter_obra_acessivel(obra_id=obra_id, campos="o.id, o.empresa_id")
     if not obra:
-        flash("Obra no encontrada.", "erro")
+        flash("Obra não encontrada.", "erro")
         return redirect(url_for("obras_bp.obras"))
 
     execute("DELETE FROM custos WHERE obra_id = ? AND empresa_id = ?", (obra_id, obra["empresa_id"]))

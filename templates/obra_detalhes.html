@@ -1,9 +1,9 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}Detalhes {{ obra.codigo }} - Central de Obras{% endblock %}
 
 {% block content %}
-{% set fase_atual = obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else 'Nao definida' %}
+{% set fase_atual = obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else 'Não definida' %}
 {% set margem_prevista = (obra.receita_total or 0) - (obra.orcamento or 0) %}
 {% set tem_custos_lancados = custos|length > 0 %}
 {% set valor_contrato = obra.receita_total or 0 %}
@@ -16,7 +16,8 @@
 {% set percentual_orcamento_barra = 100 if percentual_orcamento > 100 else percentual_orcamento %}
 {% set foto_capa = obra.foto_capa if obra.foto_capa is defined and obra.foto_capa else '' %}
 {% set observacao_canteiro = obra.observacao_responsavel if obra.observacao_responsavel is defined and obra.observacao_responsavel else '' %}
-{% set fases_obra = ['Planejamento', 'Fundacao', 'Estrutura', 'Alvenaria', 'Telhado', 'Instalacoes', 'Revestimento', 'Acabamento', 'Vistoria', 'Concluida'] %}
+{% set proxima_etapa_atual = obra.proxima_etapa_portal if obra.proxima_etapa_portal is defined and obra.proxima_etapa_portal else '' %}
+{% set fases_obra = fases_obra_opcoes if fases_obra_opcoes is defined and fases_obra_opcoes else ['Planejamento', 'Fundação', 'Estrutura', 'Alvenaria', 'Telhado', 'Instalações', 'Revestimento', 'Acabamento', 'Vistoria', 'Concluída'] %}
 {% set partes_nome_obra = (obra.nome or 'Obra').split() %}
 {% set iniciais_obra = ((partes_nome_obra[0][0] if partes_nome_obra else 'O') ~ (partes_nome_obra[1][0] if partes_nome_obra|length > 1 else ''))|upper %}
 {% set entrega_real = obra.data_fim_real if obra.data_fim_real is defined and obra.data_fim_real else '' %}
@@ -94,18 +95,73 @@
     </div>
 
     <div class="obra-detalhes-sticky-suite">
+        {% if contrato_ativo or eh_gestor() %}
+        <section class="obra-contract-panel" aria-label="Contrato da obra">
+            {% if contrato_ativo %}
+            <div class="obra-contract-main">
+                <div>
+                    <span>Contrato ativo</span>
+                    <strong>{{ contrato_ativo.numero_contrato or ('Contrato #' ~ contrato_ativo.id) }}</strong>
+                    <small>{{ contrato_ativo.titulo }}{% if contrato_ativo.cliente_nome %} · {{ contrato_ativo.cliente_nome }}{% endif %}</small>
+                </div>
+                <div class="obra-contract-actions">
+                    <a href="{{ url_for('contratos_bp.ver_contrato', contrato_id=contrato_ativo.id) }}" class="btn btn-small btn-ghost" data-spa>Visualizar</a>
+                    {% if contrato_ativo.pdf_path %}
+                    <a href="{{ url_for('contratos_bp.baixar_pdf', contrato_id=contrato_ativo.id) }}" class="btn btn-small btn-secondary">Baixar PDF</a>
+                    {% elif eh_gestor() %}
+                    <form method="POST" action="{{ url_for('contratos_bp.gerar_pdf', contrato_id=contrato_ativo.id) }}">
+                        <button type="submit" class="btn btn-small btn-secondary">Gerar PDF</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if aditivos_contrato %}
+            <div class="obra-contract-history">
+                <div class="obra-contract-history-title">Histórico de aditivos</div>
+                <div class="obra-contract-timeline">
+                    {% for item in historico_contratos %}
+                    <article class="obra-contract-timeline-item">
+                        <span class="obra-contract-timeline-dot"></span>
+                        <div class="obra-contract-timeline-copy">
+                            <strong>{{ item.rotulo }} — v{{ item.versao }}</strong>
+                            <small>{{ item.resumo }} — {{ formatar_data(item.data, "-") }}</small>
+                        </div>
+                        {% if item.pdf_path %}
+                        <a href="{{ url_for('contratos_bp.baixar_pdf', contrato_id=item.contrato.id) }}" class="btn btn-small btn-ghost">Baixar PDF</a>
+                        {% endif %}
+                    </article>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            {% elif eh_gestor() %}
+            <div class="obra-contract-empty-action">
+                <div>
+                    <span>Contrato da obra</span>
+                    <strong>Nenhum contrato gerado ainda</strong>
+                </div>
+                <a href="{{ url_for('contratos_bp.novo_contrato', obra_id=obra.id) }}" class="btn btn-small btn-primary" data-spa>Gerar contrato</a>
+            </div>
+            {% endif %}
+        </section>
+        {% endif %}
+
         <section class="obra-sticky-finance-summary" aria-label="Resumo financeiro da obra">
             <div class="obra-sticky-finance-cards">
                 <div class="obra-sticky-finance-card obra-sticky-finance-card--contract">
                     <span>Valor do contrato</span>
                     <strong>{{ formatar_moeda(obra.receita_total) }}</strong>
+                    {% if valor_contrato_atualizado %}
+                    <small class="obra-contract-updated-value">Valor atualizado com aditivos: {{ formatar_moeda(valor_contrato_atualizado) }}</small>
+                    {% endif %}
                 </div>
                 <div class="obra-sticky-finance-card obra-sticky-finance-card--spent">
-                    <span>Gasto ate hoje</span>
+                    <span>Gasto até hoje</span>
                     <strong class="{% if gasto_ultrapassou %}valor-negativo{% endif %}">{{ formatar_moeda(custo_total) }}</strong>
                 </div>
                 <div class="obra-sticky-finance-card obra-sticky-finance-card--balance">
-                    <span>Saldo disponivel</span>
+                    <span>Saldo disponível</span>
                     <strong class="{% if margem >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">{{ formatar_moeda(margem) }}</strong>
                 </div>
             </div>
@@ -180,13 +236,14 @@
         <div class="card obra-section-card obra-overview-ops-card">
             <div class="card-hdr">
                 <div>
-                    <div class="card-title">Atualizao operacional</div>
-                    <div class="obra-card-subtitle">Fase, conclusao e observacao do responsavel.</div>
+                    <div class="card-title">Atualização operacional</div>
+                    <div class="obra-card-subtitle">Fase, conclusão, próxima etapa e observação do responsável.</div>
                 </div>
             </div>
             {% if eh_gestor() %}
             <form method="POST" action="{{ url_for('obras_bp.atualizar_canteiro_obra', obra_id=obra.id) }}" class="obra-operational-form">
                 <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
+                <input type="hidden" name="atualizar_status_concluida" value="0">
                 <div class="form-grid modal-form-grid">
                     <div class="form-group">
                         <label>Fase da obra</label>
@@ -197,23 +254,28 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Conclusao (%)</label>
+                        <label>Conclusão (%)</label>
                         <input type="number" name="progresso_percentual" min="0" max="100" step="0.01" value="{{ obra.progresso_percentual or 0 }}" required>
                     </div>
                     <div class="form-group full">
-                        <label>Observacoes do responsavel</label>
+                        <label>Próxima etapa</label>
+                        <input type="text" name="proxima_etapa_portal" value="{{ proxima_etapa_atual }}" maxlength="160" placeholder="Ex: Início da instalação elétrica">
+                    </div>
+                    <div class="form-group full">
+                        <label>Observações do responsável</label>
                         <textarea name="observacao_responsavel" rows="4" placeholder="Descreva o andamento atual da obra.">{{ observacao_canteiro }}</textarea>
                     </div>
                 </div>
                 <div class="obra-operational-actions">
-                    <button type="submit" class="btn btn-primary">Salvar atualizacao</button>
+                    <button type="submit" class="btn btn-primary">Salvar atualização</button>
                 </div>
             </form>
             {% else %}
             <div class="obra-operational-readonly">
                 <div><span>Fase atual</span><strong>{{ fase_atual }}</strong></div>
-                <div><span>Conclusao</span><strong>{{ (obra.progresso_percentual or 0)|round(1) }}%</strong></div>
-                <p class="{% if not observacao_canteiro %}obra-kpi-muted{% endif %}">{{ observacao_canteiro or "Sem observacoes do responsavel." }}</p>
+                <div><span>Conclusão</span><strong>{{ (obra.progresso_percentual or 0)|round(1) }}%</strong></div>
+                <div><span>Próxima etapa</span><strong>{{ proxima_etapa_atual or "-" }}</strong></div>
+                <p class="{% if not observacao_canteiro %}obra-kpi-muted{% endif %}">{{ observacao_canteiro or "Sem observações do responsável." }}</p>
             </div>
             {% endif %}
         </div>
@@ -223,23 +285,19 @@
                 <div class="card-title">Linha do tempo</div>
             </div>
             <div class="obra-overview-timeline">
+                {% if fase_timeline %}
+                {% for item in fase_timeline %}
                 <div class="obra-overview-timeline-item">
-                    <span class="is-start"></span>
-                    <div><strong>Início da obra</strong><small>{{ formatar_data(obra.data_inicio, "-") }}</small></div>
-                </div>
-                {% for item in medicoes[:3] %}
-                <div class="obra-overview-timeline-item">
-                    <span></span>
+                    <span {% if loop.first %}class="is-start"{% endif %}></span>
                     <div>
-                        <strong>{{ item.medicao_nome or item.etapa or "Medição" }}</strong>
-                        <small>{{ formatar_data(item.data_medicao, "-") }}{% if item.valor_realizado %} - {{ formatar_moeda(item.valor_realizado) }}{% endif %}</small>
+                        <strong>{{ item.fase }}</strong>
+                        <small>{{ formatar_data(item.data_hora, "-", True) }} · {{ item.autor or "Equipe" }}</small>
                     </div>
                 </div>
                 {% endfor %}
-                <div class="obra-overview-timeline-item">
-                    <span></span>
-                    <div><strong>{{ fase_atual }}</strong><small>{{ formatar_data(entrega_real or obra.data_fim_prevista, "-") }}</small></div>
-                </div>
+                {% else %}
+                <div class="obra-empty-box">Nenhuma atualização de fase registrada ainda.</div>
+                {% endif %}
             </div>
         </div>
     </section>
@@ -256,24 +314,30 @@
         <form method="POST" action="{{ url_for('obras_bp.nova_foto_obra', obra_id=obra.id) }}" enctype="multipart/form-data"
             class="obra-galeria-upload-form">
             <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
-            <input type="hidden" name="fase" value="{{ fase_atual if fase_atual != 'Nao definida' else '' }}">
-            <div class="obra-galeria-upload-grid">
-                <div class="form-group">
-                    <label>Foto</label>
-                    <input type="file" name="foto_arquivo" accept="image/*" required>
+            <input type="hidden" name="fase" value="{{ fase_atual if fase_atual != 'Não definida' else '' }}">
+                <div class="obra-galeria-upload-grid">
+                    <div class="form-group">
+                        <label>Foto</label>
+                        <input type="file" name="foto_arquivo" accept="image/*" required>
                 </div>
                 <div class="form-group">
-                    <label>Titulo</label>
+                    <label>Título</label>
                     <input type="text" name="titulo" placeholder="Ex: alvenaria finalizada">
                 </div>
-                <div class="form-group">
-                    <label>Data</label>
-                    <input type="date" name="data_registro">
-                </div>
-                <div class="obra-foto-fase-atual">
-                    <span>Fase atual</span>
-                    <strong>{{ fase_atual }}</strong>
-                </div>
+                    <div class="form-group">
+                        <label>Data</label>
+                        <input type="date" name="data_registro">
+                    </div>
+                    <div class="form-group full obra-foto-publicacao-field">
+                        <label class="obra-foto-publicacao-toggle">
+                            <input type="checkbox" name="publicar_portal" value="1">
+                            <span>Publicar no portal do cliente</span>
+                        </label>
+                    </div>
+                    <div class="obra-foto-fase-atual">
+                        <span>Fase atual</span>
+                        <strong>{{ fase_atual }}</strong>
+                    </div>
             </div>
             <div class="obra-galeria-upload-actions">
                 <button type="submit" class="btn btn-primary">Adicionar foto</button>
@@ -284,15 +348,27 @@
         {% if fotos_obra %}
         <div class="obra-canteiro-gallery-grid">
             {% for foto in fotos_obra %}
+            {% set foto_publicada_portal = (foto.publicar_portal if foto.publicar_portal is defined and foto.publicar_portal else 0) %}
             <div class="obra-canteiro-photo-card">
                 <img src="{{ foto.caminho }}" alt="{{ foto.titulo or 'Foto da obra' }}">
                 <div class="obra-canteiro-photo-info">
                     <div>
                         <strong>{{ foto.titulo or foto.fase or fase_atual }}</strong>
                         <span>{{ formatar_data(foto.data_registro, "Sem data") }}</span>
+                        <small class="obra-foto-publicacao-status {% if foto_publicada_portal %}is-publicada{% else %}is-interna{% endif %}">
+                            {% if foto_publicada_portal %}Publicada no portal{% else %}Somente interno{% endif %}
+                        </small>
                     </div>
                     {% if eh_gestor() %}
                     <div class="obra-canteiro-photo-actions">
+                        <form method="POST" action="{{ url_for('obras_bp.atualizar_publicacao_foto_obra', obra_id=obra.id, foto_id=foto.id) }}">
+                            <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
+                            <input type="hidden" name="publicar_portal" value="0">
+                            <label class="obra-foto-publicacao-toggle">
+                                <input type="checkbox" name="publicar_portal" value="1" {% if foto_publicada_portal %}checked{% endif %} onchange="this.form.submit()">
+                                <span>Publicar no portal</span>
+                            </label>
+                        </form>
                         <form method="POST" action="{{ url_for('obras_bp.usar_foto_como_capa', obra_id=obra.id, foto_id=foto.id) }}">
                             <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
                             <button type="submit" class="btn btn-small btn-ghost">Usar como principal</button>
@@ -324,16 +400,16 @@
         <div class="card-hdr">
             <div>
                 <div class="card-title">Dados da obra</div>
-                <div class="obra-card-subtitle">Informacoes cadastrais e de contexto.</div>
+                <div class="obra-card-subtitle">Informações cadastrais e de contexto.</div>
             </div>
         </div>
         <div class="obra-info-grid">
             <div><span>Empresa / cliente</span><strong>{{ obra.empresa_nome if obra.empresa_nome is defined and obra.empresa_nome else "Sem empresa vinculada" }}</strong></div>
-            <div><span>Endereco</span><strong>{{ obra.endereco or "No informado" }}</strong></div>
-            <div><span>Codigo</span><strong>{{ obra.codigo }}</strong></div>
+            <div><span>Endereço</span><strong>{{ obra.endereco or "Não informado" }}</strong></div>
+            <div><span>Código</span><strong>{{ obra.codigo }}</strong></div>
             <div><span>Tipo da obra</span><strong>{{ formatar_tipo_obra(obra.tipo_obra) }}</strong></div>
             <div><span>Tipologia</span><strong>{{ obra.tipologia or "-" }}</strong></div>
-            <div><span>Area</span><strong>{{ obra.area_m2 or 0 }} m2</strong></div>
+            <div><span>Área</span><strong>{{ obra.area_m2 or 0 }} m²</strong></div>
         </div>
     </section>
 
@@ -367,27 +443,23 @@
         <div class="card-hdr">
             <div>
                 <div class="card-title">Cronograma</div>
-                <div class="obra-card-subtitle">Etapas e marcos da obra.</div>
+                <div class="obra-card-subtitle">Histórico acumulado das fases salvas.</div>
             </div>
         </div>
         <div class="obra-overview-timeline">
+            {% if fase_timeline %}
+            {% for item in fase_timeline %}
             <div class="obra-overview-timeline-item">
-                <span class="is-start"></span>
-                <div><strong>Início da obra</strong><small>{{ formatar_data(obra.data_inicio, "-") }}</small></div>
-            </div>
-            {% for item in medicoes %}
-            <div class="obra-overview-timeline-item">
-                <span></span>
+                <span {% if loop.first %}class="is-start"{% endif %}></span>
                 <div>
-                    <strong>{{ item.medicao_nome or item.etapa or "Medição" }}</strong>
-                    <small>{{ formatar_data(item.data_medicao, "-") }}{% if item.percentual %} - {{ item.percentual }}%{% endif %}{% if item.valor_realizado %} - {{ formatar_moeda(item.valor_realizado) }}{% endif %}</small>
+                    <strong>{{ item.fase }}</strong>
+                    <small>{{ formatar_data(item.data_hora, "-", True) }} · {{ item.autor or "Equipe" }}</small>
                 </div>
             </div>
             {% endfor %}
-            <div class="obra-overview-timeline-item">
-                <span></span>
-                <div><strong>Entrega prevista</strong><small>{{ formatar_data(obra.data_fim_prevista, "-") }}</small></div>
-            </div>
+            {% else %}
+            <div class="obra-empty-box">Nenhuma atualização de fase registrada ainda.</div>
+            {% endif %}
         </div>
     </section>
 
@@ -531,38 +603,38 @@
         <div class="card obra-section-card" data-obra-detail-panel="medicoes">
             <div class="card-hdr">
                 <div>
-                    <div class="card-title">Medicoes</div>
+                    <div class="card-title">Medições</div>
                     <div class="obra-card-subtitle">{{ medicoes|length }} registro(s)</div>
                 </div>
-                {% if eh_gestor() %}<button type="button" class="btn btn-small btn-primary" data-open-quick-modal="modalQuickMedicao">+ Medio</button>{% endif %}
+                {% if eh_gestor() %}<button type="button" class="btn btn-small btn-primary" data-open-quick-modal="modalQuickMedicao">+ Medição</button>{% endif %}
             </div>
             {% if medicoes %}
             <div class="obra-mini-lista">
-                <div class="obra-mini-head obra-mini-head--4"><span>Medio</span><span>Etapa</span><span>%</span><span>Valor</span></div>
+                <div class="obra-mini-head obra-mini-head--4"><span>Medição</span><span>Etapa</span><span>%</span><span>Valor</span></div>
                 {% for item in medicoes %}
                 <div class="obra-mini-row obra-mini-row--4"><span>{{ item.medicao_nome }}</span><span>{{ item.etapa }}</span><span>{{ item.percentual or 0 }}%</span><strong>{{ formatar_moeda(item.valor_realizado) }}</strong></div>
                 {% endfor %}
             </div>
-            {% else %}<div class="obra-empty-box">Sem medicoes.</div>{% endif %}
+            {% else %}<div class="obra-empty-box">Sem medições.</div>{% endif %}
         </div>
     </div>
 
     <div class="card obra-section-card obra-section-card--full obra-custos-lancados-old">
         <div class="card-hdr">
             <div>
-                <div class="card-title">Custos lancados</div>
+                <div class="card-title">Custos lançados</div>
                 <div class="obra-card-subtitle">{{ custos|length }} item(ns)</div>
             </div>
             {% if eh_gestor() %}<button type="button" class="btn btn-small btn-primary" data-open-quick-modal="modalQuickCusto">+ Custo</button>{% endif %}
         </div>
         {% if custos %}
         <div class="obra-mini-lista">
-            <div class="obra-mini-head obra-mini-head--4"><span>Categoria</span><span>Descricao</span><span>Fornecedor</span><span>Valor</span></div>
+            <div class="obra-mini-head obra-mini-head--4"><span>Categoria</span><span>Descrição</span><span>Fornecedor</span><span>Valor</span></div>
             {% for item in custos %}
             <div class="obra-mini-row obra-mini-row--4"><span>{{ item.categoria }}</span><span>{{ item.descricao }}</span><span>{{ item.fornecedor or "-" }}</span><strong>{{ formatar_moeda(item.valor_total) }}</strong></div>
             {% endfor %}
         </div>
-        {% else %}<div class="obra-empty-box">Sem custos lancados.</div>{% endif %}
+        {% else %}<div class="obra-empty-box">Sem custos lançados.</div>{% endif %}
     </div>
 
     <div class="obra-sections-grid">
@@ -576,7 +648,7 @@
             </div>
             {% if equipe %}
             <div class="obra-mini-lista">
-                <div class="obra-mini-head obra-mini-head--3"><span>Nome</span><span>Funcao</span><span>Pagamento</span></div>
+                <div class="obra-mini-head obra-mini-head--3"><span>Nome</span><span>Função</span><span>Pagamento</span></div>
                 {% for item in equipe %}
                 <div class="obra-mini-row obra-mini-row--3"><span>{{ item.nome }}</span><span>{{ item.funcao or "-" }}</span><strong>{{ item.status_pagamento or "-" }}</strong></div>
                 {% endfor %}
@@ -626,20 +698,20 @@
                     <div class="tipo-obra-group">
                         <label class="tipo-obra-option">
                             <input type="radio" name="tipo_obra" value="contrato" {% if (obra.tipo_obra or 'contrato') == 'contrato' %}checked{% endif %}>
-                            <div class="tipo-obra-card"><div class="tipo-obra-bullet"></div><div class="tipo-obra-text"><span class="tipo-obra-title">Por contrato</span><span class="tipo-obra-sub">Reforma, execucao ou servico</span></div></div>
+                            <div class="tipo-obra-card"><div class="tipo-obra-bullet"></div><div class="tipo-obra-text"><span class="tipo-obra-title">Por contrato</span><span class="tipo-obra-sub">Reforma, execução ou serviço</span></div></div>
                         </label>
                         <label class="tipo-obra-option">
                             <input type="radio" name="tipo_obra" value="venda" {% if obra.tipo_obra == 'venda' %}checked{% endif %}>
-                            <div class="tipo-obra-card"><div class="tipo-obra-bullet"></div><div class="tipo-obra-text"><span class="tipo-obra-title">Para venda</span><span class="tipo-obra-sub">Construcao com venda prevista</span></div></div>
+                            <div class="tipo-obra-card"><div class="tipo-obra-bullet"></div><div class="tipo-obra-text"><span class="tipo-obra-title">Para venda</span><span class="tipo-obra-sub">Construção com venda prevista</span></div></div>
                         </label>
                     </div>
                 </div>
                 <div class="form-group"><label>Tipologia *</label><input type="text" name="tipologia" value="{{ obra.tipologia or '' }}" required></div>
-                <div class="form-group"><label>Area (m2)</label><input type="number" step="0.01" name="area_m2" value="{{ obra.area_m2 or 0 }}"></div>
-                <div class="form-group full"><label>Endereco</label><input type="text" name="endereco" value="{{ obra.endereco or '' }}"></div>
-                <div class="form-group"><label>Data Inicio</label><input type="date" name="data_inicio" value="{{ obra.data_inicio or '' }}"></div>
+                <div class="form-group"><label>Área (m²)</label><input type="number" step="0.01" name="area_m2" value="{{ obra.area_m2 or 0 }}"></div>
+                <div class="form-group full"><label>Endereço</label><input type="text" name="endereco" value="{{ obra.endereco or '' }}"></div>
+                <div class="form-group"><label>Data Início</label><input type="date" name="data_inicio" value="{{ obra.data_inicio or '' }}"></div>
                 <div class="form-group"><label>Data Fim Prevista</label><input type="date" name="data_fim_prevista" value="{{ obra.data_fim_prevista or '' }}"></div>
-                <div class="form-group"><label>Orcamento previsto (R$)</label><input type="number" step="0.01" name="orcamento" value="{{ obra.orcamento or 0 }}"><small class="form-field-help">Custo-base esperado para executar a obra.</small></div>
+                <div class="form-group"><label>Orçamento previsto (R$)</label><input type="number" step="0.01" name="orcamento" value="{{ obra.orcamento or 0 }}"><small class="form-field-help">Custo-base esperado para executar a obra.</small></div>
                 <div class="form-group"><label>Valor do contrato (R$)</label><input type="number" step="0.01" name="receita_total" value="{{ obra.receita_total or 0 }}"><small class="form-field-help">Receita prevista ou valor fechado com o cliente.</small></div>
                 <div class="form-group">
                     <label>Status *</label>
@@ -652,8 +724,8 @@
                     </select>
                 </div>
             </div>
-            <div class="modal-info-card">Fase, conclusao, observacoes e fotos ficam nas abas Visao Geral e Galeria.</div>
-            <div class="modal-footer"><button type="button" class="btn btn-ghost" data-close-quick-modal>Cancelar</button><button type="submit" class="btn btn-primary">Salvar alteracoes</button></div>
+            <div class="modal-info-card">Fase, conclusão, observações e fotos ficam nas abas Visão Geral e Galeria.</div>
+            <div class="modal-footer"><button type="button" class="btn btn-ghost" data-close-quick-modal>Cancelar</button><button type="submit" class="btn btn-primary">Salvar alterações</button></div>
         </form>
     </div>
 </div>
@@ -665,16 +737,16 @@
             <input type="hidden" name="obra_id" value="{{ obra.id }}">
             <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
             <div class="form-grid modal-form-grid">
-                <div class="form-group full"><label>Descricao *</label><input type="text" name="descricao" required></div>
+                <div class="form-group full"><label>Descrição *</label><input type="text" name="descricao" required></div>
                 <div class="form-group"><label>Categoria *</label><select name="categoria" required class="js-categoria-custo"><option value="">Selecione...</option>{% for categoria in categorias_custo %}<option value="{{ categoria }}">{{ categoria }}</option>{% endfor %}</select></div>
                 <div class="form-group js-valor-total-field"><label>Valor</label><input type="number" step="0.01" name="valor_total" class="js-valor-total"></div>
                 <div class="form-group"><label>Fornecedor</label><input type="text" name="fornecedor"></div>
                 <div class="form-group"><label>Data</label><input type="date" name="data_lancamento"></div>
                 <div class="form-group js-material-field"><label>Quantidade</label><input type="number" step="0.01" name="quantidade" class="js-material-qtd"></div>
-                <div class="form-group js-material-field"><label>Valor unitario</label><input type="number" step="0.01" name="valor_unitario" class="js-material-unitario"></div>
+                <div class="form-group js-material-field"><label>Valor unitário</label><input type="number" step="0.01" name="valor_unitario" class="js-material-unitario"></div>
                 <div class="form-group js-material-field"><label>Status entrega</label><select name="status_entrega"><option value="">Sem controle</option><option value="Aguardando">Aguardando</option><option value="Entregue no Prazo">Entregue no Prazo</option><option value="Entregue com Atraso">Entregue com Atraso</option><option value="Cancelado">Cancelado</option></select></div>
                 <div class="form-group js-material-field"><label>Entrega prevista</label><input type="date" name="data_entrega_prevista"></div>
-                <div class="form-group full"><label>Observacao</label><textarea name="observacao"></textarea></div>
+                <div class="form-group full"><label>Observação</label><textarea name="observacao"></textarea></div>
             </div>
             <div class="modal-footer"><button type="button" class="btn btn-ghost" data-close-quick-modal>Cancelar</button><button type="submit" class="btn btn-primary">Salvar custo</button></div>
         </form>
@@ -683,20 +755,20 @@
 
 <div id="modalQuickMedicao" class="modal-overlay obra-quick-modal">
     <div class="modal-box">
-        <div class="modal-header"><h3>Nova medicao</h3><button type="button" class="modal-close" data-close-quick-modal>&times;</button></div>
+        <div class="modal-header"><h3>Nova medição</h3><button type="button" class="modal-close" data-close-quick-modal>&times;</button></div>
         <form method="POST" action="{{ url_for('medicoes_bp.nova_medicao') }}">
             <input type="hidden" name="obra_id" value="{{ obra.id }}">
             <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
             <div class="form-grid modal-form-grid">
-                <div class="form-group"><label>Medio *</label><input type="text" name="medicao_nome" required placeholder="Ex: 1 BM"></div>
+                <div class="form-group"><label>Medição *</label><input type="text" name="medicao_nome" required placeholder="Ex: 1 BM"></div>
                 <div class="form-group"><label>Etapa *</label><input type="text" name="etapa" required></div>
                 <div class="form-group"><label>Percentual %</label><input type="number" step="0.01" name="percentual" value="0"></div>
                 <div class="form-group"><label>Acumulado %</label><input type="number" step="0.01" name="percentual_acumulado" value="0"></div>
                 <div class="form-group"><label>Valor realizado</label><input type="number" step="0.01" name="valor_realizado" value="0"></div>
                 <div class="form-group"><label>Data</label><input type="date" name="data_medicao"></div>
-                <div class="form-group full"><label>Observacao</label><textarea name="observacao"></textarea></div>
+                <div class="form-group full"><label>Observação</label><textarea name="observacao"></textarea></div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-ghost" data-close-quick-modal>Cancelar</button><button type="submit" class="btn btn-primary">Salvar medicao</button></div>
+            <div class="modal-footer"><button type="button" class="btn btn-ghost" data-close-quick-modal>Cancelar</button><button type="submit" class="btn btn-primary">Salvar medição</button></div>
         </form>
     </div>
 </div>
@@ -709,7 +781,7 @@
             <input type="hidden" name="redirect_to" value="{{ url_for('obras_bp.obra_detalhes', codigo=obra.codigo) }}">
             <div class="form-grid modal-form-grid">
                 <div class="form-group"><label>Nome *</label><input type="text" name="nome" required></div>
-                <div class="form-group"><label>Funcao</label><input type="text" name="funcao"></div>
+                <div class="form-group"><label>Função</label><input type="text" name="funcao"></div>
                 <div class="form-group"><label>Valor contratado</label><input type="number" step="0.01" name="valor_contratado" value="0"></div>
                 <div class="form-group"><label>Valor pago</label><input type="number" step="0.01" name="valor_pago" value="0"></div>
             </div>
@@ -732,8 +804,8 @@
         display: flex;
         flex-direction: column;
         gap: 10px;
-        margin: 4px 0 10px;
-        padding-top: 1px;
+        margin: 0 0 10px;
+        padding-top: 0;
         background:
             linear-gradient(180deg, rgba(30, 33, 40, .98), rgba(30, 33, 40, .92));
         backdrop-filter: blur(14px);
@@ -814,6 +886,124 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    .obra-contract-updated-value {
+        display: block;
+        margin-top: 6px;
+        color: #9fb0c7;
+        font-size: 11px;
+        line-height: 1.35;
+        white-space: normal;
+    }
+
+    .obra-contract-panel {
+        display: grid;
+        gap: 8px;
+        padding: 9px 12px;
+        margin-bottom: 6px;
+        border: 1px solid rgba(255, 255, 255, .08);
+        border-radius: 8px;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, .028), rgba(255, 255, 255, .006)),
+            var(--bg2);
+        box-shadow: var(--premium-shadow);
+    }
+
+    .obra-contract-main,
+    .obra-contract-empty-action {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-width: 0;
+    }
+
+    .obra-contract-main span,
+    .obra-contract-empty-action span,
+    .obra-contract-history-title {
+        display: block;
+        color: var(--text2);
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: .03em;
+        text-transform: uppercase;
+    }
+
+    .obra-contract-main strong,
+    .obra-contract-empty-action strong {
+        display: block;
+        margin-top: 4px;
+        color: var(--text);
+        font-size: 13px;
+        line-height: 1.2;
+    }
+
+    .obra-contract-main small {
+        display: block;
+        margin-top: 3px;
+        color: var(--text2);
+        font-size: 11px;
+        line-height: 1.3;
+    }
+
+    .obra-contract-actions {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .obra-contract-actions form {
+        margin: 0;
+    }
+
+    .obra-contract-empty-action .btn {
+        min-height: 32px;
+        padding: 0 12px;
+    }
+
+    .obra-contract-history {
+        display: grid;
+        gap: 9px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(255, 255, 255, .07);
+    }
+
+    .obra-contract-timeline {
+        display: grid;
+        gap: 8px;
+    }
+
+    .obra-contract-timeline-item {
+        display: grid;
+        grid-template-columns: 18px minmax(0, 1fr) auto;
+        gap: 9px;
+        align-items: center;
+    }
+
+    .obra-contract-timeline-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 999px;
+        background: #67a6ff;
+        box-shadow: 0 0 0 4px rgba(103, 166, 255, .12);
+    }
+
+    .obra-contract-timeline-copy strong {
+        display: block;
+        color: var(--text);
+        font-size: 12px;
+        line-height: 1.25;
+    }
+
+    .obra-contract-timeline-copy small {
+        display: block;
+        margin-top: 3px;
+        color: var(--text2);
+        font-size: 12px;
+        line-height: 1.35;
     }
 
     .obra-sticky-budget-progress {
@@ -1608,7 +1798,7 @@
 
     @media (max-width: 720px) {
         .obra-detalhes-sticky-suite {
-            margin-top: 12px;
+            margin-top: 6px;
         }
 
         .obra-detalhes-tabs-bar {
@@ -1627,6 +1817,28 @@
 
         .obra-sticky-finance-card strong {
             font-size: 18px;
+        }
+
+        .obra-contract-main,
+        .obra-contract-empty-action {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .obra-contract-actions,
+        .obra-contract-actions .btn,
+        .obra-contract-actions form,
+        .obra-contract-actions button {
+            width: 100%;
+        }
+
+        .obra-contract-timeline-item {
+            grid-template-columns: 16px minmax(0, 1fr);
+        }
+
+        .obra-contract-timeline-item .btn {
+            grid-column: 2;
+            justify-self: start;
         }
 
         .obra-sticky-budget-progress>div:first-child {
@@ -1755,6 +1967,51 @@
         document.querySelectorAll(".obra-quick-modal").forEach(function (modal) {
             modal.addEventListener("click", function (event) {
                 if (event.target === modal) modal.classList.remove("show");
+            });
+        });
+
+        document.querySelectorAll("form.obra-operational-form").forEach(function (form) {
+            const faseSelect = form.querySelector('select[name="fase_obra"]');
+            const statusFlag = form.querySelector('input[name="atualizar_status_concluida"]');
+            if (!faseSelect || !statusFlag) return;
+
+            form.addEventListener("submit", function (event) {
+                if (form.dataset.phaseStatusConfirmBypass === "1") {
+                    form.dataset.phaseStatusConfirmBypass = "0";
+                    return;
+                }
+                if ((faseSelect.value || "").trim() !== "Concluída") {
+                    statusFlag.value = "0";
+                    return;
+                }
+                event.preventDefault();
+
+                const mensagem = 'A fase foi marcada como "Concluída". Deseja também atualizar o status da obra para "Concluída"?';
+                const confirmarFallback = function () {
+                    const confirmarStatus = window.confirm(mensagem);
+                    statusFlag.value = confirmarStatus ? "1" : "0";
+                    form.dataset.phaseStatusConfirmBypass = "1";
+                    if (typeof form.requestSubmit === "function") form.requestSubmit();
+                    else HTMLFormElement.prototype.submit.call(form);
+                };
+
+                if (!window.CanteiroConfirm || typeof window.CanteiroConfirm.askChoice !== "function") {
+                    confirmarFallback();
+                    return;
+                }
+
+                window.CanteiroConfirm.askChoice({
+                    title: "Atualizar status da obra?",
+                    message: mensagem,
+                    okText: "Atualizar fase e status",
+                    cancelText: "Salvar só a fase",
+                    okClass: "btn btn-primary"
+                }).then(function (confirmarStatus) {
+                    statusFlag.value = confirmarStatus ? "1" : "0";
+                    form.dataset.phaseStatusConfirmBypass = "1";
+                    if (typeof form.requestSubmit === "function") form.requestSubmit();
+                    else HTMLFormElement.prototype.submit.call(form);
+                });
             });
         });
 

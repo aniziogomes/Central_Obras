@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" sizes="256x256"
     href="{{ url_for('static', filename='imgLogos/logo1.png', v='2') }}" />
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='imgLogos/logo1.png', v='2') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='global-import-actions-1') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='global-import-actions-2') }}" />
 </head>
 
 <body>
@@ -59,8 +59,9 @@
           <span class="nav-ico">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
-              <path d="M6 3h12v18l-2-1.5L14 21l-2-1.5L10 21 8 19.5 6 21V3z" />
-              <path d="M9 8h6M9 12h6M9 16h4" />
+              <circle cx="12" cy="12" r="8" />
+              <path d="M12 7.8v8.4" />
+              <path d="M15 9.8c0-1.1-1.3-2-3-2s-3 .9-3 2 1.3 2 3 2 3 .9 3 2-1.3 2-3 2-3-.9-3-2" />
             </svg>
           </span>
           <span>Custos</span>
@@ -109,6 +110,20 @@
           <span>Medições</span>
         </a>
 
+        <a class="nav-item {% if request.endpoint and request.endpoint.startswith('contratos_bp.') %}active{% endif %}"
+          href="{{ url_for('contratos_bp.contratos') }}" data-spa>
+          <span class="nav-ico">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+              <path d="M14 3v5h5" />
+              <path d="m11 18 1-3 4.5-4.5a1.4 1.4 0 1 1 2 2L14 17l-3 1z" />
+              <path d="m15.5 11.5 2 2" />
+            </svg>
+          </span>
+          <span>Contratos</span>
+        </a>
+
         <div class="nav-lbl">Sistema</div>
 
         {% if eh_admin() %}
@@ -132,12 +147,14 @@
           <span class="nav-ico">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 3 21 19H3L12 3z" />
-              <path d="M12 10v4" />
-              <path d="M12 16h.01" />
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8" />
+              <path d="M10.5 20a1.5 1.5 0 0 0 3 0" />
             </svg>
           </span>
           <span>Alertas</span>
+          {% if alertas_globais|default([])|length > 0 %}
+          <span class="nav-alert-count">{{ alertas_globais|length }}</span>
+          {% endif %}
         </a>
 
         <a class="nav-item {% if request.endpoint == 'importacao_bp.orcamento_importado' %}active{% endif %}"
@@ -145,89 +162,58 @@
           <span class="nav-ico">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="16" rx="2" />
-              <path d="M8 8h8M8 12h5M8 16h4" />
-              <path d="M17 8v8" />
+              <rect x="5" y="3.5" width="14" height="17" rx="2" />
+              <rect x="8" y="6.5" width="8" height="2.5" rx="1" />
+              <path d="M8.5 12h2M13.5 12h2M8.5 15.5h2M13.5 15.5h2" />
             </svg>
           </span>
           <span>Orçamento</span>
         </a>
 
-        <form class="nav-logout-form" method="POST" action="{{ url_for('auth_bp.logout') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="nav-item nav-item--logout" type="submit">
-            <span class="nav-ico">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
-            </span>
-            <span>Sair</span>
-          </button>
-        </form>
+        <a class="nav-item {% if request.endpoint == 'importacao_bp.importacao' %}active{% endif %}"
+          href="{{ url_for('importacao_bp.importacao') }}" data-spa>
+          <span class="nav-ico">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v11" />
+              <path d="m8 10 4 4 4-4" />
+              <path d="M4 21h16" />
+            </svg>
+          </span>
+          <span>Importação</span>
+        </a>
       </nav>
 
       <div class="sidebar-foot">
-        <div class="user-badge" aria-label="Usuário conectado">
-          <div class="user-badge-avatar">
-            {% if session.get('usuario_foto') %}
-            <img src="{{ session.get('usuario_foto') }}" alt="">
-            {% else %}
-            {{ session.get('usuario_nome', 'U')[0] | upper }}
+        {% set nome_usuario = session.get('usuario_nome', 'Usuário') %}
+        {% set partes_nome = nome_usuario.split() %}
+        {% set primeira_inicial = (partes_nome[0][0] if partes_nome and partes_nome[0] else 'U') %}
+        {% set segunda_inicial = (partes_nome[1][0] if partes_nome|length > 1 and partes_nome[1] else '') %}
+        {% set iniciais_usuario = (primeira_inicial ~ segunda_inicial)|upper %}
+        {% set foto_usuario = (session.get('usuario_foto', '') or '')|trim %}
+        {% set foto_lower = foto_usuario|lower %}
+        {% set foto_placeholder = ('placeholder' in foto_lower) or ('default' in foto_lower) or ('sem_foto' in foto_lower) or ('no-photo' in foto_lower) %}
+        {% set tem_foto_valida = foto_usuario and not foto_placeholder %}
+        <a class="user-badge user-badge-link {% if request.endpoint == 'auth_bp.perfil' %}active{% endif %}"
+          href="{{ url_for('auth_bp.perfil') }}" data-spa aria-label="Abrir configurações da conta">
+          <div class="user-badge-avatar {% if tem_foto_valida %}has-photo{% else %}is-fallback{% endif %}">
+            <span class="user-badge-initials">{{ iniciais_usuario }}</span>
+            {% if tem_foto_valida %}
+            <img src="{{ foto_usuario }}" alt="Foto de perfil" loading="lazy"
+              onerror="this.closest('.user-badge-avatar').classList.remove('has-photo'); this.remove();">
             {% endif %}
           </div>
           <div class="user-badge-info">
             <div class="user-badge-name">{{ session.get('usuario_nome', 'Usuário') }}</div>
             <div class="user-badge-role">{{ usuario_perfil() or 'sem perfil' }}</div>
           </div>
-        </div>
+        </a>
       </div>
     </aside>
 
     <main class="main" id="spa-main">
       {% set alertas_topo = alertas_globais|default([]) %}
       <div class="top-actions">
-        <div class="global-alerts" data-alerts-widget>
-          <button type="button" class="global-alerts-btn" data-alerts-toggle aria-label="Abrir alertas"
-            aria-expanded="false">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-            </svg>
-            {% if alertas_topo|length > 0 %}
-            <span class="global-alerts-count">{{ alertas_topo|length }}</span>
-            {% endif %}
-          </button>
-
-          <div class="global-alerts-panel" data-alerts-panel>
-            <div class="global-alerts-head">
-              <div>
-                <strong>Alertas ativos</strong>
-                <span>{{ alertas_topo|length }} ponto(s) de atenção</span>
-              </div>
-              <a href="{{ url_for('dashboard_bp.alertas') }}" data-spa>Ver todos</a>
-            </div>
-
-            {% if alertas_topo|length > 0 %}
-            <div class="global-alerts-list">
-              {% for alerta in alertas_topo[:6] %}
-              <a class="global-alert-item global-alert-item--{{ alerta.tipo }}"
-                href="{{ url_for('dashboard_bp.alertas') }}" data-spa>
-                <span class="global-alert-severity">{{ 'Crítico' if alerta.tipo == 'danger' else 'Atenção' }}</span>
-                <strong>{{ alerta.codigo }} — {{ alerta.nome }}</strong>
-                <small>{{ alerta.mensagem }}</small>
-              </a>
-              {% endfor %}
-            </div>
-            {% else %}
-            <div class="global-alert-empty">Nenhum alerta ativo.</div>
-            {% endif %}
-          </div>
-        </div>
-
         <div class="global-actions" data-actions-widget>
           <button type="button" class="global-actions-btn" data-actions-toggle aria-label="Abrir menu de ações"
             aria-expanded="false">
@@ -238,10 +224,20 @@
             <a href="{{ menu_export_url }}" class="global-actions-item" data-export-action>Exportar Excel</a>
             <div class="global-actions-divider" role="separator"></div>
             {% endif %}
-            <a href="{{ url_for('importacao_bp.importacao') }}"
-              class="global-actions-item {% if request.endpoint == 'importacao_bp.importacao' %}active{% endif %}"
-              data-spa>Importação</a>
             <a href="{{ url_for('auth_bp.perfil') }}" class="global-actions-item" data-spa>Configurações da conta</a>
+            <div class="global-actions-divider" role="separator"></div>
+            <form class="global-actions-form" method="POST" action="{{ url_for('auth_bp.logout') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="global-actions-item global-actions-item--danger">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                <span>Sair</span>
+              </button>
+            </form>
           </div>
         </div>
       </div>
@@ -558,10 +554,32 @@
       const modal = document.querySelector('[data-system-confirm]');
       if (!modal) return;
 
+      const titleEl = modal.querySelector('#system-confirm-title');
       const messageEl = modal.querySelector('[data-system-confirm-message]');
       const okButton = modal.querySelector('[data-system-confirm-ok]');
       const cancelButtons = modal.querySelectorAll('[data-system-confirm-cancel]');
+      const cancelButton = Array.from(cancelButtons).find(button => button.tagName === 'BUTTON');
       let pendingForm = null;
+      let pendingChoiceResolver = null;
+
+      const defaults = {
+        title: titleEl ? titleEl.textContent : 'Confirmar ação',
+        message: messageEl ? messageEl.textContent : 'Deseja continuar com esta ação?',
+        okText: okButton ? okButton.textContent : 'Confirmar',
+        cancelText: cancelButton ? cancelButton.textContent : 'Cancelar',
+        okClass: okButton ? okButton.className : 'btn btn-primary'
+      };
+
+      function setModalContent(options) {
+        const opts = options || {};
+        if (titleEl) titleEl.textContent = opts.title || defaults.title;
+        if (messageEl) messageEl.textContent = opts.message || defaults.message;
+        if (okButton) {
+          okButton.textContent = opts.okText || defaults.okText;
+          okButton.className = opts.okClass || defaults.okClass;
+        }
+        if (cancelButton) cancelButton.textContent = opts.cancelText || defaults.cancelText;
+      }
 
       function extractConfirmMessage(form) {
         const inline = form.getAttribute('onsubmit') || '';
@@ -570,6 +588,13 @@
         if ((form.action || '').toLowerCase().includes('excluir')) return 'Deseja realmente excluir este item?';
         if ((form.action || '').toLowerCase().includes('revogar')) return 'Deseja realmente revogar este acesso?';
         return 'Deseja continuar com esta ação?';
+      }
+
+      function extractConfirmOkText(form) {
+        const action = (form.action || '').toLowerCase();
+        if (action.includes('excluir')) return 'Excluir';
+        if (action.includes('revogar')) return 'Revogar';
+        return 'Confirmar';
       }
 
       function isConfirmableForm(form) {
@@ -584,7 +609,14 @@
 
       function openConfirm(form) {
         pendingForm = form;
-        messageEl.textContent = extractConfirmMessage(form);
+        pendingChoiceResolver = null;
+        setModalContent({
+          title: 'Confirmar ação',
+          message: extractConfirmMessage(form),
+          okText: extractConfirmOkText(form),
+          cancelText: 'Cancelar',
+          okClass: defaults.okClass
+        });
         modal.hidden = false;
         requestAnimationFrame(() => {
           modal.classList.add('open');
@@ -592,9 +624,31 @@
         });
       }
 
-      function closeConfirm() {
+      function openChoiceConfirm(options) {
+        pendingForm = null;
+        setModalContent({
+          title: options && options.title ? options.title : defaults.title,
+          message: options && options.message ? options.message : defaults.message,
+          okText: options && options.okText ? options.okText : 'Confirmar',
+          cancelText: options && options.cancelText ? options.cancelText : defaults.cancelText,
+          okClass: options && options.okClass ? options.okClass : 'btn btn-primary'
+        });
+        modal.hidden = false;
+        requestAnimationFrame(() => {
+          modal.classList.add('open');
+          okButton.focus();
+        });
+      }
+
+      function closeConfirm(result) {
         modal.classList.remove('open');
         pendingForm = null;
+        if (pendingChoiceResolver) {
+          const resolver = pendingChoiceResolver;
+          pendingChoiceResolver = null;
+          resolver(Boolean(result));
+        }
+        setModalContent(defaults);
         window.setTimeout(() => {
           if (!modal.classList.contains('open')) modal.hidden = true;
         }, 140);
@@ -612,17 +666,32 @@
         if (!pendingForm) return;
         const form = pendingForm;
         form.dataset.systemConfirmBypass = '1';
-        closeConfirm();
+        closeConfirm(false);
         HTMLFormElement.prototype.submit.call(form);
       });
 
+      okButton.addEventListener('click', function () {
+        if (!pendingChoiceResolver) return;
+        closeConfirm(true);
+      });
+
       cancelButtons.forEach(button => {
-        button.addEventListener('click', closeConfirm);
+        button.addEventListener('click', function () {
+          closeConfirm(false);
+        });
       });
 
       document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape' && !modal.hidden) closeConfirm();
+        if (event.key === 'Escape' && !modal.hidden) closeConfirm(false);
       });
+
+      window.CanteiroConfirm = window.CanteiroConfirm || {};
+      window.CanteiroConfirm.askChoice = function (options) {
+        return new Promise(function (resolve) {
+          pendingChoiceResolver = resolve;
+          openChoiceConfirm(options || {});
+        });
+      };
     })();
 
     /* =============================================

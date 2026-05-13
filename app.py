@@ -28,6 +28,7 @@ from routes.compras_routes import compras_bp
 from routes.equipe_routes import equipe_bp
 from routes.medicoes_routes import medicoes_bp
 from routes.importacao_routes import importacao_bp
+from routes.contratos_routes import contratos_bp
 from routes.onboarding_routes import onboarding_bp
 from routes.portal_routes import portal_bp          # ← NOVO
 
@@ -72,6 +73,7 @@ ROTAS_PUBLICAS = {
     "auth_bp.redefinir_senha",
     "portal_bp.portal_obra",
     "portal_bp.pagina_nao_encontrada",
+    "contratos_bp.baixar_pdf_publico",
     "favicon",
     "static",
 }
@@ -175,6 +177,7 @@ def inject_helpers():
         "fornecedores_bp.fornecedores": "fornecedores_bp.fornecedores_exportar",
         "equipe_bp.equipe": "equipe_bp.equipe_exportar",
         "medicoes_bp.medicoes": "medicoes_bp.medicoes_exportar",
+        "contratos_bp.contratos": "contratos_bp.contratos_exportar",
     }
     menu_export_url = None
     export_endpoint = export_endpoints.get(request.endpoint)
@@ -209,6 +212,7 @@ app.register_blueprint(compras_bp)
 app.register_blueprint(equipe_bp)
 app.register_blueprint(medicoes_bp)
 app.register_blueprint(importacao_bp)
+app.register_blueprint(contratos_bp)
 app.register_blueprint(onboarding_bp)
 app.register_blueprint(portal_bp)                  # ← NOVO
 

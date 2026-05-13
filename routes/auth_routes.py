@@ -71,23 +71,23 @@ def gerar_token_reset(usuario_id):
 
 
 def enviar_email_reset_senha(usuario, link_reset):
-    nome = escape(usuario["nome"] or "usuario")
+    nome = escape(usuario["nome"] or "usuário")
     link = escape(link_reset)
-    assunto = "Redefinicao de senha - Canteiro"
+    assunto = "Redefinição de senha - Canteiro"
     texto = (
-        f"Ola, {usuario['nome']}.\n\n"
+        f"Olá, {usuario['nome']}.\n\n"
         "Recebemos uma solicitacao para redefinir sua senha no Canteiro.\n"
         f"Acesse este link em ate {RESET_SENHA_EXPIRACAO_MINUTOS} minutos:\n{link_reset}\n\n"
-        "Se voc? no solicitou essa redefinicao, ignore este email."
+        "Se você não solicitou essa redefinição, ignore este email."
     )
     html = f"""
     <div style="font-family:Arial,sans-serif;line-height:1.5;color:#20232a">
-      <h2>Redefinicao de senha</h2>
-      <p>Ola, {nome}.</p>
+      <h2>Redefinição de senha</h2>
+      <p>Olá, {nome}.</p>
       <p>Recebemos uma solicitacao para redefinir sua senha no Canteiro.</p>
       <p><a href="{link}" style="display:inline-block;background:#e8621a;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:700">Criar nova senha</a></p>
       <p>Este link expira em {RESET_SENHA_EXPIRACAO_MINUTOS} minutos.</p>
-      <p>Se voc? no solicitou essa redefinicao, ignore este email.</p>
+      <p>Se você não solicitou essa redefinição, ignore este email.</p>
     </div>
     """
     return enviar_email_resend(usuario["email"], assunto, html, texto)
@@ -239,7 +239,7 @@ def esqueci_senha():
             link_reset = f"{url_sistema()}{url_for('auth_bp.redefinir_senha', token=token)}"
             enviado = enviar_email_reset_senha(usuario, link_reset)
             if not enviado and os.environ.get("FLASK_DEBUG", "0") == "1":
-                print(f"Link de redefinicao de senha para desenvolvimento: {link_reset}")
+                print(f"Link de redefinição de senha para desenvolvimento: {link_reset}")
 
         flash("Se o email estiver cadastrado, enviaremos um link para redefinir sua senha.", "sucesso")
         return redirect(url_for("auth_bp.login"))
@@ -269,7 +269,7 @@ def redefinir_senha(token):
     )
 
     if not token_valido:
-        flash("Link de redefinicao invalido ou expirado. Solicite um novo link.", "erro")
+        flash("Link de redefinição inválido ou expirado. Solicite um novo link.", "erro")
         return redirect(url_for("auth_bp.esqueci_senha"))
 
     if request.method == "POST":
@@ -281,7 +281,7 @@ def redefinir_senha(token):
             return render_template("redefinir_senha.html", token=token)
 
         if nova_senha != confirmar_senha:
-            flash("A confirmao da senha no confere.", "erro")
+            flash("A confirmação da senha não confere.", "erro")
             return render_template("redefinir_senha.html", token=token)
 
         execute(
@@ -365,7 +365,7 @@ def atualizar_foto_perfil():
 
     execute("UPDATE usuarios SET foto_perfil = ? WHERE id = ?", (caminho, session["usuario_id"]))
     session["usuario_foto"] = caminho
-    registrar_log("atualizar_foto", "usuario", session["usuario_id"], "Usuario atualizou a foto de perfil")
+    registrar_log("atualizar_foto", "usuario", session["usuario_id"], "Usuário atualizou a foto de perfil")
     flash("Foto de perfil atualizada.", "sucesso")
     return redirect(url_for("auth_bp.perfil"))
 
@@ -375,7 +375,7 @@ def usuarios():
     if not usuario_logado():
         return redirect(url_for("auth_bp.login"))
     if not eh_admin():
-        flash("Apenas administradores podem gerenciar usuarios.", "erro")
+        flash("Apenas administradores podem gerenciar usuários.", "erro")
         return redirect(url_for("dashboard_bp.dashboard"))
 
     filtro_empresa = ""
@@ -426,7 +426,7 @@ def usuarios_antigo():
 @auth_bp.route("/usuarios/novo", methods=["POST"])
 def novo_usuario():
     if not usuario_logado() or not eh_admin():
-        flash("Apenas administradores podem criar usuarios.", "erro")
+        flash("Apenas administradores podem criar usuários.", "erro")
         return redirecionar_usuarios()
 
     try:
@@ -457,7 +457,7 @@ def novo_usuario():
         else:
             empresa_id = empresa_id_atual()
             if not empresa_id:
-                raise ValueError("Administrador sem empresa no pode criar usuarios de empresa.")
+                raise ValueError("Administrador sem empresa não pode criar usuários de empresa.")
     except ValueError as e:
         flash(str(e), "erro")
         return redirecionar_usuarios()
@@ -467,11 +467,11 @@ def novo_usuario():
         return redirecionar_usuarios()
 
     if senha != confirmar_senha:
-        flash("A confirmao da senha no confere.", "erro")
+        flash("A confirmação da senha não confere.", "erro")
         return redirecionar_usuarios()
 
     if query_one("SELECT id FROM usuarios WHERE username = ?", (username,)):
-        flash("Ja existe um usuario com esse username.", "erro")
+        flash("Já existe um usuário com esse username.", "erro")
         return redirecionar_usuarios()
 
     usuario_existente_email = None
@@ -481,13 +481,13 @@ def novo_usuario():
             (email,),
         )
         if usuario_existente_email and int(usuario_existente_email["ativo"] or 0) == 1:
-            flash("Ja existe um usuario com esse email.", "erro")
+            flash("Já existe um usuário com esse email.", "erro")
             return redirecionar_usuarios()
 
     onboarding_pendente = 1 if perfil == "gestor" else 0
     onboarding_completo = 0 if onboarding_pendente else 1
 
-    # Reaproveita cadastro inativo com o mesmo email para evitar bloqueio de recriacao.
+    # Reaproveita cadastro inativo com o mesmo email para evitar bloqueio de recriação.
     if email and usuario_existente_email and int(usuario_existente_email["ativo"] or 0) == 0:
         usuario_id = usuario_existente_email["id"]
 
@@ -496,7 +496,7 @@ def novo_usuario():
             (username, usuario_id),
         )
         if conflito_username:
-            flash("Ja existe um usuario com esse username.", "erro")
+            flash("Já existe um usuário com esse username.", "erro")
             return redirecionar_usuarios()
 
         execute(
@@ -519,9 +519,9 @@ def novo_usuario():
                 usuario_id,
             ),
         )
-        registrar_log("reativar_usuario", "usuario", usuario_id, f"Usuario {username} reativado pelo cadastro")
+        registrar_log("reativar_usuario", "usuario", usuario_id, f"Usuário {username} reativado pelo cadastro")
         guardar_credenciais_usuario(nome, username, senha, "reativado")
-        flash("Usuario existente foi reativado com sucesso.", "sucesso")
+        flash("Usuário existente foi reativado com sucesso.", "sucesso")
         return redirecionar_usuarios()
 
     usuario_id = execute(
@@ -544,9 +544,9 @@ def novo_usuario():
             onboarding_pendente,
         )
     )
-    registrar_log("criar_usuario", "usuario", usuario_id, f"Usuario {username} criado")
+    registrar_log("criar_usuario", "usuario", usuario_id, f"Usuário {username} criado")
     guardar_credenciais_usuario(nome, username, senha, "criado")
-    flash("Usuario criado com sucesso.", "sucesso")
+    flash("Usuário criado com sucesso.", "sucesso")
     return redirecionar_usuarios()
 
 
@@ -593,12 +593,12 @@ def novo_usuario_antigo():
 @auth_bp.route("/usuarios/editar/<int:usuario_id>", methods=["POST"])
 def editar_usuario(usuario_id):
     if not usuario_logado() or not eh_admin():
-        flash("Apenas administradores podem editar usuarios.", "erro")
+        flash("Apenas administradores podem editar usuários.", "erro")
         return redirecionar_usuarios()
 
     usuario = obter_usuario_administravel(usuario_id)
     if not usuario:
-        flash("Usuario no encontrado.", "erro")
+        flash("Usuário não encontrado.", "erro")
         return redirecionar_usuarios()
 
     try:
@@ -626,21 +626,21 @@ def editar_usuario(usuario_id):
         else:
             empresa_id = empresa_id_atual()
             if not empresa_id:
-                raise ValueError("Administrador sem empresa no pode editar usuarios de empresa.")
+                raise ValueError("Administrador sem empresa não pode editar usuários de empresa.")
     except ValueError as e:
         flash(str(e), "erro")
         return redirecionar_usuarios()
 
     if usuario_id == session.get("usuario_id") and ativo == 0:
-        flash("Voc? no pode desativar sua propria conta.", "erro")
+        flash("Você não pode desativar sua própria conta.", "erro")
         return redirecionar_usuarios()
 
     if query_one("SELECT id FROM usuarios WHERE username = ? AND id != ?", (username, usuario_id)):
-        flash("Ja existe um usuario com esse username.", "erro")
+        flash("Já existe um usuário com esse username.", "erro")
         return redirecionar_usuarios()
 
     if email and query_one("SELECT id FROM usuarios WHERE lower(email) = ? AND id != ?", (email, usuario_id)):
-        flash("Ja existe um usuario com esse email.", "erro")
+        flash("Já existe um usuário com esse email.", "erro")
         return redirecionar_usuarios()
 
     onboarding_pendente = None
@@ -669,8 +669,8 @@ def editar_usuario(usuario_id):
         session["usuario_perfil"] = perfil
         session["empresa_id"] = empresa_id
 
-    registrar_log("editar_usuario", "usuario", usuario_id, f"Usuario atualizado: {username}")
-    flash("Usuario atualizado com sucesso.", "sucesso")
+    registrar_log("editar_usuario", "usuario", usuario_id, f"Usuário atualizado: {username}")
+    flash("Usuário atualizado com sucesso.", "sucesso")
     return redirecionar_usuarios()
 
 
@@ -680,51 +680,51 @@ def toggle_usuario(usuario_id):
 
     if not usuario_logado() or not eh_admin():
         if requisicao_ajax:
-            return jsonify({"ok": False, "message": "No autorizado."}), 403
-        flash("Apenas administradores podem alterar usuarios.", "erro")
+            return jsonify({"ok": False, "message": "Não autorizado."}), 403
+        flash("Apenas administradores podem alterar usuários.", "erro")
         return redirecionar_usuarios()
 
     if usuario_id == session.get("usuario_id"):
         if requisicao_ajax:
-            return jsonify({"ok": False, "message": "Voc? no pode desativar sua propria conta."}), 400
-        flash("Voc? no pode desativar sua propria conta.", "erro")
+            return jsonify({"ok": False, "message": "Você não pode desativar sua própria conta."}), 400
+        flash("Você não pode desativar sua própria conta.", "erro")
         return redirecionar_usuarios()
 
     usuario = obter_usuario_administravel(usuario_id, "id, ativo")
     if not usuario:
         if requisicao_ajax:
-            return jsonify({"ok": False, "message": "Usuario no encontrado."}), 404
-        flash("Usuario no encontrado.", "erro")
+            return jsonify({"ok": False, "message": "Usuário não encontrado."}), 404
+        flash("Usuário não encontrado.", "erro")
         return redirecionar_usuarios()
 
     novo_status = 0 if usuario["ativo"] else 1
     execute("UPDATE usuarios SET ativo = ? WHERE id = ?", (novo_status, usuario_id))
-    registrar_log("toggle_usuario", "usuario", usuario_id, "Usuario ativado" if novo_status else "Usuario desativado")
+    registrar_log("toggle_usuario", "usuario", usuario_id, "Usuário ativado" if novo_status else "Usuário desativado")
 
     if requisicao_ajax:
         return jsonify({"ok": True, "ativo": bool(novo_status)})
-    flash("Usuario ativado." if novo_status else "Usuario desativado.", "sucesso")
+    flash("Usuário ativado." if novo_status else "Usuário desativado.", "sucesso")
     return redirecionar_usuarios()
 
 
 @auth_bp.route("/usuarios/excluir/<int:usuario_id>", methods=["POST"])
 def excluir_usuario(usuario_id):
     if not usuario_logado() or not eh_admin():
-        flash("Apenas administradores podem excluir usuarios.", "erro")
+        flash("Apenas administradores podem excluir usuários.", "erro")
         return redirecionar_usuarios()
 
     if usuario_id == session.get("usuario_id"):
-        flash("Voc? no pode excluir sua propria conta.", "erro")
+        flash("Você não pode excluir sua própria conta.", "erro")
         return redirecionar_usuarios()
 
     usuario = obter_usuario_administravel(usuario_id, "id, username")
     if not usuario:
-        flash("Usuario no encontrado.", "erro")
+        flash("Usuário não encontrado.", "erro")
         return redirecionar_usuarios()
 
     execute("DELETE FROM usuarios WHERE id = ?", (usuario_id,))
-    registrar_log("excluir_usuario", "usuario", usuario_id, f"Usuario excluido: {usuario['username']}")
-    flash("Usuario excluido com sucesso.", "sucesso")
+    registrar_log("excluir_usuario", "usuario", usuario_id, f"Usuário excluído: {usuario['username']}")
+    flash("Usuário excluído com sucesso.", "sucesso")
     return redirecionar_usuarios()
 
 
@@ -743,14 +743,14 @@ def desativar_usuario(usuario_id):
     usuario = obter_usuario_administravel(usuario_id, "id, ativo")
     if not usuario:
         if requisicao_ajax:
-            return jsonify({"ok": False, "message": "Usuario no encontrado."}), 404
-        flash("Usuario no encontrado.", "erro")
+            return jsonify({"ok": False, "message": "Usuário não encontrado."}), 404
+        flash("Usuário não encontrado.", "erro")
         return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
     if not usuario["ativo"]:
         if requisicao_ajax:
-            return jsonify({"ok": True, "message": "Usuario ja estava inativo."})
-        flash("Usuario ja estava inativo.", "sucesso")
+            return jsonify({"ok": True, "message": "Usuário já estava inativo."})
+        flash("Usuário já estava inativo.", "sucesso")
         return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
     execute("UPDATE usuarios SET ativo = 0 WHERE id = ? AND ativo = 1", (usuario_id,))
@@ -762,17 +762,17 @@ def desativar_usuario(usuario_id):
 @auth_bp.route("/usuarios/<int:usuario_id>/reativar", methods=["POST"])
 def reativar_usuario(usuario_id):
     if not usuario_logado() or not eh_admin():
-        flash("Apenas administradores podem reativar usuarios.", "erro")
+        flash("Apenas administradores podem reativar usuários.", "erro")
         return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
     usuario = obter_usuario_administravel(usuario_id)
     if not usuario:
-        flash("Usuario no encontrado.", "erro")
+        flash("Usuário não encontrado.", "erro")
         return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
     execute("UPDATE usuarios SET ativo = 1 WHERE id = ?", (usuario_id,))
-    registrar_log("reativar_usuario", "usuario", usuario_id, "Usuario reativado")
-    flash("Usuario reativado.", "sucesso")
+    registrar_log("reativar_usuario", "usuario", usuario_id, "Usuário reativado")
+    flash("Usuário reativado.", "sucesso")
     return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
 
@@ -789,12 +789,12 @@ def resetar_senha_usuario(usuario_id):
         return redirecionar_usuarios()
 
     if confirmar_senha and nova_senha != confirmar_senha:
-        flash("A confirmao da senha no confere.", "erro")
+        flash("A confirmação da senha não confere.", "erro")
         return redirecionar_usuarios()
 
     usuario = obter_usuario_administravel(usuario_id, "id, nome, username")
     if not usuario:
-        flash("Usuario no encontrado.", "erro")
+        flash("Usuário não encontrado.", "erro")
         return redirecionar_usuarios()
 
     execute("UPDATE usuarios SET senha_hash = ? WHERE id = ?", (gerar_hash_senha(nova_senha), usuario_id))
@@ -807,12 +807,12 @@ def resetar_senha_usuario(usuario_id):
 @auth_bp.route("/usuarios/<int:usuario_id>/foto", methods=["POST"])
 def atualizar_foto_usuario(usuario_id):
     if not usuario_logado() or not eh_admin():
-        flash("Apenas administradores podem alterar fotos de usuarios.", "erro")
+        flash("Apenas administradores podem alterar fotos de usuários.", "erro")
         return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
     usuario = obter_usuario_administravel(usuario_id)
     if not usuario:
-        flash("Usuario no encontrado.", "erro")
+        flash("Usuário não encontrado.", "erro")
         return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
     try:
@@ -824,8 +824,8 @@ def atualizar_foto_usuario(usuario_id):
     execute("UPDATE usuarios SET foto_perfil = ? WHERE id = ?", (caminho, usuario_id))
     if usuario_id == session.get("usuario_id"):
         session["usuario_foto"] = caminho
-    registrar_log("atualizar_foto_usuario", "usuario", usuario_id, "Foto de usuario atualizada pelo administrador")
-    flash("Foto do usuario atualizada.", "sucesso")
+    registrar_log("atualizar_foto_usuario", "usuario", usuario_id, "Foto de usuário atualizada pelo administrador")
+    flash("Foto do usuário atualizada.", "sucesso")
     return redirect(url_for("auth_bp.perfil") + "#usuarios")
 
 

@@ -15,17 +15,10 @@
       --text: #f7f8fb;
       --text-soft: #a7b0bf;
       --text-dim: #70798a;
-<<<<<<< ours
       --orange: #ff8a1f;
       --orange-soft: #ffb25f;
       --orange-glow: rgba(255, 138, 31, 0.24);
       --green: #49c97c;
-=======
-      --orange: #2f7df0;
-      --orange-soft: #9bc4ff;
-      --orange-glow: rgba(47, 125, 240, 0.20);
-      --green: #2f7df0;
->>>>>>> theirs
       --shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
       --radius-xl: 28px;
       --radius-lg: 22px;
@@ -47,11 +40,7 @@
       color: var(--text);
       font-family: Sora, Manrope, "Segoe UI", sans-serif;
       background:
-<<<<<<< ours
         radial-gradient(circle at top left, rgba(255, 138, 31, 0.18), transparent 30%),
-=======
-        radial-gradient(circle at top left, rgba(47, 125, 240, 0.14), transparent 30%),
->>>>>>> theirs
         radial-gradient(circle at top right, rgba(255, 255, 255, 0.06), transparent 20%),
         linear-gradient(180deg, #080a0f 0%, #10141c 44%, #090b10 100%);
     }
@@ -136,15 +125,9 @@
       min-height: 34px;
       padding: 0 12px;
       border-radius: 999px;
-<<<<<<< ours
       border: 1px solid rgba(73, 201, 124, 0.2);
       background: rgba(73, 201, 124, 0.1);
       color: #98e8b7;
-=======
-      border: 1px solid rgba(99, 156, 255, 0.22);
-      background: rgba(47, 125, 240, 0.10);
-      color: #9bc4ff;
->>>>>>> theirs
       font-size: 11px;
       font-weight: 800;
       white-space: nowrap;
@@ -156,11 +139,7 @@
       height: 7px;
       border-radius: 50%;
       background: var(--green);
-<<<<<<< ours
       box-shadow: 0 0 0 6px rgba(73, 201, 124, 0.12);
-=======
-      box-shadow: 0 0 0 6px rgba(47, 125, 240, 0.10);
->>>>>>> theirs
     }
 
     .hero {
@@ -201,11 +180,7 @@
       display: grid;
       place-items: center;
       background:
-<<<<<<< ours
         radial-gradient(circle at 28% 18%, rgba(255, 138, 31, 0.28), transparent 24%),
-=======
-        radial-gradient(circle at 28% 18%, rgba(47, 125, 240, 0.24), transparent 24%),
->>>>>>> theirs
         linear-gradient(180deg, #161b25 0%, #0f131b 100%);
     }
 
@@ -257,15 +232,9 @@
     }
 
     .hero-chip--phase {
-<<<<<<< ours
       color: #ffd0a0;
       border-color: rgba(255, 138, 31, 0.28);
       background: rgba(255, 138, 31, 0.16);
-=======
-      color: #b7d3ff;
-      border-color: rgba(99, 156, 255, 0.28);
-      background: rgba(47, 125, 240, 0.14);
->>>>>>> theirs
     }
 
     .hero-title {
@@ -413,13 +382,9 @@
     }
 
     .message-card {
-<<<<<<< ours
       background:
         linear-gradient(180deg, rgba(255, 138, 31, 0.08), rgba(255, 138, 31, 0.02)),
         var(--panel-strong);
-=======
-      background: var(--panel-strong);
->>>>>>> theirs
     }
 
     .message-card p {
@@ -585,7 +550,6 @@
     }
 
     .timeline-item.is-done .timeline-dot {
-<<<<<<< ours
       background: rgba(73, 201, 124, 0.16);
       color: #8ce4ad;
       border-color: rgba(73, 201, 124, 0.22);
@@ -596,18 +560,6 @@
       color: #ffd1a6;
       border-color: rgba(255, 138, 31, 0.26);
       box-shadow: 0 0 0 8px rgba(255, 138, 31, 0.08);
-=======
-      background: rgba(47, 125, 240, 0.10);
-      color: #9bc4ff;
-      border-color: rgba(99, 156, 255, 0.18);
-    }
-
-    .timeline-item.is-current .timeline-dot {
-      background: rgba(47, 125, 240, 0.16);
-      color: #b7d3ff;
-      border-color: rgba(99, 156, 255, 0.26);
-      box-shadow: 0 0 0 8px rgba(47, 125, 240, 0.07);
->>>>>>> theirs
     }
 
     .timeline-card {
@@ -714,10 +666,10 @@
   {% set iniciais = ((partes_nome[0][0] if partes_nome else 'O') ~ (partes_nome[1][0] if partes_nome|length > 1 else
   ''))|upper %}
   {% set progresso = (obra.progresso_percentual or 0)|round(0)|int %}
-  {% set endereco_resumido = obra.endereco if obra.endereco else 'Localizacao informada em obra privada' %}
+  {% set endereco_resumido = obra.endereco if obra.endereco else 'Localização informada em obra privada' %}
   {% set tipologia_resumida = obra.tipologia if obra.tipologia else 'Projeto residencial ou comercial' %}
   {% set fotos_galeria = galeria_portal if galeria_portal is defined else [] %}
-  {% set atualizacao_label = formatar_data(ultima_atualizacao, '-', True) if ultima_atualizacao else 'Sem atualizacao
+  {% set atualizacao_label = formatar_data(ultima_atualizacao, '-', True) if ultima_atualizacao else 'Sem atualização
   publicada' %}
 
   <main class="portal-page">
@@ -763,7 +715,7 @@
           </div>
           <div class="progress-copy">
             <strong>{{ fase_portal }}</strong>
-            <p>Seu portal mostra com clareza em que etapa a obra esta agora e qual o proximo movimento previsto pela
+            <p>Seu portal mostra com clareza em que etapa a obra está agora e qual o próximo movimento previsto pela
               equipe.</p>
             <div class="progress-bar"><i></i></div>
           </div>
@@ -777,14 +729,14 @@
           <div class="hero-metrics">
             <div class="hero-metric">
               <span>Entrega prevista</span>
-              <strong>{{ formatar_data(obra.data_fim_prevista, 'Em definicao') }}</strong>
+              <strong>{{ formatar_data(obra.data_fim_prevista, 'Em definição') }}</strong>
             </div>
             <div class="hero-metric">
               <span>Próxima etapa</span>
               <strong>{{ proxima_etapa }}</strong>
             </div>
             <div class="hero-metric">
-              <span>Ultima atualizacao</span>
+              <span>Última atualização</span>
               <strong>{{ atualizacao_label }}</strong>
             </div>
             <div class="hero-metric">
@@ -799,10 +751,10 @@
       <section class="portal-card message-card">
         <div class="portal-card-body">
           <span class="portal-section-kicker">Mensagem do responsável</span>
-          <h2 class="portal-section-title">Resumo da obra para voc?</h2>
+          <h2 class="portal-section-title">Resumo da obra para você</h2>
           <p class="{% if not obra.observacao_responsavel %}is-empty{% endif %}">
             {{ obra.observacao_responsavel or "O responsável técnico ainda não publicou uma mensagem detalhada. Assim
-            que houver uma nova atualizacao, ela aparecera aqui com destaque." }}
+            que houver uma nova atualização, ela aparecerá aqui com destaque." }}
           </p>
           <div class="meta-row">
             <span class="meta-pill">Fase atual: {{ fase_portal }}</span>
@@ -839,7 +791,7 @@
           </div>
           {% else %}
           <div class="gallery-empty">
-            <div class="gallery-empty-card">As primeiras imagens da obra aparecerao aqui em um mural visual pensado para
+            <div class="gallery-empty-card">As primeiras imagens da obra aparecerão aqui em um mural visual pensado para
               o seu acompanhamento.</div>
             <div class="gallery-empty-card">Mesmo com poucas fotos, o portal continua organizado e pronto para receber
               novos registros.</div>
@@ -875,14 +827,14 @@
 
       <section class="portal-card">
         <div class="portal-card-body">
-          <span class="portal-section-kicker">Atualizacoes publicadas</span>
+          <span class="portal-section-kicker">Atualizações publicadas</span>
           <h2 class="portal-section-title">Histórico recente do portal</h2>
           {% if atualizacoes %}
           <div class="updates-list">
             {% for atualizacao in atualizacoes[:4] %}
             <article class="update-card">
               <time>{{ formatar_data(atualizacao.data_hora, '-', True) }}</time>
-              <p>{{ atualizacao.descricao|replace('Atualizao para o cliente:', '')|replace('Atualização para o
+              <p>{{ atualizacao.descricao|replace('Atualização para o cliente:', '')|replace('Atualização para o
                 cliente:', '')|trim }}</p>
               {% if atualizacao.autor %}
               <small>Publicado por {{ atualizacao.autor }}</small>

@@ -4,12 +4,43 @@ from utils import calcular_media_fornecedor, formatar_moeda, formatar_data
 from services.validators import data_no_periodo
 from services.tenant import and_empresa, where_empresa
 
+DIAS_ALERTA_ASSINATURA_CONTRATO = 7
+
+
+def _parse_datetime_flex(valor):
+    if not valor:
+        return None
+    texto = str(valor).strip()
+    if not texto:
+        return None
+    formatos = (
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d",
+    )
+    for fmt in formatos:
+        try:
+            return datetime.strptime(texto[:19], fmt)
+        except Exception:
+            continue
+    return None
+
 
 def calcular_alertas(obra_ids_filtradas=None):
     where_obras, params_obras = where_empresa()
     where_equipe, params_equipe = where_empresa()
+    where_contratos, params_contratos = where_empresa("c")
     obras = query_all(f"SELECT * FROM obras {where_obras}", params_obras)
     equipe = query_all(f"SELECT * FROM equipe {where_equipe}", params_equipe)
+    contratos = query_all(
+        f"""
+        SELECT c.*, o.codigo AS obra_codigo, o.nome AS obra_nome
+        FROM contratos c
+        LEFT JOIN obras o ON o.id = c.obra_id
+        {where_contratos}
+        """,
+        params_contratos,
+    )
 
     if obra_ids_filtradas:
         obras = [o for o in obras if o["id"] in obra_ids_filtradas]
@@ -78,10 +109,40 @@ def calcular_alertas(obra_ids_filtradas=None):
 
     if obra_ids_filtradas:
         equipe = [p for p in equipe if p["obra_id"] in obra_ids_filtradas]
+        contratos = [c for c in contratos if c["obra_id"] in obra_ids_filtradas]
 
     for profissional in equipe:
         if (profissional["status_pagamento"] or "").lower() == "pendente":
             adicionar_alerta("warn", "EQUIPE", profissional["nome"], f"Pagamento pendente para {profissional['nome']}.")
+
+    for contrato in contratos:
+        if (contrato["data_assinatura"] or "").strip():
+            continue
+        status = (contrato["status"] or "").strip().lower()
+        if status in {"rascunho", "cancelado", "assinado"}:
+            continue
+        data_base = _parse_datetime_flex(contrato["data_geracao"]) or _parse_datetime_flex(contrato["created_at"])
+        if not data_base:
+            continue
+        dias = max((datetime.now() - data_base).days, 0)
+        if dias < DIAS_ALERTA_ASSINATURA_CONTRATO:
+            continue
+
+        numero = contrato["numero_contrato"] or f"#{contrato['id']}"
+        titulo = contrato["titulo"] or "Contrato"
+        codigo = contrato["obra_codigo"] if contrato["obra_codigo"] else "CONTRATOS"
+        nome = contrato["obra_nome"] if contrato["obra_nome"] else titulo
+        contexto = f"Contrato {numero} · {titulo}"
+        adicionar_alerta(
+            "warn",
+            codigo,
+            nome,
+            f"Contrato sem confirmação de assinatura há {dias} dia(s).",
+            contexto=contexto,
+            acao="Ver contratos",
+            destino="contratos",
+            obra_codigo=contrato["obra_codigo"],
+        )
 
     obras_por_codigo = {obra["codigo"]: obra for obra in obras}
 
@@ -94,8 +155,10 @@ def calcular_alertas(obra_ids_filtradas=None):
 
         alerta["severidade"] = "CRÍTICO" if tipo == "danger" else ("ATENÇÃO" if tipo == "warn" else "INFO")
         alerta["acao"] = alerta.get("acao") or ("Ver obra" if obra else "Ver equipe")
-        alerta["destino"] = "obra" if obra else "equipe"
-        alerta["obra_codigo"] = obra["codigo"] if obra else None
+        alerta["destino"] = alerta.get("destino") or ("obra" if obra else "equipe")
+        alerta["obra_codigo"] = alerta.get("obra_codigo") if "obra_codigo" in alerta else None
+        if obra and not alerta["obra_codigo"]:
+            alerta["obra_codigo"] = obra["codigo"]
 
         contexto = alerta.get("contexto") or ""
 
@@ -139,6 +202,10 @@ def calcular_alertas(obra_ids_filtradas=None):
         elif "pagamento" in mensagem_lower:
             contexto = f"Profissional: {alerta['nome']} · Status: pendente"
             alerta["acao"] = "Ver equipe"
+        elif "assinatura" in mensagem_lower:
+            alerta["acao"] = "Ver contratos"
+            if not contexto:
+                contexto = "Contrato pendente de assinatura."
 
         alerta["contexto"] = contexto
 

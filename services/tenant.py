@@ -15,6 +15,9 @@ TABELAS_TENANT = {
     "importacoes",
     "custos_importados_categoria",
     "fotos_obra",
+    "clientes",
+    "contratos",
+    "clausulas_contrato",
     "logs",
 }
 TABELAS_FILHAS_OBRA = {
@@ -98,7 +101,7 @@ def obter_ou_criar_empresa(nome, documento=None):
         if empresa_mesmo_nome:
             documento_atual = normalizar_documento_empresa(empresa_mesmo_nome["documento"])
             if documento_atual and documento_atual != documento_norm:
-                raise ValueError("Ja existe empresa com este nome vinculada a outro CNPJ/CPF.")
+                raise ValueError("Já existe empresa com este nome vinculada a outro CNPJ/CPF.")
             execute(
                 "UPDATE empresas SET documento = ?, ativo = 1 WHERE id = ?",
                 (documento_norm, empresa_mesmo_nome["id"]),
@@ -249,6 +252,8 @@ def empresa_id_da_entidade(entidade, entidade_id):
         "medicao": "medicoes",
         "planilha": "importacoes",
         "usuario": "usuarios",
+        "cliente": "clientes",
+        "contrato": "contratos",
     }
     tabela = entidade_para_tabela.get(entidade)
     if not tabela or not entidade_id:

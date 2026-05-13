@@ -45,7 +45,7 @@ def nova_medicao():
     obra_id = request.form.get("obra_id", "").strip()
     try:
         mes = limpar_texto(request.form.get("mes", ""), max_len=20)
-        medicao_nome = limpar_texto(request.form.get("medicao_nome", ""), max_len=120, obrigatorio=True, campo="Medio")
+        medicao_nome = limpar_texto(request.form.get("medicao_nome", ""), max_len=120, obrigatorio=True, campo="Medição")
         etapa = limpar_texto(request.form.get("etapa", ""), max_len=120, obrigatorio=True, campo="Etapa")
         data_medicao = limpar_texto(request.form.get("data_medicao", ""), max_len=10)
         observacao = limpar_texto(request.form.get("observacao", ""), max_len=1000)
@@ -119,12 +119,12 @@ def editar_medicao(medicao_id):
 
     medicao_atual = obter_registro_acessivel("medicoes", medicao_id, campos="id")
     if not medicao_atual:
-        flash("Medio no encontrada.", "erro")
+        flash("Medição não encontrada.", "erro")
         return redirect(url_for("medicoes_bp.medicoes"))
 
     try:
         mes = limpar_texto(request.form.get("mes", ""), max_len=20)
-        medicao_nome = limpar_texto(request.form.get("medicao_nome", ""), max_len=120, obrigatorio=True, campo="Medio")
+        medicao_nome = limpar_texto(request.form.get("medicao_nome", ""), max_len=120, obrigatorio=True, campo="Medição")
         etapa = limpar_texto(request.form.get("etapa", ""), max_len=120, obrigatorio=True, campo="Etapa")
         data_medicao = limpar_texto(request.form.get("data_medicao", ""), max_len=10)
         observacao = limpar_texto(request.form.get("observacao", ""), max_len=1000)
@@ -188,7 +188,7 @@ def excluir_medicao(medicao_id):
 
     medicao = obter_registro_acessivel("medicoes", medicao_id)
     if not medicao:
-        flash("Medio no encontrada.", "erro")
+        flash("Medição não encontrada.", "erro")
         return redirect(url_for("medicoes_bp.medicoes"))
     nome_medicao = medicao["medicao_nome"] if medicao else f"ID {medicao_id}"
 
@@ -222,7 +222,7 @@ def medicoes_exportar():
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         df = pd.DataFrame([dict(x) for x in lista])
-        df.to_excel(writer, index=False, sheet_name="Medicoes")
+        df.to_excel(writer, index=False, sheet_name="Medições")
 
     output.seek(0)
     return send_file(

@@ -95,7 +95,7 @@ def editar_equipe(equipe_id):
 
     membro = obter_registro_acessivel("equipe", equipe_id, campos="id")
     if not membro:
-        flash("Profissional no encontrado.", "erro")
+        flash("Profissional não encontrado.", "erro")
         return redirect(url_for("equipe_bp.equipe"))
 
     try:
@@ -130,7 +130,7 @@ def excluir_equipe(equipe_id):
 
     membro = obter_registro_acessivel("equipe", equipe_id, campos="id")
     if not membro:
-        flash("Profissional no encontrado.", "erro")
+        flash("Profissional não encontrado.", "erro")
         return redirect(url_for("equipe_bp.equipe"))
 
     execute("DELETE FROM equipe WHERE id = ?", (equipe_id,))
