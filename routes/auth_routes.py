@@ -10,7 +10,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from werkzeug.utils import secure_filename
 from database import query_all, query_one, execute
 from auth import verificar_senha, gerar_hash_senha, eh_admin, gerar_csrf_token, PERFIS_VALIDOS
-from services.validators import limpar_texto
+from services.validators import limpar_texto, caminho_redirecionamento_seguro
 from services.email_service import enviar_email_resend
 from services.log_service import registrar_log
 from services.tenant import empresa_id_atual, empresa_usuario_por_form, listar_empresas, tem_acesso_global
@@ -91,6 +91,48 @@ def enviar_email_reset_senha(usuario, link_reset):
     </div>
     """
     return enviar_email_resend(usuario["email"], assunto, html, texto)
+
+
+def _tipo_suporte_label(tipo):
+    return "Problema" if tipo == "problema" else "Sugestao"
+
+
+def enviar_email_suporte(tipo, mensagem, pagina_origem):
+    destinatario = (
+        os.environ.get("SUPORTE_DESTINO_EMAIL", "").strip()
+        or os.environ.get("RESEND_FROM_EMAIL", "").strip()
+    )
+    if not destinatario:
+        return False
+
+    usuario_nome = session.get("usuario_nome", "Usuario")
+    usuario_id = session.get("usuario_id", "-")
+    empresa_id = session.get("empresa_id", "-")
+    tipo_label = _tipo_suporte_label(tipo)
+    mensagem_html = escape(mensagem).replace("\n", "<br>")
+    pagina_html = escape(pagina_origem or "/")
+
+    assunto = f"[Suporte] {tipo_label} - {usuario_nome}"
+    texto = (
+        f"Tipo: {tipo_label}\n"
+        f"Usuario: {usuario_nome} (id {usuario_id})\n"
+        f"Empresa: {empresa_id}\n"
+        f"Pagina: {pagina_origem or '/'}\n\n"
+        f"Mensagem:\n{mensagem}"
+    )
+    html = f"""
+    <div style="font-family:Arial,sans-serif;line-height:1.5;color:#20232a">
+      <h2>Novo contato de suporte</h2>
+      <p><strong>Tipo:</strong> {tipo_label}</p>
+      <p><strong>Usuario:</strong> {escape(str(usuario_nome))} (id {escape(str(usuario_id))})</p>
+      <p><strong>Empresa:</strong> {escape(str(empresa_id))}</p>
+      <p><strong>Pagina:</strong> {pagina_html}</p>
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0;">
+      <p><strong>Mensagem:</strong></p>
+      <p>{mensagem_html}</p>
+    </div>
+    """
+    return enviar_email_resend(destinatario, assunto, html, texto)
 
 
 def guardar_credenciais_usuario(nome, username, senha, contexto="criado"):
@@ -827,6 +869,50 @@ def atualizar_foto_usuario(usuario_id):
     registrar_log("atualizar_foto_usuario", "usuario", usuario_id, "Foto de usuário atualizada pelo administrador")
     flash("Foto do usuário atualizada.", "sucesso")
     return redirect(url_for("auth_bp.perfil") + "#usuarios")
+
+@auth_bp.route("/suporte/enviar", methods=["POST"])
+def enviar_suporte():
+    if not usuario_logado():
+        return redirect(url_for("auth_bp.login"))
+
+    redirect_fallback = url_for("dashboard_bp.dashboard")
+    redirect_to = caminho_redirecionamento_seguro(
+        request.form.get("redirect_to"),
+        redirect_fallback,
+    )
+
+    tipo = (request.form.get("tipo", "problema") or "").strip().lower()
+    if tipo not in {"problema", "sugestao"}:
+        tipo = "problema"
+
+    try:
+        mensagem = limpar_texto(
+            request.form.get("mensagem", ""),
+            max_len=1200,
+            obrigatorio=True,
+            campo="Mensagem",
+        )
+    except ValueError as e:
+        flash(str(e), "erro")
+        return redirect(redirect_to)
+
+    pagina_origem = caminho_redirecionamento_seguro(request.form.get("pagina_origem", ""), "/")
+    tipo_label = _tipo_suporte_label(tipo)
+    descricao_log = f"Suporte ({tipo_label}): {mensagem[:220]}"
+    registrar_log("suporte_feedback", "suporte", session.get("usuario_id"), descricao_log)
+
+    enviado_email = False
+    try:
+        enviado_email = enviar_email_suporte(tipo, mensagem, pagina_origem)
+    except Exception:
+        enviado_email = False
+
+    if enviado_email:
+        flash("Mensagem enviada para o suporte. Obrigado pelo feedback.", "sucesso")
+    else:
+        flash("Mensagem recebida. Nossa equipe vai analisar em breve.", "sucesso")
+
+    return redirect(redirect_to)
 
 
 @auth_bp.route("/logout", methods=["POST"])

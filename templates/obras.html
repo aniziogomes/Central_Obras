@@ -120,7 +120,8 @@
 {% set observacao_canteiro = obra.observacao_responsavel if obra.observacao_responsavel is defined and
 obra.observacao_responsavel else '' %}
 {% set portal_ativo = obra.token_publico if obra.token_publico is defined and obra.token_publico else '' %}
-{% set fase_atual = obra.fase_obra if obra.fase_obra is defined and obra.fase_obra else 'Não definida' %}
+{% set fase_atual = obra.fase_obra_formatada or obra.fase_obra or '' %}
+{% set fase_normalizada = fase_atual|trim|lower %}
 <div class="obra-card" data-status="{{ obra.status or '' }}"
         data-search="{{ (obra.codigo or '')|lower }} {{ (obra.nome or '')|lower }} {{ (obra.tipologia or '')|lower }} {{ (obra.endereco or '')|lower }} {{ (obra.tipo_obra or '')|lower }} {{ (observacao_canteiro or '')|lower }}">
 
@@ -141,9 +142,11 @@ obra.observacao_responsavel else '' %}
                     {% if obra.area_m2 %}<span class="obra-card-dot">&middot;</span><span>{{ obra.area_m2 }} m&sup2;</span>{% endif %}
                 </div>
 
+                {% if fase_normalizada and 'definid' not in fase_normalizada %}
                 <div class="obra-card-meta-list">
-                    <div><span>Fase</span><strong>{{ obra.fase_obra_formatada or fase_atual }}</strong></div>
+                    <div><span>Fase</span><strong>{{ fase_atual }}</strong></div>
                 </div>
+                {% endif %}
 
                 <div class="obra-card-progress-compact obra-card-progress-compact--inline">
                     <div class="obra-progress-inline">
@@ -597,7 +600,12 @@ obra.observacao_responsavel else '' %}
                 const saldoValue = parseFinanceNumber(o.saldo_disponivel ?? o.saldo_disponivel_formatado ?? 0);
                 const saldoClass = saldoValue >= 0 ? "valor-positivo" : "valor-negativo";
                 const statusLabel = o.status_formatado || o.status || "-";
-                const faseLabel = o.fase_obra_formatada || o.fase_obra || "Não definida";
+                const faseLabel = (o.fase_obra_formatada || o.fase_obra || "").trim();
+                const faseBase = faseLabel
+                    .toLowerCase()
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "");
+                const faseVisivel = Boolean(faseBase) && !faseBase.includes("definid");
                 const nomeLabel = o.nome_formatado || o.nome || "Obra";
                 const areaLabel = Number(o.area_m2 || 0) > 0 ? `<span class="obra-card-dot">&middot;</span><span>${esc(String(o.area_m2))} m&sup2;</span>` : "";
                 const acoes = `
@@ -622,9 +630,7 @@ obra.observacao_responsavel else '' %}
                             ${o.tipologia && o.tipologia !== "-" ? `<span class="obra-card-dot">&middot;</span><span>${esc(o.tipologia)}</span>` : ""}
                             ${areaLabel}
                         </div>
-                        <div class="obra-card-meta-list">
-                            <div><span>Fase</span><strong>${esc(faseLabel)}</strong></div>
-                        </div>
+                        ${faseVisivel ? `<div class="obra-card-meta-list"><div><span>Fase</span><strong>${esc(faseLabel)}</strong></div></div>` : ""}
                         <div class="obra-card-progress-compact obra-card-progress-compact--inline">
                             <div class="obra-progress-inline">
                                 <span class="obra-progress-inline-label">Conclus&atilde;o</span>

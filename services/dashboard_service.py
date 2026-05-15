@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from database import query_all, query_one
 from utils import calcular_media_fornecedor, formatar_moeda, formatar_data
 from services.validators import data_no_periodo
@@ -226,6 +226,10 @@ def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="
         f"SELECT * FROM custos_importados_categoria {where_importados} ORDER BY id DESC",
         params_importados,
     )
+    total_obras_empresa = len(obras)
+
+    custos_todos = list(custos)
+    medicoes_todas = list(medicoes)
 
     if filtro_obra:
         obras = [o for o in obras if o["codigo"] == filtro_obra]
@@ -260,6 +264,73 @@ def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="
     if filtro_categoria:
         custos_importados = [ci for ci in custos_importados if (ci["categoria"] or "") == filtro_categoria]
 
+    obras_ativas_ids = [
+        o["id"]
+        for o in obras
+        if (o["status"] or "").lower() in {"andamento", "planejamento", "atrasada"}
+    ]
+    limite_atualizacao = datetime.now() - timedelta(days=7)
+
+    ultima_data_custo_por_obra = {}
+    for custo_item in custos_todos:
+        obra_id = custo_item["obra_id"]
+        if obra_id not in obras_ativas_ids:
+            continue
+        data_custo = _parse_datetime_flex(custo_item["data_lancamento"])
+        if not data_custo:
+            continue
+        atual = ultima_data_custo_por_obra.get(obra_id)
+        if atual is None or data_custo > atual:
+            ultima_data_custo_por_obra[obra_id] = data_custo
+
+    ultima_data_medicao_por_obra = {}
+    for medicao_item in medicoes_todas:
+        obra_id = medicao_item["obra_id"]
+        if obra_id not in obras_ativas_ids:
+            continue
+        data_medicao = _parse_datetime_flex(medicao_item["data_medicao"])
+        if not data_medicao:
+            continue
+        atual = ultima_data_medicao_por_obra.get(obra_id)
+        if atual is None or data_medicao > atual:
+            ultima_data_medicao_por_obra[obra_id] = data_medicao
+
+    where_logs, params_logs = where_empresa()
+    logs_canteiro = query_all(
+        f"""
+        SELECT entidade_id, data_hora
+        FROM logs
+        {where_logs}
+        {'AND' if where_logs else 'WHERE'} entidade = 'obra'
+          AND acao = 'atualizacao_canteiro'
+        ORDER BY id DESC
+        """,
+        params_logs,
+    )
+    ultima_data_canteiro_por_obra = {}
+    for log_item in logs_canteiro:
+        obra_id = log_item["entidade_id"]
+        if obra_id not in obras_ativas_ids:
+            continue
+        data_canteiro = _parse_datetime_flex(log_item["data_hora"])
+        if not data_canteiro:
+            continue
+        atual = ultima_data_canteiro_por_obra.get(obra_id)
+        if atual is None or data_canteiro > atual:
+            ultima_data_canteiro_por_obra[obra_id] = data_canteiro
+
+    obras_sem_atualizacao = 0
+    for obra_id in obras_ativas_ids:
+        datas_referencia = [
+            ultima_data_canteiro_por_obra.get(obra_id),
+            ultima_data_custo_por_obra.get(obra_id),
+            ultima_data_medicao_por_obra.get(obra_id),
+        ]
+        datas_validas = [d for d in datas_referencia if d]
+        ultima_atualizacao = max(datas_validas) if datas_validas else None
+        if not ultima_atualizacao or ultima_atualizacao < limite_atualizacao:
+            obras_sem_atualizacao += 1
+
     total_receita = sum((obra["receita_total"] or 0) for obra in obras)
     total_custo = 0
 
@@ -269,6 +340,16 @@ def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="
     margem_por_obra = []
     tipologia_count = {}
     tipo_obra_count = {}
+    status_catalogo = [
+        ("andamento", "Em andamento"),
+        ("concluida", "Concluída"),
+        ("atrasada", "Atrasada"),
+        ("planejamento", "Planejamento"),
+        ("vendida", "Vendida"),
+    ]
+    status_contagem = {status: 0 for status, _ in status_catalogo}
+    status_valor_contrato = {status: 0 for status, _ in status_catalogo}
+    status_valor_risco = {status: 0 for status, _ in status_catalogo}
 
     for custo in custos:
         cat = custo["categoria"] or "Sem categoria"
@@ -318,6 +399,14 @@ def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="
             "margem_valor": (obra["receita_total"] or 0) - custo_obra,
             "lucro_previsto": (obra["receita_total"] or 0) - (obra["orcamento"] or 0)
         })
+
+        status_obra = (obra["status"] or "").strip().lower()
+        if status_obra in status_contagem:
+            status_contagem[status_obra] += 1
+            status_valor_contrato[status_obra] += (obra["receita_total"] or 0)
+            saldo_disponivel = (obra["receita_total"] or 0) - custo_obra
+            if status_obra == "atrasada" and saldo_disponivel < 0:
+                status_valor_risco[status_obra] += abs(saldo_disponivel)
 
         tipo = obra["tipologia"] or "Não informado"
         tipologia_count[tipo] = tipologia_count.get(tipo, 0) + 1
@@ -380,6 +469,16 @@ def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="
     chart_progresso_valores = [item["execucao"] for item in margem_por_obra]
     chart_pizza_labels = list(custos_por_categoria.keys())
     chart_pizza_valores = list(custos_por_categoria.values())
+    status_distribuicao = [
+        {
+            "status": status,
+            "label": label,
+            "quantidade": status_contagem.get(status, 0),
+            "valor_contrato": status_valor_contrato.get(status, 0),
+            "valor_risco": status_valor_risco.get(status, 0),
+        }
+        for status, label in status_catalogo
+    ]
 
     return {
         "obras": obras,
@@ -419,6 +518,11 @@ def calcular_kpis_dashboard(filtro_obra="", filtro_categoria="", filtro_status="
         "margem_percentual": margem_percentual,
         "custo_percentual_receita": custo_percentual_receita,
         "execucao_media": execucao_media,
+        "ultimo_lancamento_financeiro_data": custos[0]["data_lancamento"] if custos and custos[0]["data_lancamento"] else "",
+        "obras_sem_atualizacao": obras_sem_atualizacao,
+        "obras_ativas_monitoradas": len(obras_ativas_ids),
+        "total_obras_empresa": total_obras_empresa,
+        "status_distribuicao": status_distribuicao,
     }
 
 
@@ -456,7 +560,21 @@ def serializar_dashboard_json(dados, filtros):
             "total_alertas": len(dados["alertas"]),
             "total_custos_lancados": len(dados["custos"]),
             "total_obras": len(dados["obras"]),
+            "ultimo_lancamento_financeiro_data": dados.get("ultimo_lancamento_financeiro_data", ""),
+            "obras_sem_atualizacao": dados.get("obras_sem_atualizacao", 0),
+            "obras_ativas_monitoradas": dados.get("obras_ativas_monitoradas", 0),
+            "total_obras_empresa": dados.get("total_obras_empresa", 0),
         },
+        "status_distribuicao": [
+            {
+                **item,
+                "valor_contrato_formatado": formatar_moeda(item.get("valor_contrato", 0)),
+                "valor_risco_formatado": formatar_moeda(item.get("valor_risco", 0)),
+                "valor_relevante": item.get("valor_risco", 0) if item.get("status") == "atrasada" else item.get("valor_contrato", 0),
+                "valor_relevante_formatado": formatar_moeda(item.get("valor_risco", 0) if item.get("status") == "atrasada" else item.get("valor_contrato", 0)),
+            }
+            for item in dados.get("status_distribuicao", [])
+        ],
         "alertas": dados["alertas"],
         "ranking_fornecedores": dados["ranking_fornecedores"],
         "comparativo_categorias": [

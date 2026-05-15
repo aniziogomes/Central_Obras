@@ -35,8 +35,16 @@
     {% set alerta_atencao_principal = alertas_atencao[0] if alertas_atencao else none %}
     {% set tem_lancamento_financeiro = (ultimo_custo and ultimo_custo.data_lancamento) %}
     {% set tem_foto_publicada = (ns_foto.obra is not none) %}
-    {% set tem_atualizacao_geral = (ultimo_custo and ultimo_custo.data_lancamento) or (ultima_medicao and
-    ultima_medicao.data_medicao) %}
+    {% set total_obras_sem_atualizacao = obras_sem_atualizacao if obras_sem_atualizacao is defined else 0 %}
+    {% set status_distribuicao_dashboard = status_distribuicao if status_distribuicao is defined else [] %}
+    {% set total_obras_empresa_dashboard = total_obras_empresa if total_obras_empresa is defined else 0 %}
+    {% set status_total_obras_dashboard = status_distribuicao_dashboard|sum(attribute='quantidade') if status_distribuicao_dashboard else 0 %}
+    {% set ns_status_donut = namespace(atrasadas=0) %}
+    {% for item_status in status_distribuicao_dashboard %}
+    {% if item_status.status == 'atrasada' %}
+    {% set ns_status_donut.atrasadas = item_status.quantidade or 0 %}
+    {% endif %}
+    {% endfor %}
     {% set percentual_comprometido = (total_custo / total_receita * 100) if total_receita > 0 else 0 %}
     {% set risco_financeiro_global = margem < 0 %} {% set acima_previsto_global=total_receita> 0 and
         percentual_comprometido > 100 %}
@@ -46,9 +54,6 @@
                 <div>
                     <h1>Visão geral</h1>
                     <p>Central ativa para acompanhar a obra em andamento, com alertas e próximos passos.</p>
-                    <div class="dashboard-ops-live"><strong id="opsMonitoradasQtd">{{ obras|length }}</strong> <span
-                            id="opsMonitoradasLabel">{{ "obra monitorada" if obras|length == 1 else "obras monitoradas"
-                            }}</span></div>
                 </div>
             </header>
 
@@ -74,8 +79,13 @@
                                     </strong></span>
                             </div>
                         </div>
-                        <button type="button" class="dashboard-filter-toggle dashboard-filter-toggle--sm"
-                            id="toggleDashboardFilter">Mostrar filtros</button>
+                        <button type="button"
+                            class="dashboard-filter-toggle dashboard-filter-toggle--sm dashboard-filter-toggle--opschip"
+                            id="toggleDashboardFilter" aria-expanded="false">
+                            <strong id="opsMonitoradasQtd">{{ obras|length }}</strong>
+                            <span id="opsMonitoradasLabel">{{ "obras monitoradas" if obras|length != 1 else "obra monitorada" }}</span>
+                            <span id="opsFilterCaret" class="dashboard-filter-toggle-caret" aria-hidden="true">▼</span>
+                        </button>
                     </div>
 
                     <div class="dashboard-filter-body" id="dashboardFilterBody">
@@ -110,6 +120,26 @@
                         </form>
                     </div>
                 </div>
+
+                <div class="dashboard-filter-ops-rail" {% if dashboard_vazio_total %}hidden{% endif %}>
+                    <article id="kpiObrasHojeCard" class="dashboard-kpi dashboard-kpi--live dashboard-kpi--ops">
+                        <span>Obras com movimento hoje</span>
+                        <strong id="kpiObrasHoje">{{ 1 if (custos|length or medicoes|length) else 0 }}</strong>
+                        <small id="kpiObrasHojeSub">Custos e medições lançados no período filtrado</small>
+                    </article>
+
+                    <article id="kpiCardSemAtualizacao" class="dashboard-kpi dashboard-kpi--live dashboard-kpi--ops">
+                        <span>Obras sem atualização</span>
+                        <strong id="kpiObrasSemAtualizacao">{{ total_obras_sem_atualizacao }}</strong>
+                        <small id="kpiObrasSemAtualizacaoSub">
+                            {% if total_obras_sem_atualizacao == 0 %}
+                            Todas atualizadas
+                            {% else %}
+                            {{ total_obras_sem_atualizacao }} sem registro há 7 dias
+                            {% endif %}
+                        </small>
+                    </article>
+                </div>
             </div>
 
             <section id="dashboardEmptyState" class="card dashboard-empty-state" {% if not dashboard_vazio_total
@@ -137,26 +167,20 @@
             <section id="dashboardKpisSection" class="dashboard-kpis-section" {% if dashboard_vazio_total %}hidden{%
                 endif %}>
                 <div class="dashboard-kpis-grid">
-                    <article id="kpiObrasHojeCard" class="dashboard-kpi dashboard-kpi--live">
-                        <span>Obras com movimento hoje</span>
-                        <strong id="kpiObrasHoje">{{ 1 if (custos|length or medicoes|length) else 0 }}</strong>
-                        <small id="kpiObrasHojeSub">Custos e medições lançados no período filtrado</small>
-                    </article>
-
                     <article id="kpiCardFinanceiro" class="dashboard-kpi dashboard-kpi--live" {% if not
                         tem_lancamento_financeiro %}hidden{% endif %}>
                         <span>Último lançamento financeiro</span>
                         <strong id="kpiUltimoLancamentoFinanceiro"
+                            data-relative-mode="primary-only"
                             data-relative-date="{{ ultimo_custo.data_lancamento if ultimo_custo else '' }}">
-                            {{ formatar_data(ultimo_custo.data_lancamento, "-", True) if ultimo_custo and
-                            ultimo_custo.data_lancamento else "-" }}
+                            {{ "hoje" if ultimo_custo and ultimo_custo.data_lancamento else "-" }}
                         </strong>
                         <small id="kpiUltimoLancamentoFinanceiroSub">
                             {% if ultimo_custo %}
-                            {{ ultimo_custo.fornecedor or "Responsável não informado" }}{% if ultimo_custo.descricao %}
-                            · {{ ultimo_custo.descricao }}{% endif %}
+                            {{ formatar_data(ultimo_custo.data_lancamento, "-", True) if ultimo_custo.data_lancamento
+                            else "-" }}
                             {% else %}
-                            Lançamento financeiro recente
+                            Sem lançamento no período
                             {% endif %}
                         </small>
                     </article>
@@ -169,25 +193,8 @@
                             else "Sem foto no período filtrado" }}</small>
                     </article>
 
-                    <article id="kpiCardAtualizacao" class="dashboard-kpi dashboard-kpi--live" {% if not
-                        tem_atualizacao_geral %}hidden{% endif %}>
-                        <span>Última atualização geral</span>
-                        <strong id="kpiUltimaAtualizacaoGeral"
-                            data-relative-date="{{ ultimo_custo.data_lancamento if ultimo_custo and ultimo_custo.data_lancamento else (ultima_medicao.data_medicao if ultima_medicao and ultima_medicao.data_medicao else '') }}">
-                            {% if ultimo_custo and ultimo_custo.data_lancamento %}
-                            {{ formatar_data(ultimo_custo.data_lancamento, "-", True) }}
-                            {% elif ultima_medicao and ultima_medicao.data_medicao %}
-                            {{ formatar_data(ultima_medicao.data_medicao, "-", True) }}
-                            {% else %}
-                            -
-                            {% endif %}
-                        </strong>
-                        <small id="kpiUltimaAtualizacaoGeralSub">Acompanhamento contínuo do que foi lançado no
-                            sistema</small>
-                    </article>
-
                     <article id="kpiCardEmpty" class="dashboard-kpi-empty" {% if tem_lancamento_financeiro or
-                        tem_foto_publicada or tem_atualizacao_geral or (custos|length or medicoes|length) %}hidden{%
+                        tem_foto_publicada or (custos|length or medicoes|length) %}hidden{%
                         endif %}>
                         <strong>Sem atividade recente no período</strong>
                         <p>Quando houver lançamento, medição ou nova foto, os indicadores aparecem aqui automaticamente.
@@ -230,38 +237,71 @@
                     </article>
                 </div>
 
-                <div class="dashboard-finance-card" id="financeAnaliseCard">
-                    <div class="dashboard-finance-head">
-                        <strong>Análise financeira</strong>
-                    </div>
-                    <div class="dashboard-finance-chart" id="financeChartBlock" {% if total_receita <=0 %}hidden{% endif
-                        %}>
-                        {% set base_fin = [total_receita, total_custo, (margem if margem > 0 else (margem * -1))]|max %}
-                        {% set base_fin = base_fin if base_fin > 0 else 1 %}
-                        <div class="dashboard-fin-line">
-                            <span>Receita prevista</span>
-                            <div class="dashboard-fin-bar"><i id="financeBarReceita"
-                                    style="width: {{ ((total_receita / base_fin) * 100)|round(1) }}%"></i></div>
-                            <strong id="financeValorReceita">{{ formatar_moeda(total_receita) }}</strong>
-                        </div>
-                        <div class="dashboard-fin-line">
-                            <span>Custo realizado</span>
-                            <div class="dashboard-fin-bar"><i id="financeBarCusto" class="is-custo"
-                                    style="width: {{ ((total_custo / base_fin) * 100)|round(1) }}%"></i></div>
-                            <strong id="financeValorCusto">{{ formatar_moeda(total_custo) }}</strong>
-                        </div>
-                        <div class="dashboard-fin-line">
-                            <span id="financeSaldoRotulo">{% if margem < 0 %}Saldo negativo{% else %}Saldo{% endif
-                                    %}</span>
-                                    <div class="dashboard-fin-bar"><i id="financeBarSaldo"
-                                            class="{% if margem < 0 %}is-negativo{% endif %}"
-                                            style="width: {{ (((margem if margem > 0 else (margem * -1)) / base_fin) * 100)|round(1) }}%"></i>
+                <div
+                    class="dashboard-analysis-grid {% if total_obras_empresa_dashboard <= 0 %}dashboard-analysis-grid--single{% endif %}">
+                    {% if total_obras_empresa_dashboard > 0 %}
+                    <article class="dashboard-support-card dashboard-support-card--status" data-finance-state="info"
+                        id="cardStatusObras">
+                        <div class="dashboard-status-chart-wrap {% if ns_status_donut.atrasadas > 0 %}has-atrasada{% endif %}"
+                            id="dashboardStatusChartWrap">
+                            <div class="dashboard-status-chart-box">
+                                <canvas id="dashboardStatusChart" width="120" height="120"
+                                    aria-label="Distribuição de status das obras"></canvas>
+                                <div class="dashboard-status-chart-center">
+                                    <strong id="dashboardStatusTotal">{{ status_total_obras_dashboard }}</strong>
+                                    <small>obras</small>
+                                </div>
+                            </div>
+                            <div class="dashboard-status-legend" id="dashboardStatusLegend">
+                                {% for item_status in status_distribuicao_dashboard %}
+                                <div class="dashboard-status-legend-item" data-status="{{ item_status.status }}">
+                                    <div class="dashboard-status-main">
+                                        <span
+                                            class="dashboard-status-dot dashboard-status-dot--{{ item_status.status }}"></span>
+                                        <span class="dashboard-status-label">{{ item_status.label }}</span>
                                     </div>
-                                    <strong id="financeValorSaldo">{{ formatar_moeda(margem) }}</strong>
+                                    <strong class="dashboard-status-qty">{{ item_status.quantidade }}</strong>
+                                </div>
+                                {% endfor %}
+                            </div>
                         </div>
-                    </div>
-                    <div class="dashboard-fin-empty" id="financeChartEmpty" {% if total_receita> 0 %}hidden{% endif %}>
-                        Cadastre o orçamento para ver análise financeira
+                    </article>
+                    {% endif %}
+
+                    <div class="dashboard-finance-card" id="financeAnaliseCard">
+                        <div class="dashboard-finance-head">
+                            <strong>Análise financeira</strong>
+                        </div>
+                        <div class="dashboard-finance-chart" id="financeChartBlock" {% if total_receita <=0 %}hidden{%
+                            endif %}>
+                            {% set base_fin = [total_receita, total_custo, (margem if margem > 0 else (margem * -1))]|max %}
+                            {% set base_fin = base_fin if base_fin > 0 else 1 %}
+                            <div class="dashboard-fin-line">
+                                <span>Receita prevista</span>
+                                <div class="dashboard-fin-bar"><i id="financeBarReceita"
+                                        style="width: {{ ((total_receita / base_fin) * 100)|round(1) }}%"></i></div>
+                                <strong id="financeValorReceita">{{ formatar_moeda(total_receita) }}</strong>
+                            </div>
+                            <div class="dashboard-fin-line">
+                                <span>Custo realizado</span>
+                                <div class="dashboard-fin-bar"><i id="financeBarCusto" class="is-custo"
+                                        style="width: {{ ((total_custo / base_fin) * 100)|round(1) }}%"></i></div>
+                                <strong id="financeValorCusto">{{ formatar_moeda(total_custo) }}</strong>
+                            </div>
+                            <div class="dashboard-fin-line">
+                                <span id="financeSaldoRotulo">{% if margem < 0 %}Saldo negativo{% else %}Saldo{% endif
+                                        %}</span>
+                                        <div class="dashboard-fin-bar"><i id="financeBarSaldo"
+                                                class="{% if margem < 0 %}is-negativo{% endif %}"
+                                                style="width: {{ (((margem if margem > 0 else (margem * -1)) / base_fin) * 100)|round(1) }}%"></i>
+                                        </div>
+                                        <strong id="financeValorSaldo">{{ formatar_moeda(margem) }}</strong>
+                            </div>
+                        </div>
+                        <div class="dashboard-fin-empty" id="financeChartEmpty" {% if total_receita> 0 %}hidden{% endif
+                            %}>
+                            Cadastre o orçamento para ver análise financeira
+                        </div>
                     </div>
                 </div>
 
@@ -347,8 +387,6 @@
                             <article class="dashboard-alert dashboard-alert--info">
                                 <div class="dashboard-alert-top">
                                     <span class="dashboard-alert-badge">Informativo</span>
-                                    <a id="alertaInfoLink" href="{{ url_for('dashboard_bp.logs') }}"
-                                        class="dashboard-alert-action"><span id="alertaInfoAcao">Ver logs</span></a>
                                 </div>
                                 <p class="dashboard-alert-text" id="alertaInfoTexto">
                                     {% if (custos|length == 0) and (medicoes|length == 0) %}
@@ -374,7 +412,7 @@
                         </div>
 
                         <div class="dashboard-timeline-list" id="timelineOpsList">
-                            {% if custos or medicoes or alertas %}
+                            {% if custos or medicoes %}
                             {% for custo in custos[:4] %}
                             {% set obra_ref = (obras|selectattr('id', 'equalto', custo.obra_id)|list|first) %}
                             <article class="dashboard-timeline-item">
@@ -413,22 +451,8 @@
                             </article>
                             {% endfor %}
 
-                            {% for alerta in alertas[:3] %}
-                            <article class="dashboard-timeline-item">
-                                <div class="dashboard-timeline-badge">Alerta</div>
-                                <div>
-                                    <div class="dashboard-timeline-top">
-                                        <strong>Alerta operacional detectado</strong>
-                                        <span class="dashboard-time-chip">Alerta gerado</span>
-                                    </div>
-                                    <p class="dashboard-timeline-meta">Responsável: Sistema · Obra: {{ alerta.codigo }}
-                                    </p>
-                                    <p class="dashboard-timeline-copy">{{ alerta.mensagem }}</p>
-                                </div>
-                            </article>
-                            {% endfor %}
                             {% else %}
-                            <div class="dashboard-empty-inline">Sem movimentações recentes.</div>
+                            <div class="dashboard-empty-inline">Nenhuma movimentação registrada recentemente</div>
                             {% endif %}
                         </div>
                     </article>
@@ -595,15 +619,11 @@
                             <span class="badge {{ obra.status }}">{{ obra.status or "-" }}</span>
                             <div class="dashboard-portal-cell" data-obra-codigo="{{ obra.codigo }}"
                                 data-portal-ativo="{{ 1 if ns_portal.ativo else 0 }}">
-                                <span
-                                    class="dashboard-portal-state {% if ns_portal.ativo %}is-active{% else %}is-empty{% endif %}">{%
-                                    if ns_portal.ativo %}Ativo{% else %}Sem portal{% endif %}</span>
-                                {% if ns_portal.ativo %}
-                                <a href="/obra/{{ obra.codigo }}" class="dashboard-portal-open"
-                                    aria-label="Abrir portal da obra {{ obra.nome }}">Abrir</a>
-                                {% else %}
-                                <span class="dashboard-portal-open is-disabled">—</span>
-                                {% endif %}
+                                <a href="/obra/{{ obra.codigo }}"
+                                    class="dashboard-portal-state {% if ns_portal.ativo %}is-active{% else %}is-empty{% endif %}"
+                                    aria-label="{% if ns_portal.ativo %}Abrir portal da obra {{ obra.nome }}{% else %}Configurar portal da obra {{ obra.nome }}{% endif %}">
+                                    {% if ns_portal.ativo %}Ativo{% else %}Sem portal{% endif %}
+                                </a>
                             </div>
                         </div>
                         {% else %}
@@ -636,7 +656,7 @@
         <style>
             .dashboard-ops {
                 display: grid;
-                gap: 16px;
+                gap: 12px;
             }
 
             .dashboard-ops [hidden] {
@@ -719,28 +739,246 @@
                 font-size: 13px;
             }
 
+            .dashboard-filter-shell {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) minmax(460px, 40%);
+                gap: 6px;
+                align-items: start;
+                margin-bottom: 6px;
+            }
+
+            .dashboard-filter-card--clean {
+                order: 2;
+                justify-self: end;
+                width: fit-content;
+                max-width: 100%;
+                border-radius: 12px;
+                padding: 0;
+                border-color: transparent;
+                background: transparent;
+                box-shadow: none;
+                transition: border-color .18s ease, background .18s ease, box-shadow .18s ease, padding .18s ease;
+            }
+
+            .dashboard-filter-card--clean.dashboard-filter-card--open {
+                width: 100%;
+                border-radius: 12px;
+                padding: 6px 8px 7px;
+                border-color: rgba(95, 155, 255, 0.14);
+                background: linear-gradient(180deg, rgba(95, 155, 255, 0.034), rgba(255, 255, 255, 0.008));
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.09);
+            }
+
+            .dashboard-filter-top {
+                min-height: 30px;
+                gap: 6px;
+            }
+
+            .dashboard-filter-left {
+                gap: 6px;
+            }
+
+            .dashboard-filter-chip--soft {
+                min-height: 22px;
+                padding: 3px 8px;
+                border-radius: 999px;
+            }
+
+            .dashboard-filter-summary--soft {
+                gap: 3px 8px;
+                font-size: 9px;
+            }
+
+            .dashboard-filter-body.open {
+                margin-top: 6px;
+            }
+
+            .dashboard-filter-grid--clean {
+                gap: 6px;
+            }
+
+            .dashboard-filter-field {
+                gap: 3px;
+            }
+
+            .dashboard-filter-field label {
+                font-size: 9px;
+                letter-spacing: 0.06em;
+            }
+
+            .dashboard-filter-field select,
+            .dashboard-filter-field input {
+                min-height: 28px;
+                height: 28px;
+                border-radius: 8px;
+                font-size: 11px;
+                padding: 0 8px;
+                background: rgba(255, 255, 255, 0.018);
+                border-color: rgba(255, 255, 255, 0.08);
+            }
+
+            .dashboard-filter-field select:focus,
+            .dashboard-filter-field input:focus {
+                border-color: rgba(95, 155, 255, 0.38);
+                box-shadow: 0 0 0 2px rgba(95, 155, 255, 0.11);
+                background-color: rgba(95, 155, 255, 0.07);
+            }
+
+            .dashboard-filter-actions--compact {
+                margin-top: 6px;
+                gap: 5px;
+            }
+
+            .dashboard-filter-actions--compact .btn {
+                min-height: 25px;
+                padding: 0 9px;
+                font-size: 10px;
+                border-radius: 7px;
+                font-weight: 600;
+                box-shadow: none;
+            }
+
+            .dashboard-filter-actions--compact .btn.btn-primary {
+                color: #c6d8f7;
+                background: rgba(95, 155, 255, 0.11);
+                border-color: rgba(95, 155, 255, 0.25);
+                box-shadow: none;
+                filter: none;
+            }
+
+            .dashboard-filter-actions--compact .btn.btn-primary:hover,
+            .dashboard-filter-actions--compact .btn.btn-primary:focus-visible {
+                color: #deebff;
+                background: rgba(95, 155, 255, 0.17);
+                border-color: rgba(143, 188, 255, 0.34);
+                filter: none;
+                box-shadow: none;
+            }
+
+            .dashboard-filter-actions--compact .btn.btn-primary:active {
+                color: #c6d8f7;
+                background: rgba(95, 155, 255, 0.15);
+                border-color: rgba(95, 155, 255, 0.26);
+            }
+
+            .dashboard-filter-actions--compact .btn.btn-ghost {
+                color: #7f8ca4;
+                background: rgba(255, 255, 255, 0.005);
+                border-color: rgba(255, 255, 255, 0.055);
+            }
+
+            .dashboard-filter-actions--compact .btn.btn-ghost:hover,
+            .dashboard-filter-actions--compact .btn.btn-ghost:focus-visible {
+                color: #9eabc4;
+                background: rgba(255, 255, 255, 0.018);
+                border-color: rgba(255, 255, 255, 0.075);
+            }
+
+            .dashboard-filter-ops-rail {
+                order: 1;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 8px;
+                align-items: stretch;
+            }
+
+            .dashboard-filter-toggle--opschip {
+                justify-content: flex-start;
+                gap: 5px;
+                min-height: 32px;
+                padding: 0 10px;
+                margin-left: auto;
+                border-radius: 999px;
+                border-color: rgba(56, 201, 120, 0.24);
+                background: linear-gradient(180deg, rgba(56, 201, 120, 0.13), rgba(56, 201, 120, 0.08));
+                color: #b8f4d1;
+                box-shadow: inset 0 1px 0 rgba(236, 255, 245, 0.06);
+                backdrop-filter: none;
+            }
+
+            .dashboard-filter-card--idle .dashboard-filter-top {
+                justify-content: flex-end;
+            }
+
+            .dashboard-filter-toggle--opschip strong {
+                color: #ecfff4;
+                font-size: 12px;
+                font-weight: 850;
+                line-height: 1;
+                text-shadow: none;
+            }
+
+            .dashboard-filter-toggle--opschip #opsMonitoradasQtd {
+                display: inline-block;
+                border: 0;
+                margin: 0;
+                padding: 0;
+                letter-spacing: 0;
+            }
+
+            .dashboard-filter-toggle--opschip #opsMonitoradasQtd::before,
+            .dashboard-filter-toggle--opschip #opsMonitoradasQtd::after {
+                content: none !important;
+            }
+
+            .dashboard-filter-toggle--opschip span {
+                font-size: 10px;
+                font-weight: 760;
+                letter-spacing: 0.02em;
+                text-shadow: none;
+            }
+
+            .dashboard-filter-toggle-caret {
+                margin-left: 1px;
+                opacity: .72;
+                transform: translateY(-.5px);
+                transition: transform .2s ease, opacity .2s ease;
+            }
+
+            .dashboard-filter-toggle--opschip:hover {
+                border-color: rgba(129, 242, 174, 0.34);
+                background: linear-gradient(180deg, rgba(56, 201, 120, 0.17), rgba(56, 201, 120, 0.1));
+                color: #ddffec;
+                transform: translateY(0);
+            }
+
+            .dashboard-filter-toggle--opschip:active {
+                background: linear-gradient(180deg, rgba(56, 201, 120, 0.21), rgba(56, 201, 120, 0.12));
+            }
+
+            .dashboard-filter-toggle--opschip.is-active {
+                border-color: rgba(158, 245, 194, 0.42);
+                background: linear-gradient(180deg, rgba(56, 201, 120, 0.19), rgba(56, 201, 120, 0.11));
+                box-shadow: inset 0 0 0 1px rgba(199, 255, 224, 0.08);
+            }
+
+            .dashboard-filter-toggle--opschip.is-active .dashboard-filter-toggle-caret {
+                transform: translateY(-1px) rotate(180deg);
+            }
+
             .dashboard-kpis-section {
                 display: grid;
-                gap: 12px;
+                gap: 8px;
             }
 
             .dashboard-kpis-grid {
                 display: grid;
-                grid-template-columns: repeat(4, minmax(0, 1fr));
-                gap: 12px;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+                align-items: stretch;
             }
 
             .dashboard-kpi {
-                min-height: 126px;
+                min-height: 112px;
                 border-radius: 10px;
-                padding: 14px 14px 12px;
+                padding: 12px 13px 10px;
                 border: 1px solid rgba(255, 255, 255, .08);
                 background:
                     linear-gradient(180deg, rgba(47, 125, 240, .08), rgba(255, 255, 255, .015)),
                     var(--bg2);
                 box-shadow: 0 10px 24px rgba(0, 0, 0, .18);
                 display: grid;
-                gap: 8px;
+                gap: 7px;
                 align-content: start;
             }
 
@@ -754,7 +992,7 @@
 
             .dashboard-kpi strong {
                 color: var(--text);
-                font-size: 20px;
+                font-size: 19px;
                 line-height: 1.18;
                 letter-spacing: -0.01em;
                 white-space: nowrap;
@@ -764,8 +1002,8 @@
 
             .dashboard-kpi small {
                 color: var(--text2);
-                font-size: 11px;
-                line-height: 1.4;
+                font-size: 10.5px;
+                line-height: 1.35;
             }
 
             .dashboard-kpi--live {
@@ -775,8 +1013,37 @@
                     var(--bg2);
             }
 
-            #kpiObrasHojeCard {
-                grid-column: auto;
+            .dashboard-kpi--ops {
+                min-height: 84px;
+                padding: 9px 10px 8px;
+                gap: 4px;
+                border-color: rgba(255, 255, 255, .09);
+                background:
+                    linear-gradient(180deg, rgba(255, 255, 255, .024), rgba(255, 255, 255, .008)),
+                    var(--bg2);
+                box-shadow: 0 3px 10px rgba(0, 0, 0, .12);
+            }
+
+            .dashboard-kpi--ops span {
+                font-size: 9px;
+                letter-spacing: .06em;
+                color: #9aabc8;
+            }
+
+            .dashboard-kpi--ops strong {
+                font-size: 17px;
+                line-height: 1.12;
+                color: #dfe8f8;
+            }
+
+            .dashboard-kpi--ops small {
+                font-size: 10px;
+                line-height: 1.24;
+                color: #90a1bf;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
             }
 
             .dashboard-kpi-empty {
@@ -805,17 +1072,17 @@
             .dashboard-support-grid {
                 display: grid;
                 grid-template-columns: repeat(4, minmax(0, 1fr));
-                gap: 10px;
+                gap: 8px;
             }
 
             .dashboard-support-card {
-                min-height: 96px;
+                min-height: 84px;
                 border-radius: 10px;
                 border: 1px solid rgba(255, 255, 255, .07);
                 background: rgba(255, 255, 255, .02);
-                padding: 12px;
+                padding: 10px;
                 display: grid;
-                gap: 5px;
+                gap: 4px;
                 align-content: start;
             }
 
@@ -829,32 +1096,202 @@
 
             .dashboard-support-card strong {
                 color: var(--text);
-                font-size: 17px;
+                font-size: 16px;
                 line-height: 1.2;
             }
 
             .dashboard-support-card small {
                 color: var(--text2);
+                font-size: 10.5px;
+                line-height: 1.22;
+            }
+
+            .dashboard-analysis-grid {
+                display: grid;
+                grid-template-columns: minmax(260px, 35fr) minmax(0, 65fr);
+                gap: 8px;
+                align-items: stretch;
+            }
+
+            .dashboard-analysis-grid--single {
+                grid-template-columns: 1fr;
+            }
+
+            .dashboard-analysis-grid .dashboard-support-card--status,
+            .dashboard-analysis-grid .dashboard-finance-card {
+                min-height: 136px;
+                height: 100%;
+            }
+
+            .dashboard-support-card--status {
+                padding: 10px 11px;
+                align-content: center;
+            }
+
+            .dashboard-status-chart-wrap {
+                display: grid;
+                grid-template-columns: 120px minmax(0, 1fr);
+                align-items: center;
+                gap: 10px;
+                min-height: 100%;
+            }
+
+            .dashboard-status-chart-box {
+                position: relative;
+                width: 120px;
+                height: 120px;
+                margin: 0 auto;
+            }
+
+            .dashboard-status-chart-box canvas {
+                display: block;
+                width: 120px !important;
+                height: 120px !important;
+            }
+
+            .dashboard-status-chart-center {
+                position: absolute;
+                inset: 0;
+                display: grid;
+                place-content: center;
+                text-align: center;
+                pointer-events: none;
+            }
+
+            .dashboard-status-chart-center strong {
+                color: #f0f6ff;
+                font-size: 20px;
+                line-height: 1;
+                font-weight: 820;
+                font-variant-numeric: tabular-nums;
+                letter-spacing: -0.02em;
+            }
+
+            .dashboard-status-chart-center small {
+                margin-top: 3px;
+                color: var(--text2);
+                font-size: 10px;
+                line-height: 1;
+                letter-spacing: 0;
+                text-transform: none;
+                font-weight: 600;
+            }
+
+            .dashboard-support-card--status .dashboard-status-legend {
+                display: block;
+                align-content: center;
+            }
+
+            .dashboard-support-card--status .dashboard-status-legend-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                min-height: 20px;
+                margin-bottom: 5px;
+            }
+
+            .dashboard-support-card--status .dashboard-status-legend-item:last-child {
+                margin-bottom: 0;
+            }
+
+            .dashboard-support-card--status .dashboard-status-main {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                min-width: 0;
+                flex: 1 1 auto;
+            }
+
+            .dashboard-support-card--status .dashboard-status-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                flex: 0 0 8px;
+            }
+
+            .dashboard-status-dot--andamento {
+                background: #d99b1a;
+            }
+
+            .dashboard-status-dot--concluida {
+                background: #28b56a;
+            }
+
+            .dashboard-status-dot--atrasada {
+                background: #e8424e;
+            }
+
+            .dashboard-status-dot--planejamento {
+                background: #2f7df0;
+            }
+
+            .dashboard-status-dot--vendida {
+                background: #7252cc;
+            }
+
+            .dashboard-support-card--status .dashboard-status-label {
+                color: var(--text2);
                 font-size: 11px;
-                line-height: 1.25;
+                font-weight: 400;
+                line-height: 1.2;
+                letter-spacing: 0;
+                text-transform: none;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .dashboard-support-card--status .dashboard-status-qty {
+                color: var(--text);
+                font-size: 12px;
+                font-weight: 600;
+                font-variant-numeric: tabular-nums;
+                line-height: 1;
+                min-width: 12px;
+                text-align: right;
+                flex-shrink: 0;
+            }
+
+            @keyframes dashboardStatusPulse {
+                0%,
+                100% {
+                    transform: scale(1);
+                    opacity: 1;
+                    filter: drop-shadow(0 0 0 rgba(232, 66, 78, 0));
+                }
+
+                50% {
+                    transform: scale(1.022);
+                    opacity: .96;
+                    filter: drop-shadow(0 0 8px rgba(232, 66, 78, .35));
+                }
+            }
+
+            .dashboard-status-chart-wrap.has-atrasada .dashboard-status-chart-box canvas {
+                animation: dashboardStatusPulse 2.2s ease-in-out infinite;
+            }
+
+            .dashboard-status-chart-wrap.has-atrasada:hover .dashboard-status-chart-box canvas {
+                animation-play-state: paused;
             }
 
             .dashboard-main-grid {
                 display: grid;
-                grid-template-columns: minmax(0, 1.32fr) minmax(340px, .92fr);
-                gap: 12px;
+                grid-template-columns: minmax(0, 1.24fr) minmax(360px, 1fr);
+                gap: 10px;
             }
 
             .dashboard-main-col,
             .dashboard-side-col {
                 display: grid;
-                gap: 12px;
+                gap: 10px;
                 align-content: start;
             }
 
             .dashboard-panel {
                 border-radius: 10px;
-                padding: 16px;
+                padding: 13px;
                 overflow: hidden;
             }
 
@@ -862,22 +1299,22 @@
                 display: flex;
                 align-items: flex-start;
                 justify-content: space-between;
-                gap: 10px;
-                margin-bottom: 12px;
+                gap: 8px;
+                margin-bottom: 9px;
             }
 
             .dashboard-panel-head h2 {
                 margin: 0;
                 color: var(--text);
-                font-size: 18px;
+                font-size: 17px;
                 line-height: 1.14;
             }
 
             .dashboard-panel-head p {
-                margin: 5px 0 0;
+                margin: 4px 0 0;
                 color: var(--text2);
                 font-size: 12px;
-                line-height: 1.45;
+                line-height: 1.35;
             }
 
             .dashboard-panel-link {
@@ -893,14 +1330,14 @@
 
             .dashboard-alert-levels {
                 display: grid;
-                gap: 5px;
+                gap: 4px;
             }
 
             .dashboard-alert {
                 border-radius: 8px;
                 border: 1px solid rgba(255, 255, 255, .09);
                 background: rgba(255, 255, 255, .02);
-                padding: 7px 8px;
+                padding: 6px 7px;
                 display: grid;
                 gap: 4px;
             }
@@ -971,8 +1408,8 @@
             .dashboard-alert-text {
                 margin: 0;
                 color: #f2f6ff;
-                font-size: 11.5px;
-                line-height: 1.3;
+                font-size: 11px;
+                line-height: 1.28;
                 display: -webkit-box;
                 -webkit-line-clamp: 2;
                 -webkit-box-orient: vertical;
@@ -982,8 +1419,8 @@
             .dashboard-alert-meta {
                 margin: 0;
                 color: var(--text2);
-                font-size: 10px;
-                line-height: 1.25;
+                font-size: 9.5px;
+                line-height: 1.2;
                 display: -webkit-box;
                 -webkit-line-clamp: 1;
                 -webkit-box-orient: vertical;
@@ -997,32 +1434,32 @@
                 color: var(--text2);
                 font-size: 12px;
                 line-height: 1.45;
-                padding: 12px;
+                padding: 10px;
             }
 
             .dashboard-timeline-list {
                 display: grid;
-                gap: 9px;
+                gap: 7px;
             }
 
             .dashboard-timeline-item {
                 display: grid;
-                grid-template-columns: 66px minmax(0, 1fr);
-                gap: 9px;
+                grid-template-columns: 58px minmax(0, 1fr);
+                gap: 8px;
                 border-radius: 10px;
                 border: 1px solid rgba(255, 255, 255, .08);
                 background: rgba(255, 255, 255, .02);
-                padding: 10px;
+                padding: 9px;
             }
 
             .dashboard-timeline-badge {
-                width: 66px;
-                height: 34px;
+                width: 58px;
+                height: 30px;
                 border-radius: 10px;
                 display: grid;
                 place-items: center;
                 color: #cce2ff;
-                font-size: 9px;
+                font-size: 8.5px;
                 font-weight: 900;
                 letter-spacing: .03em;
                 background: rgba(47, 125, 240, .2);
@@ -1038,55 +1475,55 @@
 
             .dashboard-timeline-top strong {
                 color: var(--text);
-                font-size: 14px;
+                font-size: 13px;
                 line-height: 1.3;
             }
 
             .dashboard-time-chip {
                 color: #9bc4ff;
-                font-size: 11px;
+                font-size: 10px;
                 font-weight: 750;
                 white-space: nowrap;
             }
 
             .dashboard-timeline-meta {
-                margin: 4px 0 0;
+                margin: 3px 0 0;
                 color: var(--text2);
-                font-size: 12px;
-                line-height: 1.4;
+                font-size: 11px;
+                line-height: 1.35;
             }
 
             .dashboard-timeline-copy {
-                margin: 6px 0 0;
+                margin: 4px 0 0;
                 color: var(--text);
-                font-size: 12px;
-                line-height: 1.54;
+                font-size: 11.5px;
+                line-height: 1.45;
             }
 
             .dashboard-steps-list {
                 display: grid;
-                gap: 9px;
+                gap: 7px;
             }
 
             .dashboard-step-card {
                 border-radius: 10px;
                 border: 1px solid rgba(255, 255, 255, .08);
                 background: rgba(255, 255, 255, .02);
-                padding: 10px;
+                padding: 8px;
                 display: grid;
-                gap: 6px;
+                gap: 5px;
             }
 
             .dashboard-step-top {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                gap: 10px;
+                gap: 8px;
             }
 
             .dashboard-step-link {
                 color: var(--text);
-                font-size: 14px;
+                font-size: 13px;
                 line-height: 1.28;
                 font-weight: 700;
                 text-decoration: none;
@@ -1107,13 +1544,13 @@
             .dashboard-step-badge {
                 display: inline-flex;
                 align-items: center;
-                min-height: 24px;
+                min-height: 21px;
                 border-radius: 999px;
-                padding: 0 9px;
+                padding: 0 8px;
                 color: #d6e8ff;
                 background: rgba(47, 125, 240, .24);
                 border: 1px solid rgba(47, 125, 240, .3);
-                font-size: 10px;
+                font-size: 9px;
                 font-weight: 800;
                 letter-spacing: .06em;
                 text-transform: uppercase;
@@ -1123,8 +1560,8 @@
             .dashboard-step-card p {
                 margin: 0;
                 color: var(--text2);
-                font-size: 12px;
-                line-height: 1.45;
+                font-size: 11px;
+                line-height: 1.36;
             }
 
             .dashboard-step-card p strong {
@@ -1141,38 +1578,38 @@
                 border-radius: 10px;
                 border: 1px solid rgba(255, 255, 255, .08);
                 background: rgba(255, 255, 255, .02);
-                padding: 12px;
+                padding: 10px;
                 display: grid;
-                gap: 9px;
+                gap: 7px;
             }
 
             .dashboard-finance-head strong {
                 color: var(--text);
-                font-size: 13px;
+                font-size: 12px;
                 font-weight: 700;
             }
 
             .dashboard-finance-chart {
                 display: grid;
-                gap: 8px;
+                gap: 6px;
             }
 
             .dashboard-fin-line {
                 display: grid;
-                grid-template-columns: minmax(112px, .55fr) minmax(0, 1fr) auto;
-                gap: 8px;
+                grid-template-columns: minmax(104px, .52fr) minmax(0, 1fr) auto;
+                gap: 7px;
                 align-items: center;
             }
 
             .dashboard-fin-line span {
                 color: var(--text2);
-                font-size: 11px;
+                font-size: 10px;
                 line-height: 1.2;
             }
 
             .dashboard-fin-line strong {
                 color: var(--text);
-                font-size: 11px;
+                font-size: 10px;
                 font-weight: 700;
             }
 
@@ -1207,17 +1644,17 @@
             .dashboard-activity-grid {
                 display: grid;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 8px;
+                gap: 6px;
             }
 
             .dashboard-activity-card {
                 border-radius: 10px;
                 border: 1px solid rgba(255, 255, 255, .08);
                 background: rgba(255, 255, 255, .02);
-                padding: 10px;
+                padding: 9px;
                 display: grid;
-                gap: 6px;
-                min-height: 106px;
+                gap: 5px;
+                min-height: 86px;
                 align-content: start;
             }
 
@@ -1231,19 +1668,19 @@
 
             .dashboard-activity-card strong {
                 color: var(--text);
-                font-size: 14px;
+                font-size: 13px;
                 line-height: 1.35;
             }
 
             .dashboard-activity-card small {
                 color: var(--text2);
-                font-size: 11px;
-                line-height: 1.45;
+                font-size: 10.5px;
+                line-height: 1.35;
             }
 
             .dashboard-table-panel {
                 border-radius: 10px;
-                padding: 16px 16px 0;
+                padding: 12px 12px 0;
             }
 
             .dashboard-v2-table {
@@ -1276,8 +1713,8 @@
             }
 
             .dashboard-v2-table-head {
-                min-height: 40px;
-                padding: 0 10px;
+                min-height: 34px;
+                padding: 0 8px;
                 border-radius: 6px 6px 0 0;
                 color: var(--text2);
                 background: rgba(255, 255, 255, .035);
@@ -1288,8 +1725,8 @@
             }
 
             .dashboard-v2-table-row {
-                min-height: 66px;
-                padding: 4px 10px;
+                min-height: 56px;
+                padding: 3px 8px;
                 border-top: 1px solid rgba(255, 255, 255, .055);
                 color: var(--text);
                 font-size: 12px;
@@ -1311,7 +1748,7 @@
 
             .dashboard-portal-cell {
                 display: grid;
-                gap: 4px;
+                gap: 0;
                 justify-items: center;
                 min-width: 76px;
             }
@@ -1324,7 +1761,11 @@
                 font-weight: 700;
                 display: inline-flex;
                 align-items: center;
+                justify-content: center;
                 border: 1px solid transparent;
+                text-decoration: none;
+                transition: transform .16s ease, border-color .16s ease, filter .16s ease;
+                cursor: pointer;
             }
 
             .dashboard-portal-state.is-active {
@@ -1339,30 +1780,22 @@
                 border-color: rgba(148, 163, 184, .26);
             }
 
-            .dashboard-portal-open {
-                color: #8ab8ff;
-                font-size: 11px;
-                font-weight: 700;
-                text-decoration: none;
+            .dashboard-portal-state:hover {
+                transform: translateY(-1px);
+                filter: brightness(1.05);
             }
 
-            .dashboard-portal-open:hover,
-            .dashboard-portal-open:focus-visible {
-                text-decoration: underline;
-            }
-
-            .dashboard-portal-open.is-disabled {
-                color: var(--text2);
-                text-decoration: none;
-                pointer-events: none;
+            .dashboard-portal-state:focus-visible {
+                outline: none;
+                box-shadow: 0 0 0 2px rgba(138, 184, 255, 0.26);
             }
 
             .dashboard-v2-table-row span small,
             .dashboard-v2-obra-cell small {
                 display: block;
-                margin-top: 3px;
+                margin-top: 2px;
                 color: var(--text2);
-                font-size: 11px;
+                font-size: 10px;
             }
 
             .dashboard-v2-obra-cell {
@@ -1419,7 +1852,7 @@
                 justify-content: flex-end;
                 align-items: center;
                 gap: 8px;
-                padding: 10px 14px 12px;
+                padding: 8px 12px 10px;
                 border-top: 1px solid rgba(255, 255, 255, .06);
                 background: rgba(255, 255, 255, .01);
                 color: var(--text2);
@@ -1430,8 +1863,8 @@
             .dashboard-v2-table-foot span {
                 display: grid;
                 gap: 3px;
-                min-width: 116px;
-                padding: 6px 10px;
+                min-width: 108px;
+                padding: 5px 9px;
                 border-radius: 7px;
                 background: rgba(255, 255, 255, .016);
                 border: 1px solid rgba(255, 255, 255, .045);
@@ -1439,7 +1872,7 @@
 
             .dashboard-v2-table-foot small {
                 color: var(--text2);
-                font-size: 9px;
+                font-size: 8.5px;
                 font-weight: 800;
                 letter-spacing: .04em;
                 text-transform: uppercase;
@@ -1482,12 +1915,34 @@
             }
 
             @media (max-width: 1280px) {
+                .dashboard-filter-shell {
+                    grid-template-columns: 1fr;
+                }
+
+                .dashboard-filter-card--clean {
+                    order: 1;
+                    justify-self: stretch;
+                }
+
+                .dashboard-filter-card--clean:not(.dashboard-filter-card--open) {
+                    justify-self: end;
+                }
+
+                .dashboard-filter-ops-rail {
+                    order: 2;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+
                 .dashboard-main-grid {
                     grid-template-columns: 1fr;
                 }
 
                 .dashboard-support-grid {
                     grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+
+                .dashboard-analysis-grid {
+                    grid-template-columns: minmax(240px, 35fr) minmax(0, 65fr);
                 }
             }
 
@@ -1502,9 +1957,25 @@
                     flex-direction: column;
                 }
 
+                .dashboard-filter-ops-rail,
                 .dashboard-kpis-grid,
                 .dashboard-support-grid {
                     grid-template-columns: 1fr;
+                }
+
+                .dashboard-analysis-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .dashboard-status-chart-wrap {
+                    grid-template-columns: 1fr;
+                    justify-items: center;
+                    gap: 8px;
+                }
+
+                .dashboard-status-legend {
+                    width: 100%;
+                    max-width: 260px;
                 }
 
                 .dashboard-activity-grid {
@@ -1531,6 +2002,8 @@
             data-tipologia-valores='{{ chart_tipologia_valores | default([], true) | tojson | safe }}'
             data-custo-cat-labels='{{ chart_custo_cat_labels | default([], true) | tojson | safe }}'
             data-custo-cat-valores='{{ chart_custo_cat_valores | default([], true) | tojson | safe }}'
+            data-status-distribuicao='{{ status_distribuicao_dashboard | default([], true) | tojson | safe }}'
+            data-total-obras-empresa='{{ total_obras_empresa_dashboard }}'
             data-has-active-filters='{{ "true" if filtro_obra or filtro_tipo_obra or filtro_categoria or filtro_status or data_inicio or data_fim else "false" }}'
             style="display:none;">
         </div>
@@ -1580,6 +2053,27 @@
                 return Number.isFinite(parsed) ? parsed : 0;
             }
 
+            function parseJsonAttr(raw, fallback) {
+                try {
+                    return raw ? JSON.parse(raw) : fallback;
+                } catch (_) {
+                    return fallback;
+                }
+            }
+
+            const STATUS_DONUT_META = {
+                andamento: { label: "Em andamento", color: "#d99b1a" },
+                concluida: { label: "Concluída", color: "#28b56a" },
+                atrasada: { label: "Atrasada", color: "#e8424e" },
+                planejamento: { label: "Planejamento", color: "#2f7df0" },
+                vendida: { label: "Vendida", color: "#7252cc" }
+            };
+            const STATUS_DONUT_ORDER = ["andamento", "concluida", "atrasada", "planejamento", "vendida"];
+            let statusDonutChart = null;
+            let statusDonutRenderId = null;
+            let statusDonutDadosPendentes = null;
+            let statusDonutResizeObserver = null;
+
             function setText(id, value) {
                 const el = document.getElementById(id);
                 if (el) el.textContent = value;
@@ -1593,6 +2087,231 @@
                 const allowed = new Set(["info", "healthy", "warning", "critical"]);
                 card.setAttribute("data-finance-state", allowed.has(state) ? state : "info");
             }
+
+            function normalizarStatusDistribuicao(lista) {
+                const indexado = {};
+                (Array.isArray(lista) ? lista : []).forEach(function (item) {
+                    const status = String(item.status || "").trim().toLowerCase();
+                    if (!STATUS_DONUT_META[status]) return;
+                    indexado[status] = {
+                        status: status,
+                        label: item.label || STATUS_DONUT_META[status].label,
+                        quantidade: Number(item.quantidade || 0),
+                        valor_contrato: parseFinanceNumber(item.valor_contrato ?? item.valor_contrato_formatado ?? 0),
+                        valor_risco: parseFinanceNumber(item.valor_risco ?? item.valor_risco_formatado ?? 0)
+                    };
+                });
+                return STATUS_DONUT_ORDER.map(function (status) {
+                    return indexado[status] || {
+                        status: status,
+                        label: STATUS_DONUT_META[status].label,
+                        quantidade: 0,
+                        valor_contrato: 0,
+                        valor_risco: 0
+                    };
+                });
+            }
+
+            function valorRelevanteStatus(item) {
+                if (!item) return 0;
+                return item.status === "atrasada"
+                    ? Math.max(0, Number(item.valor_risco || 0))
+                    : Math.max(0, Number(item.valor_contrato || 0));
+            }
+
+            function textoTooltipStatus(item) {
+                if (!item) return "";
+                const qtd = Number(item.quantidade || 0);
+                const sufixoObras = qtd === 1 ? "obra" : "obras";
+                const valor = valorRelevanteStatus(item);
+                if (item.status === "atrasada") {
+                    return `${item.label} · ${qtd} ${sufixoObras} · ${fmt(valor)} em risco`;
+                }
+                return `${item.label} · ${qtd} ${sufixoObras} · ${fmt(valor)} em contratos`;
+            }
+
+            function atualizarLegendaStatus(lista) {
+                const legend = document.getElementById("dashboardStatusLegend");
+                if (!legend) return;
+                legend.innerHTML = lista.map(function (item) {
+                    return `
+                    <div class="dashboard-status-legend-item" data-status="${esc(item.status)}">
+                        <div class="dashboard-status-main">
+                            <span class="dashboard-status-dot dashboard-status-dot--${esc(item.status)}"></span>
+                            <span class="dashboard-status-label">${esc(item.label || STATUS_DONUT_META[item.status].label)}</span>
+                        </div>
+                        <strong class="dashboard-status-qty">${Number(item.quantidade || 0)}</strong>
+                    </div>`;
+                }).join("");
+            }
+
+            function pararObservadorStatusDonut() {
+                if (statusDonutResizeObserver) {
+                    statusDonutResizeObserver.disconnect();
+                    statusDonutResizeObserver = null;
+                }
+            }
+
+            function destruirStatusDonut() {
+                pararObservadorStatusDonut();
+                if (statusDonutRenderId) {
+                    cancelAnimationFrame(statusDonutRenderId);
+                    statusDonutRenderId = null;
+                }
+                if (statusDonutChart) {
+                    statusDonutChart.destroy();
+                    statusDonutChart = null;
+                }
+            }
+
+            function canvasStatusPronto(canvas) {
+                if (!canvas || !canvas.isConnected) return false;
+                const rect = canvas.getBoundingClientRect();
+                return rect.width > 0 && rect.height > 0;
+            }
+
+            function observarCanvasStatusDonut(canvas) {
+                pararObservadorStatusDonut();
+                if (typeof ResizeObserver === "undefined" || !canvas) return;
+
+                statusDonutResizeObserver = new ResizeObserver(function () {
+                    if (!statusDonutDadosPendentes || !canvasStatusPronto(canvas)) return;
+                    pararObservadorStatusDonut();
+                    agendarRenderizacaoStatusDonut(statusDonutDadosPendentes);
+                });
+                statusDonutResizeObserver.observe(canvas);
+            }
+
+            function renderizarStatusDonut(lista) {
+                const canvas = document.getElementById("dashboardStatusChart");
+                if (!canvas || typeof Chart === "undefined") return;
+
+                const labels = lista.map(function (item) {
+                    return item.label || STATUS_DONUT_META[item.status].label;
+                });
+                const valores = lista.map(function (item) {
+                    return Number(item.quantidade || 0);
+                });
+                const cores = lista.map(function (item) {
+                    return STATUS_DONUT_META[item.status].color;
+                });
+
+                destruirStatusDonut();
+                if (typeof Chart.getChart === "function") {
+                    const chartExistente = Chart.getChart(canvas);
+                    if (chartExistente) chartExistente.destroy();
+                }
+
+                statusDonutChart = new Chart(canvas, {
+                    type: "doughnut",
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: valores,
+                            backgroundColor: cores,
+                            borderColor: "rgba(14, 20, 33, 0.84)",
+                            borderWidth: 1,
+                            hoverOffset: 6
+                        }]
+                    },
+                    options: {
+                        responsive: false,
+                        maintainAspectRatio: false,
+                        cutout: "65%",
+                        animation: {
+                            duration: 380
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                displayColors: false,
+                                backgroundColor: "rgba(10, 15, 24, 0.96)",
+                                borderColor: "rgba(255, 255, 255, 0.1)",
+                                borderWidth: 1,
+                                padding: 10,
+                                callbacks: {
+                                    title: function () {
+                                        return "";
+                                    },
+                                    label: function (contexto) {
+                                        return textoTooltipStatus(lista[contexto.dataIndex]);
+                                    }
+                                }
+                            }
+                        },
+                        onClick: function (_, elementos) {
+                            if (!elementos || !elementos.length) return;
+                            const item = lista[elementos[0].index];
+                            if (!item || !item.status) return;
+                            window.location.href = `/obras?status=${encodeURIComponent(item.status)}`;
+                        },
+                        onHover: function (_, elementos, chart) {
+                            chart.canvas.style.cursor = elementos && elementos.length ? "pointer" : "default";
+                        }
+                    }
+                });
+            }
+
+            function agendarRenderizacaoStatusDonut(lista, tentativa) {
+                statusDonutDadosPendentes = Array.isArray(lista) ? lista : [];
+                if (statusDonutRenderId) cancelAnimationFrame(statusDonutRenderId);
+
+                statusDonutRenderId = requestAnimationFrame(function () {
+                    statusDonutRenderId = null;
+                    const canvas = document.getElementById("dashboardStatusChart");
+                    if (!canvas) return;
+                    if (typeof Chart === "undefined") {
+                        if ((tentativa || 0) < 20) {
+                            agendarRenderizacaoStatusDonut(statusDonutDadosPendentes, (tentativa || 0) + 1);
+                        }
+                        return;
+                    }
+
+                    if (!canvasStatusPronto(canvas)) {
+                        if ((tentativa || 0) < 20) {
+                            agendarRenderizacaoStatusDonut(statusDonutDadosPendentes, (tentativa || 0) + 1);
+                        } else {
+                            observarCanvasStatusDonut(canvas);
+                        }
+                        return;
+                    }
+
+                    renderizarStatusDonut(statusDonutDadosPendentes);
+                });
+            }
+
+            function atualizarStatusDistribuicao(p) {
+                const card = document.getElementById("cardStatusObras");
+                if (!card) return;
+
+                const totalObrasEmpresa = Number((p && p.kpis && p.kpis.total_obras_empresa) || 0);
+                if (totalObrasEmpresa <= 0) {
+                    card.hidden = true;
+                    destruirStatusDonut();
+                    return;
+                }
+
+                card.hidden = false;
+                const lista = normalizarStatusDistribuicao((p && p.status_distribuicao) || []);
+                const totalObras = lista.reduce(function (acc, item) {
+                    return acc + Number(item.quantidade || 0);
+                }, 0);
+                setText("dashboardStatusTotal", totalObras);
+                atualizarLegendaStatus(lista);
+
+                const wrap = document.getElementById("dashboardStatusChartWrap");
+                const itemAtrasada = lista.find(function (item) { return item.status === "atrasada"; });
+                const temAtrasada = Number(itemAtrasada ? itemAtrasada.quantidade : 0) > 0;
+                if (wrap) wrap.classList.toggle("has-atrasada", temAtrasada);
+
+                agendarRenderizacaoStatusDonut(lista);
+            }
+
+            if (typeof window.dashboardStatusDonutDestroy === "function") {
+                window.dashboardStatusDonutDestroy();
+            }
+            window.dashboardStatusDonutDestroy = destruirStatusDonut;
+            window.addEventListener("pagehide", destruirStatusDonut, { once: true });
 
             function parseDate(raw) {
                 if (!raw) return null;
@@ -1629,6 +2348,28 @@
                 });
             }
 
+            function hasExplicitTime(raw) {
+                return /\d{2}:\d{2}/.test(String(raw || ""));
+            }
+
+            function isSameDay(a, b) {
+                return a.getFullYear() === b.getFullYear()
+                    && a.getMonth() === b.getMonth()
+                    && a.getDate() === b.getDate();
+            }
+
+            function formatAbsoluteDateLabel(date, raw) {
+                if (!date) return "—";
+                if (!hasExplicitTime(raw)) {
+                    return date.toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric"
+                    });
+                }
+                return formatAbsoluteDateTime(date);
+            }
+
             function toTitleCase(text) {
                 return String(text || "")
                     .toLowerCase()
@@ -1652,8 +2393,9 @@
                 return mapa[base] || toTitleCase(base);
             }
 
-            function formatRelative(date) {
+            function formatRelative(date, raw) {
                 if (!date) return "sem horário";
+                if (!hasExplicitTime(raw) && isSameDay(date, new Date())) return "hoje";
                 const diffMs = Date.now() - date.getTime();
                 if (diffMs < 0) return "agora";
                 const min = Math.floor(diffMs / 60000);
@@ -1667,9 +2409,15 @@
 
             function atualizarTemposRelativos() {
                 document.querySelectorAll("[data-relative-date]").forEach(function (el) {
-                    const date = parseDate(el.getAttribute("data-relative-date"));
+                    const rawDate = el.getAttribute("data-relative-date");
+                    const date = parseDate(rawDate);
                     if (date) {
-                        el.textContent = `${formatAbsoluteDateTime(date)} (${formatRelative(date)})`;
+                        const mode = (el.getAttribute("data-relative-mode") || "").toLowerCase();
+                        if (mode === "primary-only") {
+                            el.textContent = formatRelative(date, rawDate);
+                        } else {
+                            el.textContent = `${formatAbsoluteDateTime(date)} (${formatRelative(date, rawDate)})`;
+                        }
                     }
                 });
             }
@@ -1765,34 +2513,37 @@
                 setText("kpiObrasHoje", obrasHojeEstimadas);
                 setText("kpiObrasHojeSub", atividadeHoje ? "Movimentação registrada no período filtrado" : "Sem movimentação hoje");
 
-                const hasFinanceiro = Number(p.kpis.total_custos_lancados || 0) > 0;
-                const hasAtualizacao = hasFinanceiro || Number(p.kpis.total_medicoes || 0) > 0 || Number(p.kpis.total_alertas || 0) > 0;
+                const dataUltimoLancamentoRaw = p.kpis.ultimo_lancamento_financeiro_data || "";
+                const dataUltimoLancamento = parseDate(dataUltimoLancamentoRaw);
+                const hasFinanceiro = Boolean(dataUltimoLancamento);
+                const obrasSemAtualizacao = Number(p.kpis.obras_sem_atualizacao || 0);
                 const cardFinanceiro = document.getElementById("kpiCardFinanceiro");
-                const cardAtualizacao = document.getElementById("kpiCardAtualizacao");
                 const cardFoto = document.getElementById("kpiCardFoto");
+                const cardSemAtualizacao = document.getElementById("kpiCardSemAtualizacao");
                 const cardEmpty = document.getElementById("kpiCardEmpty");
 
                 if (cardFinanceiro) cardFinanceiro.hidden = !hasFinanceiro;
-                if (cardAtualizacao) cardAtualizacao.hidden = !hasAtualizacao;
+                if (cardSemAtualizacao) cardSemAtualizacao.hidden = false;
+                setText("kpiObrasSemAtualizacao", obrasSemAtualizacao);
+                setText(
+                    "kpiObrasSemAtualizacaoSub",
+                    obrasSemAtualizacao === 0
+                        ? "Todas atualizadas"
+                        : `${obrasSemAtualizacao} ${obrasSemAtualizacao === 1 ? "obra sem registro" : "obras sem registro"} há 7 dias`
+                );
 
                 if (hasFinanceiro) {
-                    const dataUltimoLancamento = parseDate((p.custos && p.custos[0] && p.custos[0].data_lancamento) ? p.custos[0].data_lancamento : "");
-                    setText("kpiUltimoLancamentoFinanceiro", dataUltimoLancamento ? formatAbsoluteDateTime(dataUltimoLancamento) : "Nenhum registro hoje");
-                    setText("kpiUltimoLancamentoFinanceiroSub", `${p.kpis.total_custos_lancados} lançamento(s) no período`);
-                }
-
-                if (hasAtualizacao) {
-                    const dataAtualizacao = parseDate(
-                        (p.custos && p.custos[0] && p.custos[0].data_lancamento)
-                        || (p.medicoes && p.medicoes[0] && p.medicoes[0].data_medicao)
-                        || ""
-                    );
-                    setText("kpiUltimaAtualizacaoGeral", dataAtualizacao ? formatAbsoluteDateTime(dataAtualizacao) : "Nenhum registro hoje");
-                    setText("kpiUltimaAtualizacaoGeralSub", dataAtualizacao ? formatRelative(dataAtualizacao) : "Sem atualização recente");
+                    const kpiFinanceiro = document.getElementById("kpiUltimoLancamentoFinanceiro");
+                    if (kpiFinanceiro) {
+                        kpiFinanceiro.setAttribute("data-relative-date", dataUltimoLancamentoRaw);
+                        kpiFinanceiro.setAttribute("data-relative-mode", "primary-only");
+                    }
+                    setText("kpiUltimoLancamentoFinanceiro", formatRelative(dataUltimoLancamento, dataUltimoLancamentoRaw));
+                    setText("kpiUltimoLancamentoFinanceiroSub", formatAbsoluteDateLabel(dataUltimoLancamento, dataUltimoLancamentoRaw));
                 }
 
                 const fotoVisivel = cardFoto ? !cardFoto.hidden : false;
-                const hasLiveInfo = atividadeHoje || hasFinanceiro || hasAtualizacao || fotoVisivel;
+                const hasLiveInfo = atividadeHoje || hasFinanceiro || fotoVisivel || obrasSemAtualizacao > 0;
                 if (cardEmpty) cardEmpty.hidden = hasLiveInfo;
                 atualizarFinanceChart(totalReceitaValor, totalCustoValor, margemValor);
             }
@@ -1852,7 +2603,6 @@
                 } else {
                     setText("alertaInfoTexto", "Sem fotos enviadas essa semana.");
                 }
-                setText("alertaInfoAcao", "Ver logs");
             }
 
             function atualizarTimeline(p) {
@@ -1860,7 +2610,10 @@
                 if (!list) return;
 
                 const eventos = [];
-                (p.custos || []).slice(0, 2).forEach(function (c) {
+                const custosDetalhados = Array.isArray(p.custos) ? p.custos : [];
+                const medicoesDetalhadas = Array.isArray(p.medicoes) ? p.medicoes : [];
+
+                custosDetalhados.slice(0, 2).forEach(function (c) {
                     eventos.push({
                         badge: "Custo",
                         titulo: "Custo lançado",
@@ -1870,7 +2623,7 @@
                     });
                 });
 
-                (p.medicoes || []).slice(0, 2).forEach(function (m) {
+                medicoesDetalhadas.slice(0, 2).forEach(function (m) {
                     eventos.push({
                         badge: "Medição",
                         titulo: "Fase atualizada",
@@ -1880,28 +2633,34 @@
                     });
                 });
 
-                (p.alertas || []).slice(0, 3).forEach(function (a) {
-                    eventos.push({
-                        badge: "Alerta",
-                        titulo: "Alerta operacional detectado",
-                        tempo: "Alerta gerado",
-                        meta: `Responsável: Sistema · Obra: ${a.codigo || "N/A"}`,
-                        copy: a.mensagem || "Alerta operacional registrado."
-                    });
-                });
+                if (!custosDetalhados.length) {
+                    const totalCustos = Number(p.kpis && p.kpis.total_custos_lancados || 0);
+                    if (totalCustos > 0) {
+                        eventos.push({
+                            badge: "Custo",
+                            titulo: totalCustos === 1 ? "Custo lançado" : "Custos lançados",
+                            tempo: "Período filtrado",
+                            meta: `${totalCustos} ${totalCustos === 1 ? "lançamento registrado" : "lançamentos registrados"}`,
+                            copy: "Lançamento financeiro realizado por usuário."
+                        });
+                    }
+                }
 
-                (p.margem_por_obra || []).slice(0, 2).forEach(function (obra) {
-                    eventos.push({
-                        badge: "Obra",
-                        titulo: "Atualização de fase da obra",
-                        tempo: "Fase atualizada",
-                        meta: `Responsável: Gestão da obra · Obra: ${obra.nome}`,
-                        copy: `Fase atual: ${obra.fase_obra || obra.status || "-"} · Próxima etapa: ${estimarProximaEtapa(Number(obra.execucao || 0), obra.status)}`
-                    });
-                });
+                if (!medicoesDetalhadas.length) {
+                    const totalMedicoes = Number(p.kpis && p.kpis.total_medicoes || 0);
+                    if (totalMedicoes > 0) {
+                        eventos.push({
+                            badge: "Medição",
+                            titulo: totalMedicoes === 1 ? "Medição registrada" : "Medições registradas",
+                            tempo: "Período filtrado",
+                            meta: `${totalMedicoes} ${totalMedicoes === 1 ? "medição registrada" : "medições registradas"}`,
+                            copy: "Medição salva por usuário."
+                        });
+                    }
+                }
 
                 if (!eventos.length) {
-                    list.innerHTML = `<div class="dashboard-empty-inline">Sem movimentações recentes.</div>`;
+                    list.innerHTML = `<div class="dashboard-empty-inline">Nenhuma movimentação registrada recentemente</div>`;
                     return;
                 }
 
@@ -2020,8 +2779,7 @@
                     <strong class="${parseFinanceNumber(o.margem_valor ?? o.margem_valor_formatado ?? 0) >= 0 ? "valor-positivo" : "valor-negativo"}">${esc(o.margem_valor_formatada || o.margem_valor_formatado)}</strong>
                     <span class="badge ${esc(o.status)}">${esc(o.status || "-")}</span>
                     <div class="dashboard-portal-cell">
-                        <span class="dashboard-portal-state ${portalStatusByCodigo[o.codigo] ? "is-active" : "is-empty"}">${portalStatusByCodigo[o.codigo] ? "Ativo" : "Sem portal"}</span>
-                        ${portalStatusByCodigo[o.codigo] ? `<a href="/obra/${encodeURIComponent(o.codigo)}" class="dashboard-portal-open" aria-label="Abrir portal da obra ${esc(o.nome)}">Abrir</a>` : `<span class="dashboard-portal-open is-disabled">—</span>`}
+                        <a href="/obra/${encodeURIComponent(o.codigo)}" class="dashboard-portal-state ${portalStatusByCodigo[o.codigo] ? "is-active" : "is-empty"}" aria-label="${portalStatusByCodigo[o.codigo] ? `Abrir portal da obra ${esc(o.nome)}` : `Configurar portal da obra ${esc(o.nome)}`}">${portalStatusByCodigo[o.codigo] ? "Ativo" : "Sem portal"}</a>
                     </div>
                 </div>`;
                 }).join("");
@@ -2111,6 +2869,7 @@
                     const payload = await res.json();
                     atualizarResumoFiltros(payload);
                     atualizarKpis(payload);
+                    atualizarStatusDistribuicao(payload);
                     atualizarAlertas(payload);
                     atualizarTimeline(payload);
                     atualizarProximasEtapas(payload);
@@ -2128,17 +2887,27 @@
 
             const filterToggle = document.getElementById("toggleDashboardFilter");
             const filterBody = document.getElementById("dashboardFilterBody");
+            const filterCaret = document.getElementById("opsFilterCaret");
+            const filterCard = document.getElementById("dashboardFilterCard");
+
+            function atualizarVisualToggleFiltro(aberto) {
+                if (!filterToggle) return;
+                filterToggle.setAttribute("aria-expanded", aberto ? "true" : "false");
+                filterToggle.classList.toggle("is-active", aberto);
+                if (filterCard) filterCard.classList.toggle("dashboard-filter-card--open", aberto);
+                if (filterCaret) filterCaret.textContent = "▼";
+            }
 
             function abrirFiltros() {
                 if (!filterBody || !filterToggle) return;
                 filterBody.classList.add("open");
-                filterToggle.textContent = "Ocultar filtros";
+                atualizarVisualToggleFiltro(true);
             }
 
             function fecharFiltros() {
                 if (!filterBody || !filterToggle) return;
                 filterBody.classList.remove("open");
-                filterToggle.textContent = "Mostrar filtros";
+                atualizarVisualToggleFiltro(false);
             }
 
             if (filterToggle && filterBody) {
@@ -2178,8 +2947,23 @@
 
             const dashData = document.getElementById("dashboard-data");
             const hasActiveFilters = dashData && dashData.dataset.hasActiveFilters === "true";
-            hasActiveFilters ? abrirFiltros() : fecharFiltros();
-            atualizarTemposRelativos();
+            const statusDistribuicaoInicial = parseJsonAttr(dashData ? dashData.dataset.statusDistribuicao : "", []);
+            const totalObrasEmpresaInicial = Number(dashData ? dashData.dataset.totalObrasEmpresa : 0);
+
+            function inicializarDashboardInicial() {
+                hasActiveFilters ? abrirFiltros() : fecharFiltros();
+                atualizarStatusDistribuicao({
+                    kpis: { total_obras_empresa: totalObrasEmpresaInicial },
+                    status_distribuicao: statusDistribuicaoInicial
+                });
+                atualizarTemposRelativos();
+            }
+
+            if (document.readyState === "loading") {
+                document.addEventListener("DOMContentLoaded", inicializarDashboardInicial, { once: true });
+            } else {
+                inicializarDashboardInicial();
+            }
     }) ();
         </script>
         {% endblock %}

@@ -568,6 +568,7 @@ def obra_detalhes(codigo):
                 "fase": fase or "Fase atualizada",
                 "data_hora": item["data_hora"],
                 "autor": item["autor"] or "Sistema",
+                "observacao": descricao,
             }
         )
 
@@ -598,8 +599,19 @@ def obra_detalhes(codigo):
                     "fase": fase,
                     "data_hora": item["data_hora"],
                     "autor": item["autor"] or "Sistema",
+                    "observacao": descricao,
                 }
             )
+
+    fases_cronograma_registradas_slugs = {
+        _slug_texto(item["fase"])
+        for item in fase_timeline
+        if (item.get("fase") or "").strip()
+    }
+    fases_cronograma_clicaveis = {
+        fase: _slug_texto(fase) in fases_cronograma_registradas_slugs
+        for fase in FASES_OBRA_PADRAO
+    }
 
     medicoes_ordenadas = sorted(
         medicoes,
@@ -633,6 +645,7 @@ def obra_detalhes(codigo):
         historico_contratos=historico_contratos,
         valor_contrato_atualizado=valor_contrato_atualizado,
         fase_timeline=fase_timeline,
+        fases_cronograma_clicaveis=fases_cronograma_clicaveis,
         chart_custo_cat_labels=list(custos_por_categoria.keys()),
         chart_custo_cat_valores=list(custos_por_categoria.values()),
         chart_medicao_labels=medicao_labels,

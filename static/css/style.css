@@ -8569,30 +8569,6 @@ body:has(.login-page--split) {
   align-items: end;
 }
 
-.obra-foto-fase-atual {
-  min-height: 39px;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--bg2);
-}
-
-.obra-foto-fase-atual span {
-  display: block;
-  margin-bottom: 3px;
-  color: var(--text2);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-}
-
-.obra-foto-fase-atual strong {
-  color: var(--text);
-  font-size: 12px;
-  line-height: 1.25;
-}
-
 .obra-foto-publicacao-field {
   margin-top: 2px;
 }
@@ -9106,45 +9082,6 @@ body:has(.login-page--split) {
   line-height: 1.12;
 }
 
-.obra-detalhes-meta-strip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, .012);
-}
-
-.obra-detalhes-meta-item {
-  min-width: 0;
-  min-height: 40px;
-  padding: 7px 9px;
-  border-radius: 8px;
-  background: transparent;
-}
-
-.obra-detalhes-meta-item span {
-  display: block;
-  margin-bottom: 3px;
-  color: var(--text2);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: .07em;
-  text-transform: uppercase;
-}
-
-.obra-detalhes-meta-item strong {
-  display: block;
-  overflow: hidden;
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1.3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .obra-detalhes-progress {
   padding: 14px;
   border: 1px solid var(--border);
@@ -9238,10 +9175,6 @@ body:has(.login-page--split) {
   font-size: 13px;
 }
 
-.obra-detalhes-chart-card--wide {
-  grid-column: 1 / -1;
-}
-
 .obra-detalhes-chart-box {
   min-height: 180px;
 }
@@ -9279,10 +9212,6 @@ body:has(.login-page--split) {
 
   .obra-detalhes-kpis--financeiro {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .obra-detalhes-meta-strip {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .obra-card-kpis {
@@ -9418,13 +9347,8 @@ body:has(.login-page--split) {
   .obra-detalhes-hero,
   .obra-detalhes-kpis,
   .obra-detalhes-chart-grid,
-  .obra-detalhes-meta-strip,
   .obra-canteiro-kpi-grid {
     grid-template-columns: 1fr;
-  }
-
-  .obra-detalhes-chart-card--wide {
-    grid-column: auto;
   }
 
   .obra-detalhes-section-title {
@@ -9616,7 +9540,6 @@ body {
 .custos-kpi-card,
 .obras-summary-card,
 .obra-detalhes-hero,
-.obra-detalhes-meta-strip,
 .obra-detalhes-progress,
 .obra-detalhes-chart-card {
   background:
@@ -10550,8 +10473,6 @@ table tbody tr:hover,
 .obra-canteiro-public-card,
 .obra-galeria-card,
 .obra-detalhes-hero,
-.obra-detalhes-meta-strip,
-.obra-detalhes-meta-item,
 .obra-detalhes-progress,
 .obra-detalhes-chart-card,
 .obra-interno-toggle-card,
@@ -11887,7 +11808,6 @@ form:has(.custo-delete-icon) {
   .obras-summary-strip,
   .custos-kpi-grid,
   .obra-detalhes-kpis,
-  .obra-detalhes-meta-strip,
   .obra-canteiro-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -11929,7 +11849,6 @@ form:has(.custo-delete-icon) {
   .medicao-obra-card,
   .fornecedor-card,
   .obra-detalhes-hero,
-  .obra-detalhes-meta-item,
   .obra-detalhes-progress,
   .obra-detalhes-chart-card,
   .obra-finance-card {
@@ -11967,7 +11886,6 @@ form:has(.custo-delete-icon) {
   .obras-summary-strip,
   .custos-kpi-grid,
   .obra-detalhes-kpis,
-  .obra-detalhes-meta-strip,
   .obra-canteiro-kpi-grid,
   .dashboard-summary-metrics,
   .obra-detail-grid,
@@ -16036,5 +15954,144 @@ body.onboarding-page {
   .contrato-clausula-picker,
   .contrato-clausula-save-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Suporte rapido no menu global */
+.support-modal-box {
+  max-width: 560px;
+}
+
+.support-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.support-mode-btn {
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.support-mode-btn:hover {
+  border-color: rgba(95, 155, 255, 0.42);
+  background: rgba(95, 155, 255, 0.08);
+}
+
+.support-mode-btn.is-active {
+  border-color: rgba(95, 155, 255, 0.58);
+  background: rgba(95, 155, 255, 0.16);
+  color: #e7f0ff;
+}
+
+.support-text-group textarea {
+  min-height: 124px;
+}
+
+@media (max-width: 720px) {
+  .support-mode-switch {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Flash como toast discreto */
+.flash-toast-stack {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1320;
+  display: grid;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.flash-toast {
+  width: min(320px, calc(100vw - 24px));
+  min-height: 52px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-left-width: 4px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015)),
+    var(--bg-card);
+  box-shadow: 0 14px 26px rgba(2, 8, 18, 0.34);
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateY(10px) scale(0.98);
+  transition: opacity 0.24s ease, transform 0.24s ease;
+}
+
+.flash-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.flash-toast.is-hiding {
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+}
+
+.flash-toast--success {
+  border-left-color: #38c978;
+}
+
+.flash-toast--error {
+  border-left-color: #ff4d5c;
+}
+
+.flash-toast--warning {
+  border-left-color: #f3b449;
+}
+
+.flash-toast-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}
+
+.flash-toast--success .flash-toast-icon {
+  color: #4ddb90;
+}
+
+.flash-toast--error .flash-toast-icon {
+  color: #ff7d89;
+}
+
+.flash-toast--warning .flash-toast-icon {
+  color: #f6c971;
+}
+
+.flash-toast-text {
+  margin: 0;
+  color: #e8f0ff;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+@media (max-width: 640px) {
+  .flash-toast-stack {
+    right: 10px;
+    left: 10px;
+    bottom: 10px;
+  }
+
+  .flash-toast {
+    width: 100%;
   }
 }

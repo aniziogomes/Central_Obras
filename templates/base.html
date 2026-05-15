@@ -192,7 +192,8 @@
         {% set iniciais_usuario = (primeira_inicial ~ segunda_inicial)|upper %}
         {% set foto_usuario = (session.get('usuario_foto', '') or '')|trim %}
         {% set foto_lower = foto_usuario|lower %}
-        {% set foto_placeholder = ('placeholder' in foto_lower) or ('default' in foto_lower) or ('sem_foto' in foto_lower) or ('no-photo' in foto_lower) %}
+        {% set foto_placeholder = ('placeholder' in foto_lower) or ('default' in foto_lower) or ('sem_foto' in
+        foto_lower) or ('no-photo' in foto_lower) %}
         {% set tem_foto_valida = foto_usuario and not foto_placeholder %}
         <a class="user-badge user-badge-link {% if request.endpoint == 'auth_bp.perfil' %}active{% endif %}"
           href="{{ url_for('auth_bp.perfil') }}" data-spa aria-label="Abrir configurações da conta">
@@ -225,6 +226,7 @@
             <div class="global-actions-divider" role="separator"></div>
             {% endif %}
             <a href="{{ url_for('auth_bp.perfil') }}" class="global-actions-item" data-spa>Configurações da conta</a>
+            <a href="#" class="global-actions-item" data-open-support-modal="modalSuporte">Suporte</a>
             <div class="global-actions-divider" role="separator"></div>
             <form class="global-actions-form" method="POST" action="{{ url_for('auth_bp.logout') }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -244,16 +246,86 @@
 
       {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-      {% for categoria, mensagem in messages %}
-      <div class="flash {% if categoria == 'erro' %}flash-error{% else %}flash-success{% endif %}">
-        {{ mensagem }}
+      <div class="flash-toast-stack" data-flash-toast-stack aria-live="polite" aria-atomic="true">
+        {% for categoria, mensagem in messages %}
+        {% set toast_tipo = 'error' if categoria == 'erro' else ('warning' if categoria in ['aviso', 'warning'] else 'success') %}
+        <article class="flash-toast flash-toast--{{ toast_tipo }}" data-flash-toast>
+          <span class="flash-toast-icon" aria-hidden="true">
+            {% if toast_tipo == 'error' %}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M12 8v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              <circle cx="12" cy="16" r="1" fill="currentColor" />
+              <path d="M12 3 2.7 19.5h18.6L12 3Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+            </svg>
+            {% elif toast_tipo == 'warning' %}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M12 8v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              <circle cx="12" cy="16" r="1" fill="currentColor" />
+              <path d="M12 3 2.7 19.5h18.6L12 3Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+            </svg>
+            {% else %}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="m5 13 4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
+            {% endif %}
+          </span>
+          <p class="flash-toast-text">{{ mensagem }}</p>
+        </article>
+        {% endfor %}
       </div>
-      {% endfor %}
       {% endif %}
       {% endwith %}
 
       {% block content %}{% endblock %}
     </main>
+  </div>
+
+  {% set suporte_redirect_atual = request.full_path[:-1] if request.full_path.endswith('?') else request.full_path %}
+  <div id="modalSuporte" class="modal-overlay support-modal" aria-hidden="true">
+    <div class="modal-box support-modal-box">
+      <div class="modal-header">
+        <h3 data-support-title>Falar com suporte</h3>
+        <button type="button" class="modal-close" data-close-quick-modal aria-label="Fechar suporte">&times;</button>
+      </div>
+
+      <div class="support-mode-switch" role="tablist" aria-label="Tipo de contato">
+        <button type="button" class="support-mode-btn is-active" data-support-kind="problema" aria-pressed="true">
+          Reportar problema
+        </button>
+        <button type="button" class="support-mode-btn" data-support-kind="sugestao" aria-pressed="false">
+          Enviar sugestão
+        </button>
+      </div>
+
+      <form method="POST" action="{{ url_for('auth_bp.enviar_suporte') }}" data-support-form>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="tipo" value="problema" data-support-type-input>
+        <input type="hidden" name="redirect_to" value="{{ suporte_redirect_atual }}" data-support-redirect-input>
+        <input type="hidden" name="pagina_origem" value="{{ suporte_redirect_atual }}" data-support-page-input>
+
+        <div class="form-grid modal-form-grid">
+          <label class="form-group full support-text-group">
+            <span data-support-prompt>Descreva rapidamente o problema</span>
+            <textarea
+              id="supportMensagem"
+              name="mensagem"
+              rows="5"
+              maxlength="1200"
+              required
+              placeholder="Ex: Não consegui salvar a medição da obra ABC. Aparece erro ao clicar em salvar."></textarea>
+            <small class="form-field-help" data-support-hint>
+              Mensagem curta e objetiva já ajuda bastante.
+            </small>
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-quick-modal>Cancelar</button>
+          <button type="submit" class="btn btn-primary">Enviar</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   {% else %}
@@ -419,6 +491,9 @@
 
           main.innerHTML = newMain.innerHTML;
           runPageScripts(main);
+          if (window.CanteiroToast && typeof window.CanteiroToast.mount === 'function') {
+            window.CanteiroToast.mount(main);
+          }
 
           if (pushState) history.pushState({ url }, '', url);
           setActiveNav(url);
@@ -545,6 +620,76 @@
       document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') closeActions();
       });
+    })();
+
+    /* =============================================
+       TOAST FLASH
+       ============================================= */
+    (function () {
+      const AUTO_HIDE_MS = 3000;
+      const FADE_OUT_MS = 280;
+
+      function removeIfEmpty(stack) {
+        if (!stack) return;
+        if (!stack.querySelector('[data-flash-toast]')) stack.remove();
+      }
+
+      function hideToast(toast) {
+        if (!toast || toast.dataset.hiding === '1') return;
+        toast.dataset.hiding = '1';
+        toast.classList.add('is-hiding');
+        window.setTimeout(function () {
+          const stack = toast.closest('[data-flash-toast-stack]');
+          toast.remove();
+          removeIfEmpty(stack);
+        }, FADE_OUT_MS);
+      }
+
+      function setupToast(toast) {
+        if (!toast || toast.dataset.ready === '1') return;
+        toast.dataset.ready = '1';
+
+        let restante = AUTO_HIDE_MS;
+        let inicio = Date.now();
+        let timer = null;
+
+        function startTimer() {
+          if (toast.dataset.hiding === '1') return;
+          clearTimeout(timer);
+          inicio = Date.now();
+          timer = window.setTimeout(function () {
+            hideToast(toast);
+          }, restante);
+        }
+
+        function pauseTimer() {
+          if (toast.dataset.hiding === '1') return;
+          if (!timer) return;
+          clearTimeout(timer);
+          timer = null;
+          restante -= Date.now() - inicio;
+          if (restante < 180) restante = 180;
+        }
+
+        toast.addEventListener('mouseenter', pauseTimer);
+        toast.addEventListener('mouseleave', startTimer);
+        toast.addEventListener('focusin', pauseTimer);
+        toast.addEventListener('focusout', startTimer);
+
+        requestAnimationFrame(function () {
+          toast.classList.add('is-visible');
+        });
+        startTimer();
+      }
+
+      function mount(root) {
+        const scope = root && root.querySelectorAll ? root : document;
+        scope.querySelectorAll('[data-flash-toast]').forEach(setupToast);
+      }
+
+      window.CanteiroToast = window.CanteiroToast || {};
+      window.CanteiroToast.mount = mount;
+      mount(document);
     })();
 
     /* =============================================
@@ -755,6 +900,13 @@
           return;
         }
 
+        const supportOpen = event.target.closest('[data-open-support-modal]');
+        if (supportOpen) {
+          event.preventDefault();
+          openModalById(supportOpen.dataset.openSupportModal);
+          return;
+        }
+
         const modalClose = event.target.closest('[data-close-usuario-modal], [data-close-quick-modal]');
         if (modalClose) {
           event.preventDefault();
@@ -766,6 +918,75 @@
           closeModalElement(event.target);
         }
       });
+    })();
+
+    /* =============================================
+       SUPORTE
+       ============================================= */
+    (function () {
+      const modal = document.getElementById('modalSuporte');
+      if (!modal) return;
+
+      const form = modal.querySelector('[data-support-form]');
+      const tipoInput = modal.querySelector('[data-support-type-input]');
+      const redirectInput = modal.querySelector('[data-support-redirect-input]');
+      const pageInput = modal.querySelector('[data-support-page-input]');
+      const promptEl = modal.querySelector('[data-support-prompt]');
+      const hintEl = modal.querySelector('[data-support-hint]');
+      const titleEl = modal.querySelector('[data-support-title]');
+      const textoEl = modal.querySelector('#supportMensagem');
+      const botoesTipo = modal.querySelectorAll('[data-support-kind]');
+
+      function paginaAtual() {
+        return `${window.location.pathname}${window.location.search}`;
+      }
+
+      function aplicarTipo(tipo) {
+        const suporteTipo = tipo === 'sugestao' ? 'sugestao' : 'problema';
+        if (tipoInput) tipoInput.value = suporteTipo;
+
+        const isSugestao = suporteTipo === 'sugestao';
+        if (titleEl) titleEl.textContent = isSugestao ? 'Enviar sugestão' : 'Reportar problema';
+        if (promptEl) promptEl.textContent = isSugestao ? 'Conte sua sugestão em poucas linhas' : 'Descreva rapidamente o problema';
+        if (hintEl) hintEl.textContent = isSugestao
+          ? 'Sugestões simples ajudam a melhorar o fluxo.'
+          : 'Mensagem curta e objetiva já ajuda bastante.';
+        if (textoEl) textoEl.placeholder = isSugestao
+          ? 'Ex: Seria útil mostrar o status da obra junto no card de custos.'
+          : 'Ex: Não consegui salvar a medição da obra ABC. Aparece erro ao clicar em salvar.';
+
+        botoesTipo.forEach(function (btn) {
+          const ativo = (btn.dataset.supportKind || '') === suporteTipo;
+          btn.classList.toggle('is-active', ativo);
+          btn.setAttribute('aria-pressed', ativo ? 'true' : 'false');
+        });
+      }
+
+      botoesTipo.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          aplicarTipo(btn.dataset.supportKind || 'problema');
+          if (textoEl) textoEl.focus();
+        });
+      });
+
+      document.addEventListener('click', function (event) {
+        const trigger = event.target.closest('[data-open-support-modal]');
+        if (!trigger) return;
+        const tipoDefault = trigger.dataset.supportKindDefault || 'problema';
+        if (redirectInput) redirectInput.value = paginaAtual();
+        if (pageInput) pageInput.value = paginaAtual();
+        aplicarTipo(tipoDefault);
+        window.setTimeout(function () {
+          if (textoEl) textoEl.focus();
+        }, 20);
+      });
+
+      if (form) {
+        form.addEventListener('submit', function () {
+          if (redirectInput) redirectInput.value = paginaAtual();
+          if (pageInput) pageInput.value = paginaAtual();
+        });
+      }
     })();
 
     /* =============================================
