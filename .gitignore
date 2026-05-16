@@ -4,8 +4,29 @@ __pycache__/
 *.pyo
 *.pyd
 .python-version
+
+# Ambiente
 .env
+
+# Uploads
 uploads/
+
+# Banco de dados
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+
+# Logs
+*.log
+
+# Backups
+backups/
+dados/backups/
+
+# Sistema
 .DS_Store
 Thumbs.db
 .vscode/
